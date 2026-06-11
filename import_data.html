@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CG Training — Data Importer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a2744;--teal:#0e9f6e;--teal-d:#065f46;--teal-l:#d1fae5;--red:#ef4444;--red-l:#fee2e2;--amber:#f59e0b;--amber-l:#fef3c7;--g100:#f3f4f6;--g200:#e5e7eb;--g500:#6b7280;--g700:#374151;--g900:#111827;--white:#fff;--r:8px;--rl:12px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--g100);color:var(--g900);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+.box{background:var(--white);border-radius:var(--rl);border:1px solid var(--g200);width:100%;max-width:760px;overflow:hidden;margin-bottom:20px}
+.box-header{padding:16px 20px;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px}
+.box-header h2{font-size:15px;font-weight:700}
+.box-body{padding:20px}
+.logo{font-size:28px;color:var(--teal);margin-bottom:6px;text-align:center}
+h1{font-size:22px;font-weight:700;text-align:center;margin-bottom:4px}
+.sub{font-size:13px;color:var(--g500);text-align:center;margin-bottom:24px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--teal);color:#fff}.btn-primary:hover{background:var(--teal-d)}
+.btn-outline{background:#fff;color:var(--g700);border:1px solid var(--g200)}.btn-outline:hover{background:var(--g100)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ms-btn{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1a1a1a;border:1px solid var(--g200);border-radius:var(--r);padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer}
+.ms-btn:hover{background:var(--g100)}
+.step{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--g100)}
+.step:last-child{border-bottom:none}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--g500);flex-shrink:0;margin-top:1px}
+.step-num.done{background:var(--teal-l);color:var(--teal-d)}
+.step-num.active{background:var(--teal);color:#fff}
+.step-num.error{background:var(--red-l);color:var(--red)}
+.step-title{font-weight:600;font-size:13px;margin-bottom:3px}
+.step-detail{font-size:12px;color:var(--g500)}
+.progress-wrap{background:var(--g200);border-radius:4px;height:8px;overflow:hidden;margin:12px 0}
+.progress-fill{height:100%;background:var(--teal);border-radius:4px;transition:width .3s}
+.log{background:var(--g100);border-radius:var(--r);padding:14px;font-size:12px;font-family:monospace;max-height:280px;overflow-y:auto;line-height:1.8}
+.log-ok{color:var(--teal-d)}.log-err{color:var(--red)}.log-info{color:var(--g700)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.bg{background:var(--teal-l);color:var(--teal-d)}.br{background:var(--red-l);color:#991b1b}.ba{background:var(--amber-l);color:#78350f}
+#import-section{display:none}
+#login-section{text-align:center;padding:30px 20px}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.summary-card{background:var(--g100);border-radius:var(--r);padding:12px;text-align:center}
+.summary-card .sv{font-size:20px;font-weight:700;color:var(--teal-d)}
+.summary-card .sl{font-size:11px;color:var(--g500);margin-top:2px}
+</style>
+</head>
+<body>
+
+<div class="logo"><i class="ti ti-database-import"></i></div>
+<h1>CG Training — Data Importer</h1>
+<p class="sub">One-time import of 2026 training data into SharePoint Lists</p>
+
+<!-- LOGIN -->
+<div class="box" id="login-section-box">
+  <div class="box-body" id="login-section" style="display:block">
+    <p style="font-size:13px;color:var(--g500);margin-bottom:16px;text-align:center">Sign in with your M365 account to authorise the import into SharePoint.</p>
+    <div style="text-align:center">
+      <button class="ms-btn" onclick="signIn()">
+        <svg viewBox="0 0 21 21" fill="none" style="width:18px;height:18px"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        Sign in with Microsoft
+      </button>
+      <div id="login-err" style="color:var(--red);font-size:12px;margin-top:10px"></div>
+      <div id="login-status" style="color:var(--g500);font-size:12px;margin-top:6px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div class="box" id="import-section">
+  <div class="box-header">
+    <i class="ti ti-database-import" style="font-size:20px;color:var(--teal)"></i>
+    <div>
+      <h2>Ready to Import</h2>
+      <div style="font-size:12px;color:var(--g500)" id="user-label">Signed in as: —</div>
+    </div>
+    <button class="btn btn-outline" style="margin-left:auto;font-size:12px" onclick="signOut()"><i class="ti ti-logout"></i>Sign out</button>
+  </div>
+  <div class="box-body">
+    <p style="font-size:13px;color:var(--g700);margin-bottom:14px">
+      This will import all 2026 training records from your Excel file into the SharePoint Lists.
+      The import runs in sequence — Courses → Organisations → Course Runs → Attendees → Invoices → Payments → Certificates.
+      <strong>Safe to run multiple times</strong> — it checks for duplicates before inserting.
+    </p>
+
+    <div class="summary-grid" style="margin-bottom:20px">
+      <div class="summary-card"><div class="sv">14</div><div class="sl">Courses</div></div>
+      <div class="summary-card"><div class="sv">52</div><div class="sl">Organisations</div></div>
+      <div class="summary-card"><div class="sv">120+</div><div class="sl">Attendees</div></div>
+      <div class="summary-card"><div class="sv">80+</div><div class="sl">Invoices</div></div>
+    </div>
+
+    <!-- Steps -->
+    <div id="steps">
+      <div class="step"><div class="step-num" id="sn-0">1</div><div><div class="step-title">Courses</div><div class="step-detail" id="sd-0">14 course types to import</div></div></div>
+      <div class="step"><div class="step-num" id="sn-1">2</div><div><div class="step-title">Organisations</div><div class="step-detail" id="sd-1">Client organisations</div></div></div>
+      <div class="step"><div class="step-num" id="sn-2">3</div><div><div class="step-title">Trainers</div><div class="step-detail" id="sd-2">5 trainers</div></div></div>
+      <div class="step"><div class="step-num" id="sn-3">4</div><div><div class="step-title">Course Runs</div><div class="step-detail" id="sd-3">Scheduled course runs with dates</div></div></div>
+      <div class="step"><div class="step-num" id="sn-4">5</div><div><div class="step-title">Attendees</div><div class="step-detail" id="sd-4">All registered participants</div></div></div>
+      <div class="step"><div class="step-num" id="sn-5">6</div><div><div class="step-title">Invoices</div><div class="step-detail" id="sd-5">Invoice records</div></div></div>
+      <div class="step"><div class="step-num" id="sn-6">7</div><div><div class="step-title">Certificates</div><div class="step-detail" id="sd-6">Issued certificates</div></div></div>
+    </div>
+
+    <div class="progress-wrap" id="prog-wrap" style="display:none">
+      <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-primary" id="import-btn" onclick="startImport()"><i class="ti ti-player-play"></i>Start Import</button>
+      <span id="import-status" style="font-size:12px;color:var(--g500);align-self:center"></span>
+    </div>
+
+    <div id="log-wrap" style="margin-top:16px;display:none">
+      <div style="font-size:12px;font-weight:600;color:var(--g700);margin-bottom:6px">Import log</div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div id="done-banner" style="display:none;margin-top:16px;background:var(--teal-l);border-radius:var(--r);padding:16px 20px;display:none">
+      <div style="font-weight:700;color:var(--teal-d);font-size:14px;margin-bottom:4px"><i class="ti ti-check"></i> Import complete!</div>
+      <div style="font-size:13px;color:var(--teal-d)">All data has been loaded into your SharePoint Lists. Open the <a href="https://marcusappdev.github.io/CG_Training/" style="color:var(--teal-d);font-weight:600">CG Training app</a> to see your data.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG (same as main app) ─────────────────────────────────────────────
+const CLIENT_ID    = 'd5aef866-584f-4226-ab11-c941888fb519';
+const TENANT_ID    = 'ea9e105c-2df6-47ef-a8e3-b4aa1d788423';
+const SP_SITE      = 'conceptcompg.sharepoint.com';
+const SP_PATH      = '/sites/training.admin';
+const SCOPES       = 'https://graph.microsoft.com/Sites.ReadWrite.All User.Read offline_access';
+const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/+$/, '');
+const AUTH_EP      = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`;
+
+let _token = null, _expiry = 0, _refresh = null;
+let siteId = null, listIds = {};
+const store = {
+  _m:{},
+  set(k,v){try{localStorage.setItem(k,v);}catch{this._m[k]=v;}},
+  get(k){try{return localStorage.getItem(k);}catch{return this._m[k]||null;}},
+  del(k){try{localStorage.removeItem(k);}catch{delete this._m[k];}},
+  clear(){['imp_access','imp_refresh','imp_expiry','imp_user','imp_pkce_v','imp_pkce_s']
+    .forEach(k=>{try{localStorage.removeItem(k);}catch{}delete this._m[k];})}
+};
+
+function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+async function pkceChallenge(){
+  const arr=new Uint8Array(32);crypto.getRandomValues(arr);
+  const v=b64url(arr);
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));
+  return{verifier:v,challenge:b64url(d)};
+}
+function parseJwt(t){try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch{return{};}}
+
+async function signIn(){
+  document.getElementById('login-err').textContent='';
+  document.getElementById('login-status').textContent='Redirecting to Microsoft...';
+  const{verifier,challenge}=await pkceChallenge();
+  const stArr=new Uint8Array(16);crypto.getRandomValues(stArr);
+  const state=b64url(stArr);
+  store.set('imp_pkce_v',verifier);store.set('imp_pkce_s',state);
+  const p=new URLSearchParams({client_id:CLIENT_ID,response_type:'code',redirect_uri:REDIRECT_URI,
+    scope:SCOPES,response_mode:'query',state,code_challenge:challenge,code_challenge_method:'S256',prompt:'select_account'});
+  window.location.href=AUTH_EP+'/authorize?'+p.toString();
+}
+
+async function exchangeCode(code,verifier){
+  const b=new URLSearchParams({client_id:CLIENT_ID,grant_type:'authorization_code',
+    code,redirect_uri:REDIRECT_URI,code_verifier:verifier,scope:SCOPES});
+  const r=await fetch(AUTH_EP+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b.toString()});
+  const d=await r.json();if(d.error)throw new Error(d.error_description||d.error);return d;
+}
+
+function saveTokens(data){
+  _token=data.access_token;_refresh=data.refresh_token||_refresh;
+  _expiry=Date.now()+(+(data.expires_in)||3600)*1000;
+  store.set('imp_access',_token);store.set('imp_refresh',_refresh||'');store.set('imp_expiry',String(_expiry));
+  if(data.id_token){
+    const c=parseJwt(data.id_token);
+    const name=c.name||c.preferred_username||'User';
+    store.set('imp_user',JSON.stringify({name,username:c.preferred_username||''}));
+    document.getElementById('user-label').textContent='Signed in as: '+name;
+  }
+}
+
+async function getToken(){
+  if(_token&&Date.now()<_expiry-60000)return _token;
+  const ref=_refresh||store.get('imp_refresh');if(!ref)throw new Error('Not signed in');
+  const b=new URLSearchParams({client_id:CLIENT_ID,grant_type:'refresh_token',refresh_token:ref,scope:SCOPES});
+  const r=await fetch(AUTH_EP+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b.toString()});
+  const d=await r.json();if(d.error)throw new Error(d.error_description||d.error);
+  saveTokens(d);return _token;
+}
+
+function signOut(){store.clear();_token=null;_refresh=null;_expiry=0;window.location.reload();}
+
+// ── GRAPH ──────────────────────────────────────────────────────────────────
+async function graph(path,method='GET',body=null){
+  const t=await getToken();
+  const opts={method,headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json','Accept':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const r=await fetch('https://graph.microsoft.com/v1.0'+path,opts);
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'HTTP '+r.status);}
+  if(r.status===204)return null;
+  return r.json();
+}
+
+async function resolveSite(){
+  if(siteId)return;
+  const d=await graph(`/sites/${SP_SITE}:${SP_PATH}`);siteId=d.id;
+  const ls=await graph(`/sites/${siteId}/lists?$select=id,name`);
+  const map={CG_Courses:'courses',CG_CourseRuns:'runs',CG_Organisations:'orgs',
+    CG_Attendees:'attendees',CG_Invoices:'invoices',CG_Payments:'payments',
+    CG_Trainers:'trainers',CG_Certificates:'certs'};
+  ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
+  log('Connected to SharePoint ✓','ok');
+}
+
+async function createItem(listKey,fields){
+  const lid=listIds[listKey];if(!lid)throw new Error('List not found: '+listKey);
+  return graph(`/sites/${siteId}/lists/${lid}/items`,'POST',{fields});
+}
+
+async function getExisting(listKey){
+  const lid=listIds[listKey];if(!lid)return[];
+  const d=await graph(`/sites/${siteId}/lists/${lid}/items?expand=fields&$top=999`);
+  return(d.value||[]).map(i=>({id:i.id,...i.fields}));
+}
+
+// ── LOGGING ────────────────────────────────────────────────────────────────
+function log(msg,type='info'){
+  const el=document.getElementById('log');
+  const line=document.createElement('div');
+  line.className='log-'+type;
+  line.textContent=(type==='ok'?'✓ ':type==='err'?'✗ ':'  ')+msg;
+  el.appendChild(line);el.scrollTop=el.scrollHeight;
+}
+function setStep(i,state,detail){
+  const n=document.getElementById('sn-'+i);
+  n.className='step-num '+(state==='done'?'done':state==='active'?'active':state==='error'?'error':'');
+  n.textContent=state==='done'?'✓':String(i+1);
+  if(detail)document.getElementById('sd-'+i).textContent=detail;
+}
+function setProgress(pct){document.getElementById('prog-fill').style.width=pct+'%';}
+
+// ── SEED DATA ──────────────────────────────────────────────────────────────
+const COURSES = [
+  {CourseName:'Alesco Basic v12 Certificate in payroll',   Category:'Payroll', FeeExGST:4125, GSTRate:10},
+  {CourseName:'Alesco Advance v12 Certificate in payroll', Category:'Payroll', FeeExGST:4400, GSTRate:10},
+  {CourseName:'Alesco Discoverer v12',                     Category:'Payroll', FeeExGST:1980, GSTRate:10},
+  {CourseName:'Foundations of HR Management',              Category:'HR',      FeeExGST:4125, GSTRate:10},
+  {CourseName:'Recruitment & Selection',                   Category:'HR',      FeeExGST:4125, GSTRate:10},
+  {CourseName:'Job Analysis Designing & Describing work - JA', Category:'HR',  FeeExGST:1980, GSTRate:10},
+  {CourseName:'Job Evaluation Designing & Describing work - JE',Category:'HR', FeeExGST:1980, GSTRate:10},
+  {CourseName:'Work place H&S - Level 1', Category:'Safety', FeeExGST:2750, GSTRate:10},
+  {CourseName:'Work place H&S - Level 2', Category:'Safety', FeeExGST:2750, GSTRate:10},
+  {CourseName:'Work place H&S - Level 3', Category:'Safety', FeeExGST:3400, GSTRate:10},
+  {CourseName:'Work place H&S - Level 4', Category:'Safety', FeeExGST:3400, GSTRate:10},
+  {CourseName:'Defensive Driving',    Category:'Safety', FeeExGST:1800, GSTRate:10},
+  {CourseName:'Basic Fire Fighting',  Category:'Safety', FeeExGST:1800, GSTRate:10},
+  {CourseName:'Working at Heights',   Category:'Safety', FeeExGST:1800, GSTRate:10},
+];
+
+const TRAINERS = [
+  {FullName:'Steven VAVINE',       Specialisation:'Payroll & HR'},
+  {FullName:'Philip WALIMAN',      Specialisation:'Payroll & HR'},
+  {FullName:'Miriam HERE',         Specialisation:'HR Management'},
+  {FullName:'Royce POHIN KIAPEN', Specialisation:'Safety & Compliance'},
+  {FullName:'Tom FRAGHI',          Specialisation:'Safety & Driving'},
+];
+
+const ORGS_RAW = [
+  'PNG University of Medicine & Health Science','Teaching Service Commission',
+  'Enga Provincial Authority','Enga Provincial Administration','PSP - Concept Group Limited',
+  'Lae City Authority','Department of Finance','PNG-APP','National Trade Office',
+  'Electoral Commission','Madang Provincial Health Authority','Office of Public Prosecutor',
+  'Department of Implementation & Rural Development','Royal Papua New Guinea Constabulary',
+  'Internal Revenue Commission','Digicel PNG Limited','Autonomous Bougainville Government',
+  'NAQIA','Department of Personnel Management ABG','National Broadcasting Corporation',
+  'Nimamar Capital Limited','Auditor Generals Office','Western Highlands Provincial Health Authority',
+  'National Training Council','Department of Education','Special Economic Zone Authority',
+  'Department of Commerce & Industry','Department of PMNEC','Parliamentary Services',
+  'Nasfund','National Judicial Staff Services','Ok Tedi Mining Limited',
+  'Totalenergies PNG Limited','Jiwaka Provincial Health Authority','Dept of Edu-Banz, Jiwaka',
+  'Gulf Provincial Health Authority','Department of Defence','Office of Censorship',
+  'Bank of PNG','National Museum & Art Gallery',
+  'National Coordination Officer For Bougainville Affairs',
+  'Air Niugini Limited','PNG Accident Investigation Commission',
+  'Dept. Justice & Attorney General','Concept Group-PSP','Concept Group-Training',
+  'PSP Concept','Driver Concept','Division of Education - SHP',
+];
+
+// Excel serial date to ISO string
+function excelDate(serial){
+  if(!serial||isNaN(+serial))return null;
+  const d=new Date(Math.round((+serial-25569)*86400*1000));
+  return d.toISOString().split('T')[0];
+}
+
+const RUNS_RAW = [
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46055,end:46059,status:'Completed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46041,end:46045,status:'Completed'},
+  {course:'Foundations of HR Management',                  start:46048,end:46052,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46055,end:46059,status:'Completed'},
+  {course:'Job Analysis Designing & Describing work - JA',start:46062,end:46063,status:'Postponed'},
+  {course:'Job Evaluation Designing & Describing work - JE',start:46065,end:46066,status:'Postponed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46069,end:46073,status:'Completed'},
+  {course:'Alesco Discoverer v12',                         start:46077,end:46078,status:'Postponed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46090,end:46094,status:'Completed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46097,end:46101,status:'Completed'},
+  {course:'Job Analysis Designing & Describing work - JA',start:46104,end:46105,status:'Completed'},
+  {course:'Job Evaluation Designing & Describing work - JE',start:46107,end:46108,status:'Completed'},
+  {course:'Alesco Discoverer v12',                         start:46120,end:46121,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46132,end:46136,status:'Completed'},
+  {course:'Foundations of HR Management',                  start:46139,end:46143,status:'Completed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46146,end:46150,status:'Scheduled'},
+  {course:'Job Analysis Designing & Describing work - JA',start:46160,end:46161,status:'Completed'},
+  {course:'Job Evaluation Designing & Describing work - JE',start:46163,end:46164,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46167,end:46171,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46181,end:46185,status:'Completed'},
+  {course:'Job Analysis Designing & Describing work - JA',start:46188,end:46189,status:'Completed'},
+  {course:'Job Evaluation Designing & Describing work - JE',start:46191,end:46192,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46195,end:46199,status:'Completed'},
+  {course:'Recruitment & Selection',                       start:46188,end:46195,status:'Completed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46202,end:46206,status:'Completed'},
+  {course:'Alesco Discoverer v12',                         start:46209,end:46210,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46216,end:46220,status:'Completed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46230,end:46234,status:'Completed'},
+  {course:'Job Analysis Designing & Describing work - JA',start:46237,end:46238,status:'Completed'},
+  {course:'Job Evaluation Designing & Describing work - JE',start:46240,end:46241,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46244,end:46248,status:'Completed'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46251,end:46255,status:'Completed'},
+  {course:'Alesco Discoverer v12',                         start:46258,end:46259,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46272,end:46276,status:'Completed'},
+  {course:'Work place H&S - Level 1',                      start:46110,end:46110,status:'Completed'},
+  {course:'Defensive Driving',                             start:46105,end:46105,status:'Completed'},
+  {course:'Alesco Basic v12 Certificate in payroll',      start:46286,end:46290,status:'Scheduled'},
+  {course:'Alesco Advance v12 Certificate in payroll',    start:46293,end:46297,status:'Scheduled'},
+];
+
+const ATTENDEES_RAW = [
+  {name:'Eileen Kora',org:'PNG University of Medicine & Health Science',course:'Alesco Basic v12 Certificate in payroll',start:46055,cert:'AB20260001',s65:true,inv:'INV-5544',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Puri Kokiva',org:'PNG University of Medicine & Health Science',course:'Alesco Basic v12 Certificate in payroll',start:46055,cert:'AB20260002',s65:false,inv:'INV-5545',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Aaron Wabaya',org:'PNG University of Medicine & Health Science',course:'Alesco Basic v12 Certificate in payroll',start:46055,cert:'AB20260004',s65:false,inv:'INV-5546',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Ligoria Ziwong',org:'PNG University of Medicine & Health Science',course:'Alesco Basic v12 Certificate in payroll',start:46055,cert:'AB20260003',s65:false,inv:'INV-5547',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Jamine Kalilo',org:'PNG University of Medicine & Health Science',course:'Alesco Basic v12 Certificate in payroll',start:46055,cert:'AB20260005',s65:false,inv:'INV-5548',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Peaks Gawiya',org:'Teaching Service Commission',course:'Alesco Basic v12 Certificate in payroll',start:46055,cert:'AB20260006',s65:true,inv:'INV 4578',fee:4125,gst:0,paid:4125},
+  {name:'Roseann Aite',org:'Enga Provincial Authority',course:'Alesco Advance v12 Certificate in payroll',start:46069,cert:'AA20260003',s65:true,inv:'INV-4940',fee:4400,gst:0,paid:4400},
+  {name:'Piaky Kaum',org:'Enga Provincial Authority',course:'Alesco Advance v12 Certificate in payroll',start:46069,cert:'AA20260004',s65:true,inv:'INV-4940',fee:4400,gst:0,paid:4400},
+  {name:'Luciano Kodana',org:'PSP - Concept Group Limited',course:'Alesco Advance v12 Certificate in payroll',start:46069,cert:'AA20260002',s65:false,inv:'',fee:0,gst:0,paid:0},
+  {name:'Brendan Kodana',org:'PSP - Concept Group Limited',course:'Alesco Advance v12 Certificate in payroll',start:46069,cert:'AA20260001',s65:false,inv:'',fee:0,gst:0,paid:0},
+  {name:'Noel Onoke',org:'Enga Provincial Administration',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260009',s65:true,inv:'INV 5404',fee:4125,gst:0,paid:4125},
+  {name:'Deborah Mondo',org:'Lae City Authority',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260010',s65:true,inv:'INV 5419',fee:4400,gst:0,paid:4125},
+  {name:'Vali Wari',org:'Teaching Service Commission',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260011',s65:true,inv:'INV 4578',fee:4125,gst:0,paid:4125},
+  {name:'Oda Momoru',org:'Teaching Service Commission',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260013',s65:true,inv:'INV 4578',fee:4125,gst:0,paid:4125},
+  {name:'Wesley Waso',org:'Department of Finance',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260012',s65:true,inv:'INV-4324',fee:4125,gst:0,paid:4125},
+  {name:'Matthew Dugumi',org:'PNG-APP',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260008',s65:false,inv:'INV-5595',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Phil Dusal',org:'PNG-APP',course:'Alesco Basic v12 Certificate in payroll',start:46090,cert:'AB20260007',s65:false,inv:'INV-5596',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Simon Waipa',org:'National Trade Office',course:'Alesco Advance v12 Certificate in payroll',start:46097,cert:'',s65:false,inv:'INV-4680',fee:4400,gst:440,paid:4840},
+  {name:'Mathilda Tangitban',org:'Electoral Commission',course:'Alesco Advance v12 Certificate in payroll',start:46097,cert:'AA20260009',s65:false,inv:'INV-5227',fee:4400,gst:440,paid:4400},
+  {name:'Deborah Mondo',org:'Lae City Authority',course:'Alesco Advance v12 Certificate in payroll',start:46097,cert:'AA20260007',s65:false,inv:'INV-5419',fee:4400,gst:440,paid:4400},
+  {name:'Wesley Waso',org:'Department of Finance',course:'Alesco Advance v12 Certificate in payroll',start:46097,cert:'AA20260008',s65:true,inv:'INV-4324',fee:4400,gst:0,paid:4125},
+  {name:'Kelly Manari',org:'Dept. Justice & Attorney General',course:'Alesco Discoverer v12',start:46120,cert:'',s65:true,inv:'INV 4929',fee:1980,gst:0,paid:1980},
+  {name:'Mairi Henao',org:'Dept. Justice & Attorney General',course:'Alesco Discoverer v12',start:46120,cert:'',s65:true,inv:'INV 4929',fee:1980,gst:0,paid:1980},
+  {name:'Annya Tambale',org:'Madang Provincial Health Authority',course:'Alesco Discoverer v12',start:46120,cert:'DIS2026003',s65:true,inv:'INV 5567',fee:1980,gst:0,paid:1980},
+  {name:'Wesley Waso',org:'Department of Finance',course:'Alesco Discoverer v12',start:46120,cert:'DIS2026001',s65:true,inv:'INV-4324',fee:1980,gst:0,paid:1980},
+  {name:'Judy Jambakau',org:'Office of Public Prosecutor',course:'Alesco Discoverer v12',start:46120,cert:'DIS2026002',s65:true,inv:'INV 4328',fee:1980,gst:0,paid:1980},
+  {name:'Lewan Bob',org:'Department of Finance',course:'Alesco Basic v12 Certificate in payroll',start:46132,cert:'AB20260015',s65:true,inv:'INV 4324',fee:4125,gst:0,paid:4125},
+  {name:'Gibere Karimo',org:'Department of Implementation & Rural Development',course:'Alesco Basic v12 Certificate in payroll',start:46132,cert:'AB20260014',s65:true,inv:'INV-5649',fee:4125,gst:0,paid:4125},
+  {name:'Theresa Segodi',org:'Royal Papua New Guinea Constabulary',course:'Alesco Basic v12 Certificate in payroll',start:46132,cert:'AB20260018',s65:false,inv:'INV 5655',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Melissa Allen',org:'Internal Revenue Commission',course:'Alesco Basic v12 Certificate in payroll',start:46132,cert:'AB20260016',s65:true,inv:'INV 5596',fee:4125,gst:0,paid:0},
+  {name:'Etep Noah',org:'Internal Revenue Commission',course:'Alesco Basic v12 Certificate in payroll',start:46132,cert:'AB20260017',s65:true,inv:'INV 5596',fee:4125,gst:0,paid:0},
+  {name:'Kathy Malesa',org:'Digicel PNG Limited',course:'Foundations of HR Management',start:46139,cert:'FHRM20260004',s65:false,inv:'INV 5156',fee:4125,gst:412.5,paid:4537},
+  {name:'Annya Tambale',org:'Madang Provincial Health Authority',course:'Foundations of HR Management',start:46139,cert:'FHRM20260003',s65:true,inv:'INV 5567',fee:4125,gst:0,paid:4125},
+  {name:'Hale Baidah',org:'NAQIA',course:'Foundations of HR Management',start:46139,cert:'FHRM20260001',s65:false,inv:'INV 5607',fee:4125,gst:412.5,paid:4537},
+  {name:'Nancy Lolya',org:'NAQIA',course:'Foundations of HR Management',start:46139,cert:'FHRM20260002',s65:false,inv:'INV 5607',fee:4125,gst:412.5,paid:4537},
+  {name:'Hale Baidah',org:'NAQIA',course:'Job Analysis Designing & Describing work - JA',start:46160,cert:'',s65:false,inv:'INV 5607',fee:1980,gst:198,paid:2178},
+  {name:'Nancy Lolya',org:'NAQIA',course:'Job Analysis Designing & Describing work - JA',start:46160,cert:'JA20260004',s65:false,inv:'INV 5607',fee:1980,gst:198,paid:2178},
+  {name:'Hillary Sinogong',org:'Department of Personnel Management ABG',course:'Job Analysis Designing & Describing work - JA',start:46160,cert:'JA20260002',s65:true,inv:'INV 5643',fee:1980,gst:0,paid:1980},
+  {name:'Vincent Momei',org:'Department of Personnel Management ABG',course:'Job Analysis Designing & Describing work - JA',start:46160,cert:'JA20260003',s65:true,inv:'INV 5644',fee:1980,gst:0,paid:1980},
+  {name:'Prozzie Kari',org:'Department of Personnel Management ABG',course:'Job Analysis Designing & Describing work - JA',start:46160,cert:'JA20260001',s65:true,inv:'INV 5643',fee:1980,gst:0,paid:1980},
+  {name:'Billy Mahin',org:'Department of Personnel Management ABG',course:'Job Analysis Designing & Describing work - JA',start:46160,cert:'',s65:true,inv:'INV 5643',fee:1980,gst:0,paid:1980},
+  {name:'Hale Baidah',org:'NAQIA',course:'Job Evaluation Designing & Describing work - JE',start:46163,cert:'',s65:false,inv:'INV 5607',fee:1980,gst:198,paid:2178},
+  {name:'Nancy Lolya',org:'NAQIA',course:'Job Evaluation Designing & Describing work - JE',start:46163,cert:'JE20260004',s65:false,inv:'INV 5607',fee:1980,gst:198,paid:2178},
+  {name:'Hillary Sinogong',org:'Department of Personnel Management ABG',course:'Job Evaluation Designing & Describing work - JE',start:46163,cert:'JE20260002',s65:true,inv:'INV 5643',fee:1980,gst:0,paid:1980},
+  {name:'Vincent Momei',org:'Department of Personnel Management ABG',course:'Job Evaluation Designing & Describing work - JE',start:46163,cert:'JE20260003',s65:true,inv:'INV 5644',fee:1980,gst:0,paid:1980},
+  {name:'Prozzie Kari',org:'Department of Personnel Management ABG',course:'Job Evaluation Designing & Describing work - JE',start:46163,cert:'JE20260001',s65:true,inv:'INV 5643',fee:1980,gst:0,paid:1980},
+  {name:'Lian Benal',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46167,cert:'AB20260024',s65:true,inv:'INV 5646',fee:4125,gst:0,paid:4125},
+  {name:'John Mondo',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46167,cert:'AB20260026',s65:true,inv:'INV 5646',fee:4125,gst:0,paid:4125},
+  {name:'Eilyne Yapa',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46167,cert:'AB20260023',s65:true,inv:'INV 5646',fee:4125,gst:0,paid:4125},
+  {name:'Patricia Maurice',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46167,cert:'AB20260021',s65:true,inv:'INV 5646',fee:4125,gst:0,paid:4125},
+  {name:'Dorcas Thadius',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46167,cert:'AB20260025',s65:true,inv:'INV 5646',fee:4125,gst:0,paid:4125},
+  {name:'Leonie Koyasi',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46167,cert:'AB20260022',s65:true,inv:'INV 5646',fee:4125,gst:0,paid:4125},
+  {name:'Sean Kevi',org:'Department of Personnel Management ABG',course:'Alesco Basic v12 Certificate in payroll',start:46181,cert:'',s65:true,inv:'INV 5641',fee:4125,gst:0,paid:4125},
+  {name:'Morva Tupp',org:'Department of Personnel Management ABG',course:'Alesco Basic v12 Certificate in payroll',start:46181,cert:'',s65:true,inv:'INV 5641',fee:4125,gst:0,paid:4125},
+  {name:'Watson Moringuen',org:'Bank of PNG',course:'Alesco Basic v12 Certificate in payroll',start:46181,cert:'',s65:false,inv:'INV-5798',fee:4125,gst:412.5,paid:4537},
+  {name:'Tom Masiake',org:'National Museum & Art Gallery',course:'Alesco Basic v12 Certificate in payroll',start:46181,cert:'',s65:false,inv:'INV-5805',fee:4125,gst:412.5,paid:4537},
+  {name:'Lorraine Tol',org:'National Coordination Officer For Bougainville Affairs',course:'Alesco Basic v12 Certificate in payroll',start:46181,cert:'',s65:false,inv:'INV 5807',fee:4125,gst:412.5,paid:4537},
+  {name:'Jason Yaman',org:'National Broadcasting Corporation',course:'Job Analysis Designing & Describing work - JA',start:46188,cert:'',s65:false,inv:'INV-5566',fee:1980,gst:198,paid:2178},
+  {name:'Tony Tom',org:'National Broadcasting Corporation',course:'Job Analysis Designing & Describing work - JA',start:46188,cert:'',s65:false,inv:'INV-5566',fee:1980,gst:198,paid:2178},
+  {name:'Jason Yaman',org:'National Broadcasting Corporation',course:'Job Evaluation Designing & Describing work - JE',start:46191,cert:'',s65:false,inv:'INV-5566',fee:1980,gst:198,paid:2178},
+  {name:'Tony Tom',org:'National Broadcasting Corporation',course:'Job Evaluation Designing & Describing work - JE',start:46191,cert:'',s65:false,inv:'INV-5566',fee:1980,gst:198,paid:2178},
+  {name:'Nelly Dujambi',org:'Nimamar Capital Limited',course:'Job Evaluation Designing & Describing work - JE',start:46191,cert:'',s65:false,inv:'INV-5818',fee:1980,gst:198,paid:2178},
+  {name:'Molna Andrew',org:'Auditor Generals Office',course:'Alesco Basic v12 Certificate in payroll',start:46195,cert:'',s65:false,inv:'INV-5819',fee:4125,gst:412.5,paid:4537},
+  {name:'Navua Marai',org:'Auditor Generals Office',course:'Alesco Basic v12 Certificate in payroll',start:46195,cert:'',s65:false,inv:'INV-5819',fee:4125,gst:412.5,paid:4537},
+  {name:'Noga Kila',org:'Auditor Generals Office',course:'Alesco Basic v12 Certificate in payroll',start:46195,cert:'',s65:false,inv:'INV-5819',fee:4125,gst:412.5,paid:0},
+  {name:'Sharon Brosseau',org:'Auditor Generals Office',course:'Alesco Basic v12 Certificate in payroll',start:46195,cert:'',s65:false,inv:'INV-5819',fee:4125,gst:412.5,paid:0},
+  {name:'Naomi Pup',org:'Auditor Generals Office',course:'Alesco Basic v12 Certificate in payroll',start:46195,cert:'',s65:false,inv:'INV-5819',fee:4125,gst:412.5,paid:0},
+  {name:'Jason Yaman',org:'National Broadcasting Corporation',course:'Recruitment & Selection',start:46188,cert:'',s65:false,inv:'INV-5566',fee:4125,gst:412.5,paid:4537.5},
+  {name:'Theresa Segodi',org:'Royal Papua New Guinea Constabulary',course:'Alesco Advance v12 Certificate in payroll',start:46202,cert:'',s65:false,inv:'INV 5655',fee:4400,gst:440,paid:4840},
+  {name:'Lewen Bob',org:'Department of Finance',course:'Alesco Advance v12 Certificate in payroll',start:46202,cert:'',s65:true,inv:'INV 4324',fee:4400,gst:0,paid:4400},
+  {name:'Apuri Vianney',org:'Department of Personnel Management ABG',course:'Alesco Advance v12 Certificate in payroll',start:46202,cert:'',s65:true,inv:'INV 5642',fee:4400,gst:0,paid:4400},
+  {name:'Maria Joel',org:'Western Highlands Provincial Health Authority',course:'Alesco Discoverer v12',start:46209,cert:'',s65:true,inv:'INV-5623',fee:1980,gst:0,paid:2178},
+  {name:'Adrian Masil',org:'Teaching Service Commission',course:'Alesco Discoverer v12',start:46209,cert:'',s65:true,inv:'INV 5693',fee:1980,gst:0,paid:1980},
+  {name:'Lydia Kiina',org:'National Training Council',course:'Alesco Basic v12 Certificate in payroll',start:46216,cert:'',s65:false,inv:'INV-5599',fee:4125,gst:412.5,paid:4537},
+  {name:'Taraboga Graydon',org:'Department of Education',course:'Alesco Basic v12 Certificate in payroll',start:46216,cert:'',s65:false,inv:'INV-5814',fee:4125,gst:0,paid:4125},
+  {name:'Kori Mindiny',org:'Special Economic Zone Authority',course:'Alesco Basic v12 Certificate in payroll',start:46216,cert:'',s65:false,inv:'INV 5794',fee:4125,gst:412.5,paid:4537},
+  {name:'Gabriel Goroba',org:'Department of Education',course:'Alesco Advance v12 Certificate in payroll',start:46230,cert:'',s65:false,inv:'INV-5236',fee:4400,gst:440,paid:4840},
+  {name:'Lawrence Bulung',org:'Department of Commerce & Industry',course:'Alesco Advance v12 Certificate in payroll',start:46230,cert:'',s65:true,inv:'INV 5804',fee:4400,gst:440,paid:4400},
+  {name:'Alu Iva',org:'Department of PMNEC',course:'Alesco Advance v12 Certificate in payroll',start:46230,cert:'',s65:true,inv:'INV-5824',fee:4400,gst:0,paid:0},
+  {name:'Gregory Goroba',org:'Parliamentary Services',course:'Alesco Advance v12 Certificate in payroll',start:46230,cert:'',s65:false,inv:'INV 5709',fee:4400,gst:440,paid:0},
+  {name:'Evelyn Kavang',org:'Nasfund',course:'Job Analysis Designing & Describing work - JA',start:46237,cert:'',s65:false,inv:'INV 5696',fee:1980,gst:198,paid:2178},
+  {name:'Salome Magatu',org:'Nasfund',course:'Job Analysis Designing & Describing work - JA',start:46237,cert:'',s65:false,inv:'INV 5696',fee:1980,gst:198,paid:2178},
+  {name:'Anna Poawai',org:'National Judicial Staff Services',course:'Job Analysis Designing & Describing work - JA',start:46237,cert:'',s65:true,inv:'INV-5417',fee:1980,gst:198,paid:2178},
+  {name:'Rene\'e Daia',org:'Ok Tedi Mining Limited',course:'Job Analysis Designing & Describing work - JA',start:46237,cert:'',s65:false,inv:'INV-5803',fee:1980,gst:198,paid:0},
+  {name:'Genevieve Tege',org:'Totalenergies PNG Limited',course:'Job Analysis Designing & Describing work - JA',start:46237,cert:'',s65:false,inv:'INV-5799',fee:1980,gst:198,paid:0},
+  {name:'Evelyn Kavang',org:'Nasfund',course:'Job Evaluation Designing & Describing work - JE',start:46240,cert:'',s65:false,inv:'INV 5696',fee:1980,gst:198,paid:2178},
+  {name:'Salome Magatu',org:'Nasfund',course:'Job Evaluation Designing & Describing work - JE',start:46240,cert:'',s65:false,inv:'INV 5696',fee:1980,gst:198,paid:2178},
+  {name:'Jack Kole',org:'Jiwaka Provincial Health Authority',course:'Alesco Basic v12 Certificate in payroll',start:46244,cert:'',s65:true,inv:'INV 5808',fee:4125,gst:0,paid:4125},
+  {name:'Thomas Rumba',org:'Jiwaka Provincial Health Authority',course:'Alesco Basic v12 Certificate in payroll',start:46244,cert:'',s65:true,inv:'INV 5808',fee:4125,gst:0,paid:4125},
+  {name:'Raphael Kumie',org:'Jiwaka Provincial Health Authority',course:'Alesco Basic v12 Certificate in payroll',start:46244,cert:'',s65:true,inv:'INV 5808',fee:4125,gst:0,paid:4125},
+  {name:'Jefferey Yambe',org:'Jiwaka Provincial Health Authority',course:'Alesco Basic v12 Certificate in payroll',start:46244,cert:'',s65:true,inv:'INV 5808',fee:4125,gst:0,paid:4125},
+  {name:'Lucy Witne',org:'Jiwaka Provincial Health Authority',course:'Alesco Basic v12 Certificate in payroll',start:46244,cert:'',s65:true,inv:'INV 5808',fee:4125,gst:0,paid:4125},
+  {name:'Jack Kole',org:'Jiwaka Provincial Health Authority',course:'Alesco Advance v12 Certificate in payroll',start:46251,cert:'',s65:true,inv:'INV 5808',fee:4400,gst:0,paid:4400},
+  {name:'Thomas Rumba',org:'Jiwaka Provincial Health Authority',course:'Alesco Advance v12 Certificate in payroll',start:46251,cert:'',s65:true,inv:'INV 5808',fee:4400,gst:0,paid:4400},
+  {name:'Debrah Mondo',org:'Lae City Authority',course:'Alesco Discoverer v12',start:46258,cert:'',s65:true,inv:'INV-5806',fee:1980,gst:0,paid:0},
+  {name:'Lucas Manasau',org:'Lae City Authority',course:'Alesco Discoverer v12',start:46258,cert:'',s65:true,inv:'INV-5806',fee:1980,gst:0,paid:0},
+  {name:'Martin Koi',org:'Dept of Edu-Banz, Jiwaka',course:'Alesco Basic v12 Certificate in payroll',start:46272,cert:'',s65:true,inv:'INV 5624',fee:4125,gst:0,paid:0},
+  {name:'Audrey Nares',org:'Gulf Provincial Health Authority',course:'Alesco Basic v12 Certificate in payroll',start:46272,cert:'',s65:true,inv:'QU-0415',fee:4125,gst:0,paid:0},
+  {name:'Dorris Wingi',org:'Air Niugini Limited',course:'Work place H&S - Level 1',start:46110,cert:'',s65:false,inv:'',fee:2750,gst:270,paid:0},
+  {name:'Geno Puka',org:'PNG Accident Investigation Commission',course:'Defensive Driving',start:46105,cert:'',s65:false,inv:'',fee:1800,gst:180,paid:0},
+];
+
+// ── IMPORT LOGIC ───────────────────────────────────────────────────────────
+let courseMap={}, orgMap={}, runMap={}, attMap={};
+
+async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function importCourses(){
+  setStep(0,'active');
+  const existing = await getExisting('courses');
+  const existNames = new Set(existing.map(e=>e.CourseName||e.Title));
+  let created=0, skipped=0;
+  for(const c of COURSES){
+    if(existNames.has(c.CourseName)){
+      const ex=existing.find(e=>(e.CourseName||e.Title)===c.CourseName);
+      courseMap[c.CourseName]=ex.id; skipped++; continue;
+    }
+    const r=await createItem('courses',{...c,Title:c.CourseName});
+    courseMap[c.CourseName]=r.fields.id||r.id;
+    log(`Course: ${c.CourseName}`,'ok'); created++;
+    await delay(200);
+  }
+  setStep(0,'done',`${created} created, ${skipped} already existed`);
+  setProgress(14);
+}
+
+async function importOrgs(){
+  setStep(1,'active');
+  const existing=await getExisting('organisations');
+  const existNames=new Set(existing.map(e=>e.OrgName||e.Title));
+  let created=0,skipped=0;
+  for(const name of ORGS_RAW){
+    if(existNames.has(name)){
+      const ex=existing.find(e=>(e.OrgName||e.Title)===name);
+      orgMap[name]=ex.id; skipped++; continue;
+    }
+    const r=await createItem('organisations',{OrgName:name,Title:name});
+    orgMap[name]=r.fields.id||r.id;
+    log(`Org: ${name}`,'ok'); created++;
+    await delay(200);
+  }
+  setStep(1,'done',`${created} created, ${skipped} already existed`);
+  setProgress(28);
+}
+
+async function importTrainers(){
+  setStep(2,'active');
+  const existing=await getExisting('trainers');
+  const existNames=new Set(existing.map(e=>e.FullName||e.Title));
+  let created=0,skipped=0;
+  for(const t of TRAINERS){
+    if(existNames.has(t.FullName)){skipped++;continue;}
+    await createItem('trainers',{...t,Title:t.FullName});
+    log(`Trainer: ${t.FullName}`,'ok'); created++;
+    await delay(200);
+  }
+  setStep(2,'done',`${created} created, ${skipped} already existed`);
+  setProgress(42);
+}
+
+async function importRuns(){
+  setStep(3,'active');
+  const existing=await getExisting('runs');
+  let created=0,skipped=0;
+  for(const r of RUNS_RAW){
+    const startISO=excelDate(r.start);
+    const key=r.course+'__'+startISO;
+    const ex=existing.find(e=>e.StartDate&&e.StartDate.startsWith(startISO)&&(e.CourseID===r.course||e.CourseName===r.course));
+    if(ex){ runMap[key]=ex.id; skipped++; continue; }
+    const cid=courseMap[r.course];
+    const fields={StartDate:startISO,EndDate:excelDate(r.end),Status:r.status,Capacity:7,
+      Title:r.course.substring(0,50)+' '+startISO};
+    if(cid) fields.CourseIDId=+cid;
+    const res=await createItem('runs',fields);
+    runMap[key]=res.fields.id||res.id;
+    log(`Run: ${r.course.substring(0,30)} ${startISO}`,'ok'); created++;
+    await delay(300);
+  }
+  setStep(3,'done',`${created} created, ${skipped} already existed`);
+  setProgress(57);
+}
+
+async function importAttendees(){
+  setStep(4,'active');
+  const existing=await getExisting('attendees');
+  const existSet=new Set(existing.map(e=>(e.FullName||e.Title)+'__'+(e.CourseRunIDId||'')));
+  let created=0,skipped=0,errs=0;
+  for(const a of ATTENDEES_RAW){
+    const startISO=excelDate(a.start);
+    const runKey=a.course+'__'+startISO;
+    const runId=runMap[runKey];
+    const attKey=a.name+'__'+(runId||'');
+    if(existSet.has(attKey)){skipped++;continue;}
+    const orgId=orgMap[a.org];
+    const fields={FullName:a.name,Title:a.name,Section65A:a.s65,
+      AttendanceStatus:'Completed',CertificateNumber:a.cert||''};
+    if(orgId) fields.OrgIDId=+orgId;
+    if(runId) fields.CourseRunIDId=+runId;
+    try{
+      const res=await createItem('attendees',fields);
+      attMap[a.name+'__'+runKey]=res.fields.id||res.id;
+      log(`Attendee: ${a.name}`,'ok'); created++;
+    }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
+    await delay(250);
+  }
+  setStep(4,'done',`${created} created, ${skipped} skipped, ${errs} errors`);
+  setProgress(71);
+}
+
+async function importInvoices(){
+  setStep(5,'active');
+  const existing=await getExisting('invoices');
+  const existNums=new Set(existing.map(e=>e.InvoiceNumber||e.Title));
+  // Group attendees by invoice number
+  const invGroups={};
+  ATTENDEES_RAW.filter(a=>a.inv).forEach(a=>{
+    if(!invGroups[a.inv]) invGroups[a.inv]={inv:a.inv,fee:a.fee,gst:a.gst,attendees:[a]};
+    else{ invGroups[a.inv].fee+=a.fee; invGroups[a.inv].gst+=a.gst; invGroups[a.inv].attendees.push(a); }
+  });
+  let created=0,skipped=0;
+  for(const[invNum,g] of Object.entries(invGroups)){
+    if(existNums.has(invNum)){skipped++;continue;}
+    const firstAtt=g.attendees[0];
+    const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
+    const attId=attMap[firstAtt.name+'__'+runKey];
+    const total=g.fee+g.gst;
+    const fields={InvoiceNumber:invNum,Title:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total};
+    if(attId) fields.AttendeeIDId=+attId;
+    try{
+      await createItem('invoices',fields);
+      log(`Invoice: ${invNum} K${total.toFixed(2)}`,'ok'); created++;
+    }catch(e){ log(`ERROR Invoice ${invNum}: ${e.message}`,'err'); }
+    await delay(250);
+  }
+  setStep(5,'done',`${created} created, ${skipped} already existed`);
+  setProgress(85);
+}
+
+async function importCertificates(){
+  setStep(6,'active');
+  const existing=await getExisting('certs');
+  const existNums=new Set(existing.map(e=>e.CertificateNumber||e.Title));
+  const certsToImport=ATTENDEES_RAW.filter(a=>a.cert);
+  let created=0,skipped=0;
+  for(const a of certsToImport){
+    if(existNums.has(a.cert)){skipped++;continue;}
+    const runKey=a.course+'__'+excelDate(a.start);
+    const runId=runMap[runKey];
+    const attId=attMap[a.name+'__'+runKey];
+    const fields={CertificateNumber:a.cert,Title:a.cert,IssueDate:excelDate(a.start+4)};
+    if(attId) fields.AttendeeIDId=+attId;
+    if(runId) fields.CourseRunIDId=+runId;
+    try{
+      await createItem('certs',fields);
+      log(`Certificate: ${a.cert} — ${a.name}`,'ok'); created++;
+    }catch(e){ log(`ERROR Cert ${a.cert}: ${e.message}`,'err'); }
+    await delay(250);
+  }
+  setStep(6,'done',`${created} created, ${skipped} already existed`);
+  setProgress(100);
+}
+
+async function startImport(){
+  document.getElementById('import-btn').disabled=true;
+  document.getElementById('import-btn').innerHTML='<i class="ti ti-loader" style="animation:spin .7s linear infinite"></i> Importing...';
+  document.getElementById('prog-wrap').style.display='block';
+  document.getElementById('log-wrap').style.display='block';
+  document.getElementById('import-status').textContent='Running...';
+  log('Starting import — connecting to SharePoint...','info');
+  try {
+    await resolveSite();
+    await importCourses();
+    await importOrgs();
+    await importTrainers();
+    await importRuns();
+    await importAttendees();
+    await importInvoices();
+    await importCertificates();
+    log('Import complete!','ok');
+    document.getElementById('import-status').textContent='Complete ✓';
+    const banner=document.getElementById('done-banner');
+    banner.style.display='block';
+  } catch(e){
+    log('FATAL ERROR: '+e.message,'err');
+    document.getElementById('import-status').textContent='Failed — see log';
+    document.getElementById('import-btn').disabled=false;
+    document.getElementById('import-btn').innerHTML='<i class="ti ti-refresh"></i> Retry';
+  }
+}
+
+// ── AUTH (same PKCE flow as main app) ─────────────────────────────────────
+window.addEventListener('load',async()=>{
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get('code'),state=params.get('state'),err=params.get('error');
+  if(code||err){
+    window.history.replaceState({},document.title,REDIRECT_URI);
+    if(err){document.getElementById('login-err').textContent=params.get('error_description')||err;return;}
+    const sv=store.get('imp_pkce_s'),vv=store.get('imp_pkce_v');
+    store.del('imp_pkce_s');store.del('imp_pkce_v');
+    if(!sv||state!==sv){document.getElementById('login-err').textContent='State mismatch — try again.';return;}
+    document.getElementById('login-status').textContent='Completing sign-in...';
+    try{
+      const t=await exchangeCode(code,vv);saveTokens(t);showImport();
+    }catch(e){document.getElementById('login-err').textContent='Failed: '+e.message;}
+    return;
+  }
+  const st=store.get('imp_access'),ex=+(store.get('imp_expiry')||0),usr=store.get('imp_user');
+  if(st&&ex>Date.now()){_token=st;_refresh=store.get('imp_refresh')||'';_expiry=ex;
+    if(usr){const u=JSON.parse(usr);document.getElementById('user-label').textContent='Signed in as: '+u.name;}
+    showImport();return;}
+  const ref=store.get('imp_refresh');
+  if(ref){_refresh=ref;try{await getToken();const u=JSON.parse(store.get('imp_user')||'{}');
+    document.getElementById('user-label').textContent='Signed in as: '+(u.name||'User');showImport();return;}catch{}}
+});
+
+function showImport(){
+  document.getElementById('login-section-box').style.display='none';
+  document.getElementById('import-section').style.display='block';
+}
+</script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>
