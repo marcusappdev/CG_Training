@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v7</title>
+<title>CG Training — Data Importer v8</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,14 +230,17 @@ async function resolveSite(){
     Trainers:'trainers',CG_Certificates:'certificates'};
   ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
-  // Log CourseRuns column names for diagnostics
-  if(listIds['runs']){
-    try{
-      const rc=await graph(`/sites/${siteId}/lists/${listIds['runs']}/columns?$select=name,displayName&$top=30`);
-      const ri=(rc.value||[]).filter(c=>!['_','ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','DocIcon','ItemChildCount','FolderChildCount','AppAuthor','AppEditor'].some(x=>c.name.startsWith(x)||c.name===x))
-        .map(c=>c.displayName+'='+c.name).join(' | ');
-      log('Run cols: '+ri,'info');
-    }catch(e){}
+  // Log column names for key lists
+  for(const [key,label] of [['runs','Runs'],['attendees','Attendees'],['invoices','Invoices'],['certificates','Certs']]){
+    if(listIds[key]){
+      try{
+        const rc=await graph(`/sites/${siteId}/lists/${listIds[key]}/columns?$select=name,displayName,lookupListId&$top=40`);
+        const ri=(rc.value||[]).filter(c=>c.lookupListId||['Lookup','DateTime','Boolean','Number','Currency','Text'].some(()=>true))
+          .filter(c=>!['_','ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','DocIcon','ItemChildCount','FolderChildCount','AppAuthor','AppEditor','Modified','Created','Author','Editor','CheckoutUser','FileLeafRef','FileSizeDisplay','SelectTitle'].includes(c.name)&&!c.name.startsWith('_'))
+          .map(c=>c.displayName+'='+c.name+(c.lookupListId?'[LU]':'')).join(' | ');
+        log(label+' cols: '+ri,'info');
+      }catch(e){ log(label+' cols error: '+e.message,'info'); }
+    }
   }
 }
 
@@ -570,8 +573,9 @@ async function importAttendees(){
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
     const fields={Title:a.name};
-    if(orgId) fields.OrgID=+orgId;
-    if(runId) fields.CourseRunID=+runId;
+    // Try lookup fields - will be corrected once we see column diagnostics
+    if(orgId){ fields.OrgIDId=+orgId; }
+    if(runId){ fields.CourseRunIDId=+runId; }
     try{
       const res=await createItem('attendees',fields);
       const aid=res.id;
@@ -604,7 +608,7 @@ async function importInvoices(){
     const attId=attMap[firstAtt.name+'__'+runKey];
     const total=g.fee+g.gst;
     const fields={Title:invNum};
-    if(attId) fields.AttendeeID=+attId;
+    if(attId){ fields.AttendeeIDId=+attId; }
     try{
       const inv=await createItem('invoices',fields);
       try{ await updateItem('invoices',inv.id,{InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total}); }catch(e){}
@@ -628,8 +632,8 @@ async function importCertificates(){
     const runId=runMap[runKey];
     const attId=attMap[a.name+'__'+runKey];
     const fields={Title:a.cert};
-    if(attId) fields.AttendeeID=+attId;
-    if(runId) fields.CourseRunID=+runId;
+    if(attId){ fields.AttendeeIDId=+attId; }
+    if(runId){ fields.CourseRunIDId=+runId; }
     try{
       const cer=await createItem('certificates',fields);
       try{ await updateItem('certificates',cer.id,{CertificateNumber:a.cert,IssueDate:excelDate(a.start+4)}); }catch(e){}
