@@ -225,9 +225,9 @@ async function resolveSite(){
   if(siteId)return;
   const d=await graph(`/sites/${SP_SITE}:${SP_PATH}`);siteId=d.id;
   const ls=await graph(`/sites/${siteId}/lists?$select=id,name`);
-  const map={CG_Courses:'courses',CG_CourseRuns:'runs',CG_Organisations:'orgs',
+  const map={CG_Courses:'courses',CG_CourseRuns:'runs',CG_Organisations:'organisations',
     CG_Attendees:'attendees',CG_Invoices:'invoices',CG_Payments:'payments',
-    CG_Trainers:'trainers',CG_Certificates:'certs'};
+    CG_Trainers:'trainers',CG_Certificates:'certificates'};
   ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
 }
@@ -595,7 +595,7 @@ async function importInvoices(){
 
 async function importCertificates(){
   setStep(6,'active');
-  const existing=await getExisting('certs');
+  const existing=await getExisting('certificates');
   const existNums=new Set(existing.map(e=>e.CertificateNumber||e.Title));
   const certsToImport=ATTENDEES_RAW.filter(a=>a.cert);
   let created=0,skipped=0;
@@ -608,7 +608,7 @@ async function importCertificates(){
     if(attId) fields.AttendeeIDId=+attId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
-      await createItem('certs',fields);
+      await createItem('certificates',fields);
       log(`Certificate: ${a.cert} — ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR Cert ${a.cert}: ${e.message}`,'err'); }
     await delay(250);
