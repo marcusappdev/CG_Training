@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v21</title>
+<title>CG Training — Data Importer v22</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -672,8 +672,32 @@ async function importInvoices(){
     else{ invGroups[a.inv].fee+=a.fee; invGroups[a.inv].gst+=a.gst; invGroups[a.inv].attendees.push(a); }
   });
   let created=0,skipped=0;
+  // Build a map of existing invoice IDs for updating
+  const existingInvMap={};
+  existing.forEach(e=>{ existingInvMap[e.InvoiceNumber||e.Title]=e.id; });
+
   for(const[invNum,g] of Object.entries(invGroups)){
-    if(existNums.has(invNum)){skipped++;continue;}
+    if(existNums.has(invNum)){
+      // Invoice exists - update its financial fields and attendee link
+      const existId=existingInvMap[invNum];
+      if(existId){
+        const total=g.fee+g.gst;
+        try{
+          await updateItem('invoices',existId,{InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total});
+          // Try to link attendee
+          const firstAtt=g.attendees[0];
+          const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
+          const attId=attMap[firstAtt.name+'__'+runKey];
+          if(attId){
+            const tryInvLink = async (f) => { try{ await updateItem('invoices',existId,f); return true; }catch(e){ return false; } };
+            await tryInvLink({AttendeeID:+attId}) || await tryInvLink({AttendeeIDId:+attId}) ||
+            await tryInvLink({AttendeeID0:+attId}) || await tryInvLink({AttendeeID0Id:+attId});
+          }
+          log(`Updated: ${invNum} K${total.toFixed(2)}`,'ok');
+        }catch(e){ log(`Update err ${invNum}: ${e.message}`,'info'); }
+      }
+      skipped++;continue;
+    }
     const firstAtt=g.attendees[0];
     const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
     const attId=attMap[firstAtt.name+'__'+runKey];
