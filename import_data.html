@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v18</title>
+<title>CG Training — Data Importer v19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -667,11 +667,23 @@ async function importInvoices(){
     const attId=attMap[firstAtt.name+'__'+runKey];
     const total=g.fee+g.gst;
     const fields={Title:invNum};
-    if(attId){ fields.AttendeeIDId=+attId; }
     try{
       const inv=await createItem('invoices',fields);
+      // Update financial fields
       try{ await updateItem('invoices',inv.id,{InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total}); }catch(e){}
-      log(`Invoice: ${invNum} K${total.toFixed(2)}`,'ok'); created++;
+      // Link to attendee using same pattern that worked for attendees
+      if(attId){
+        const tryInvLink = async (f) => { try{ await updateItem('invoices',inv.id,f); return true; }catch(e){ return false; } };
+        const ok =
+          await tryInvLink({AttendeeID:+attId}) ||
+          await tryInvLink({AttendeeIDId:+attId}) ||
+          await tryInvLink({AttendeeID0:+attId}) ||
+          await tryInvLink({AttendeeID0Id:+attId});
+        log(`Invoice: ${invNum} K${total.toFixed(2)} att:${ok?'✓':'✗'}`,'ok');
+      } else {
+        log(`Invoice: ${invNum} K${total.toFixed(2)}`,'ok');
+      }
+      created++;
     }catch(e){ log(`ERROR Invoice ${invNum}: ${e.message}`,'err'); }
     await delay(250);
   }
@@ -691,11 +703,18 @@ async function importCertificates(){
     const runId=runMap[runKey];
     const attId=attMap[a.name+'__'+runKey];
     const fields={Title:a.cert};
-    if(attId){ fields.AttendeeIDId=+attId; }
-    if(runId){ fields.CourseRunIDId=+runId; }
     try{
       const cer=await createItem('certificates',fields);
       try{ await updateItem('certificates',cer.id,{CertificateNumber:a.cert,IssueDate:excelDate(a.start+4)}); }catch(e){}
+      const tryC = async (f) => { try{ await updateItem('certificates',cer.id,f); return true; }catch(e){ return false; } };
+      if(attId){
+        await tryC({AttendeeID:+attId}) || await tryC({AttendeeIDId:+attId}) ||
+        await tryC({AttendeeID0:+attId}) || await tryC({AttendeeID0Id:+attId});
+      }
+      if(runId){
+        await tryC({CourseRunID:+runId}) || await tryC({CourseRunIDId:+runId}) ||
+        await tryC({CourseRunID0:+runId}) || await tryC({CourseRunID0Id:+runId});
+      }
       log(`Certificate: ${a.cert} — ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR Cert ${a.cert}: ${e.message}`,'err'); }
     await delay(250);
