@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v8</title>
+<title>CG Training — Data Importer v9</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,17 +230,19 @@ async function resolveSite(){
     Trainers:'trainers',CG_Certificates:'certificates'};
   ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
-  // Log column names for key lists
-  for(const [key,label] of [['runs','Runs'],['attendees','Attendees'],['invoices','Invoices'],['certificates','Certs']]){
-    if(listIds[key]){
-      try{
-        const rc=await graph(`/sites/${siteId}/lists/${listIds[key]}/columns?$select=name,displayName,lookupListId&$top=40`);
-        const ri=(rc.value||[]).filter(c=>c.lookupListId||['Lookup','DateTime','Boolean','Number','Currency','Text'].some(()=>true))
-          .filter(c=>!['_','ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','DocIcon','ItemChildCount','FolderChildCount','AppAuthor','AppEditor','Modified','Created','Author','Editor','CheckoutUser','FileLeafRef','FileSizeDisplay','SelectTitle'].includes(c.name)&&!c.name.startsWith('_'))
-          .map(c=>c.displayName+'='+c.name+(c.lookupListId?'[LU]':'')).join(' | ');
-        log(label+' cols: '+ri,'info');
-      }catch(e){ log(label+' cols error: '+e.message,'info'); }
-    }
+  // Log ALL column internal names for attendees list
+  if(listIds['attendees']){
+    try{
+      const rc=await graph(`/sites/${siteId}/lists/${listIds['attendees']}/columns?$select=name,displayName&$top=50`);
+      const skip=['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','DocIcon',
+        'ItemChildCount','FolderChildCount','AppAuthor','AppEditor','Modified','Created',
+        'Author','Editor','CheckoutUser','FileLeafRef','FileSizeDisplay','SelectTitle',
+        'ComplianceAssetId','_UIVersionString','ID'];
+      const ri=(rc.value||[])
+        .filter(c=>!skip.includes(c.name)&&!c.name.startsWith('_'))
+        .map(c=>'"'+c.displayName+'"='+c.name).join(' | ');
+      log('ATT COLS: '+ri,'info');
+    }catch(e){ log('Att cols error: '+e.message,'info'); }
   }
 }
 
@@ -580,8 +582,14 @@ async function importAttendees(){
       const res=await createItem('attendees',fields);
       const aid=res.id;
       attMap[a.name+'__'+runKey]=aid;
+      // Update custom text fields
       try{ await updateItem('attendees',aid,{FullName:a.name,Section65A:a.s65,
         AttendanceStatus:'Completed',CertificateNumber:a.cert||''}); }catch(e){}
+      // Try lookup links - column name TBD from diagnostics
+      if(orgId){ try{ await updateItem('attendees',aid,{OrgIDId:+orgId}); }
+        catch(e){ try{ await updateItem('attendees',aid,{OrgID:+orgId}); }catch(e2){} } }
+      if(runId){ try{ await updateItem('attendees',aid,{CourseRunIDId:+runId}); }
+        catch(e){ try{ await updateItem('attendees',aid,{CourseRunID:+runId}); }catch(e2){} } }
       log(`Attendee: ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
     await delay(250);
