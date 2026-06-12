@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v9</title>
+<title>CG Training — Data Importer v10</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -575,9 +575,7 @@ async function importAttendees(){
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
     const fields={Title:a.name};
-    // Try lookup fields - will be corrected once we see column diagnostics
-    if(orgId){ fields.OrgIDId=+orgId; }
-    if(runId){ fields.CourseRunIDId=+runId; }
+    // Lookup fields set via PATCH after creation (correct internal names confirmed)
     try{
       const res=await createItem('attendees',fields);
       const aid=res.id;
@@ -586,10 +584,11 @@ async function importAttendees(){
       try{ await updateItem('attendees',aid,{FullName:a.name,Section65A:a.s65,
         AttendanceStatus:'Completed',CertificateNumber:a.cert||''}); }catch(e){}
       // Try lookup links - column name TBD from diagnostics
-      if(orgId){ try{ await updateItem('attendees',aid,{OrgIDId:+orgId}); }
-        catch(e){ try{ await updateItem('attendees',aid,{OrgID:+orgId}); }catch(e2){} } }
-      if(runId){ try{ await updateItem('attendees',aid,{CourseRunIDId:+runId}); }
-        catch(e){ try{ await updateItem('attendees',aid,{CourseRunID:+runId}); }catch(e2){} } }
+      // Correct internal names from SharePoint column diagnostics:
+      // OrgID display name -> internal name OrgOID -> Graph field OrgOIDId
+      // CourseRunID display name -> internal name CourseRunID -> Graph field CourseRunIDId
+      if(orgId){ try{ await updateItem('attendees',aid,{OrgOIDId:+orgId}); }catch(e){ log('OrgLink warn: '+e.message,'info'); } }
+      if(runId){ try{ await updateItem('attendees',aid,{CourseRunIDId:+runId}); }catch(e){ log('RunLink warn: '+e.message,'info'); } }
       log(`Attendee: ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
     await delay(250);
