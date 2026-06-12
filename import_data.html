@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v20</title>
+<title>CG Training — Data Importer v21</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -601,17 +601,23 @@ async function importRuns(){
 async function importAttendees(){
   setStep(4,'active');
   const existing=await getExisting('attendees');
-  const existSet=new Set(existing.map(e=>(e.FullName||e.Title)+'__'+(e.CourseRunIDId||'')));
+  const existSet=new Set(existing.map(e=>(e.FullName||e.Title)));
   let created=0,skipped=0,errs=0;
   for(const a of ATTENDEES_RAW){
     const startISO=excelDate(a.start);
     const runKey=a.course+'__'+startISO;
     const runId=runMap[runKey];
-    const attKey=a.name+'__'+(runId||'');
+    const attKey=a.name;
     if(existSet.has(attKey)){
-      // Still populate attMap from existing record so invoices/certs can link
-      const existRec=existing.find(e=>(e.FullName||e.Title)===a.name&&(e.CourseRunIDId||e.CourseRunID)==runId);
-      if(existRec) attMap[a.name+'__'+runKey]=existRec.id;
+      // Populate attMap from existing record so invoices/certs can link
+      // Try multiple field name variations for the run ID
+      const existRec=existing.find(e=>{
+        const nameMatch=(e.FullName||e.Title||'').trim()===a.name.trim();
+        return nameMatch; // Just match by name for now
+      });
+      if(existRec){
+        attMap[a.name+'__'+runKey]=existRec.id;
+      }
       skipped++;continue;
     }
     const orgId=orgMap[a.org];
@@ -656,6 +662,7 @@ async function importAttendees(){
 
 async function importInvoices(){
   setStep(5,'active');
+  log(`attMap has ${Object.keys(attMap).length} entries, runMap has ${Object.keys(runMap).length} entries`,'info');
   const existing=await getExisting('invoices');
   const existNums=new Set(existing.map(e=>e.InvoiceNumber||e.Title));
   // Group attendees by invoice number
