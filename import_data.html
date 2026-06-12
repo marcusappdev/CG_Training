@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v11</title>
+<title>CG Training — Data Importer v12</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -241,31 +241,25 @@ let attRunField = null;
 async function discoverAttendeeColumns(){
   if(!listIds['attendees']) return;
   try{
-    // Use $expand=lookup to identify lookup columns
-    const rc = await graph(`/sites/${siteId}/lists/${listIds['attendees']}/columns?$expand=lookup&$top=50`);
-    log('Discovering attendee lookup columns...','info');
-    (rc.value||[]).forEach(c=>{
-      if(c.lookup && c.lookup.listId){
-        log('Found lookup: "'+c.displayName+'" internal='+c.name+' -> list='+c.lookup.listId,'info');
-        // Match by display name patterns
-        const dn = (c.displayName||'').toLowerCase().trim();
-        const nm = c.name||'';
-        if(dn.includes('org') || nm.toLowerCase().includes('org')){
-          // This is the org lookup - field name for setting value is name + 'Id'
-          attOrgField = nm + 'Id';
-          log('OrgField = '+attOrgField,'info');
-        }
-        if(dn.includes('run') || dn.includes('course') || nm.toLowerCase().includes('run') || nm.toLowerCase().includes('courserun')){
-          attRunField = nm + 'Id';
-          log('RunField = '+attRunField,'info');
-        }
+    const rc = await graph(`/sites/${siteId}/lists/${listIds['attendees']}/columns?$select=name,displayName&$top=50`);
+    const skip=['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','DocIcon',
+      'ItemChildCount','FolderChildCount','AppAuthor','AppEditor','Modified','Created',
+      'Author','Editor','CheckoutUser','FileLeafRef','FileSizeDisplay','SelectTitle',
+      'ComplianceAssetId','ID','Title','FullName','JobTitle','Mobile','Section65A',
+      'CertificateNumber','AttendanceStatus','Email'];
+    const cols = (rc.value||[]).filter(c=>!skip.includes(c.name)&&!c.name.startsWith('_'));
+    log('Non-standard cols: '+cols.map(c=>c.displayName.trim()+'='+c.name).join(' | '),'info');
+    cols.forEach(c=>{
+      const dn=(c.displayName||'').toLowerCase().trim();
+      const nm=c.name||'';
+      if(dn.includes('org')||nm.toLowerCase().includes('org')){
+        attOrgField=nm+'Id'; log('OrgField='+attOrgField,'info');
+      }
+      if((dn.includes('run')||dn.includes('courserun')||nm.toLowerCase().includes('run'))&&!dn.includes('org')){
+        attRunField=nm+'Id'; log('RunField='+attRunField,'info');
       }
     });
-    if(!attOrgField) log('WARNING: Org lookup column not found','info');
-    if(!attRunField) log('WARNING: Run lookup column not found','info');
-  }catch(e){
-    log('Column discovery error: '+e.message,'info');
-  }
+  }catch(e){ log('Discovery error: '+e.message,'info'); }
 }
 
 async function createItem(listKey,fields){
