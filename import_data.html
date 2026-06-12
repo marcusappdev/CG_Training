@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v22</title>
+<title>CG Training — Data Importer v23</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -252,11 +252,27 @@ async function resolveSite(){
   log('Connected to SharePoint ✓','ok');
   // Discover actual lookup column names for attendees at runtime
   await discoverAttendeeColumns();
+  await discoverInvoiceColumns();
 }
 
 // Discovered lookup field names - populated at runtime
 let attOrgField = null;
 let attRunField = null;
+
+async function discoverInvoiceColumns(){
+  if(!listIds['invoices']) return;
+  try{
+    const rc = await graph(`/sites/${siteId}/lists/${listIds['invoices']}/columns?$select=name,displayName&$top=50`);
+    const skip=['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','DocIcon',
+      'ItemChildCount','FolderChildCount','AppAuthor','AppEditor','Modified','Created',
+      'Author','Editor','ID','Title','_UIVersionString','ComplianceAssetId'];
+    const cols = (rc.value||[]).filter(c=>!skip.includes(c.name)&&!c.name.startsWith('_'));
+    log('INV COLS: '+cols.map(c=>'"'+c.displayName.trim()+'"='+c.name).join(' | '),'info');
+    // Store column name map for invoices
+    window._invCols = {};
+    cols.forEach(c=>{ window._invCols[c.displayName.trim()] = c.name; });
+  }catch(e){ log('Inv col discovery error: '+e.message,'info'); }
+}
 
 async function discoverAttendeeColumns(){
   if(!listIds['attendees']) return;
@@ -683,7 +699,16 @@ async function importInvoices(){
       if(existId){
         const total=g.fee+g.gst;
         try{
-          await updateItem('invoices',existId,{InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total});
+          // Build update fields using discovered column names
+          const invCols = window._invCols || {};
+          const invFields = {Title:invNum};
+          invFields[invCols['InvoiceNumber']||'InvoiceNumber'] = invNum;
+          invFields[invCols['FeeExGST']||invCols['Fee (PGK excl. GST)']||'FeeExGST'] = g.fee;
+          invFields[invCols['GSTAmount']||invCols['GST Amount (PGK)']||invCols['GSTAmount']||'GSTAmount'] = g.gst;
+          invFields[invCols['TotalAmount']||invCols['Total (PGK)']||'TotalAmount'] = total;
+          // Remove Title from patch (it's already set)
+          delete invFields.Title;
+          await updateItem('invoices',existId,invFields);
           // Try to link attendee
           const firstAtt=g.attendees[0];
           const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
@@ -706,7 +731,15 @@ async function importInvoices(){
     try{
       const inv=await createItem('invoices',fields);
       // Update financial fields
-      try{ await updateItem('invoices',inv.id,{InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total}); }catch(e){}
+      try{
+        const invCols = window._invCols || {};
+        const invFields = {};
+        invFields[invCols['InvoiceNumber']||'InvoiceNumber'] = invNum;
+        invFields[invCols['FeeExGST']||'FeeExGST'] = g.fee;
+        invFields[invCols['GSTAmount']||invCols['GST Amount (PGK)']||'GSTAmount'] = g.gst;
+        invFields[invCols['TotalAmount']||invCols['Total (PGK)']||'TotalAmount'] = total;
+        await updateItem('invoices',inv.id,invFields);
+      }catch(e){}
       // Link to attendee using same pattern that worked for attendees
       if(attId){
         const tryInvLink = async (f) => { try{ await updateItem('invoices',inv.id,f); return true; }catch(e){ return false; } };
