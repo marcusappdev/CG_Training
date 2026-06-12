@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v23</title>
+<title>CG Training — Data Importer v24</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -701,14 +701,12 @@ async function importInvoices(){
         try{
           // Build update fields using discovered column names
           const invCols = window._invCols || {};
-          const invFields = {Title:invNum};
-          invFields[invCols['InvoiceNumber']||'InvoiceNumber'] = invNum;
-          invFields[invCols['FeeExGST']||invCols['Fee (PGK excl. GST)']||'FeeExGST'] = g.fee;
-          invFields[invCols['GSTAmount']||invCols['GST Amount (PGK)']||invCols['GSTAmount']||'GSTAmount'] = g.gst;
-          invFields[invCols['TotalAmount']||invCols['Total (PGK)']||'TotalAmount'] = total;
-          // Remove Title from patch (it's already set)
-          delete invFields.Title;
-          await updateItem('invoices',existId,invFields);
+          // Update only confirmed existing columns
+          await updateItem('invoices',existId,{
+            InvoiceNumber: invNum,
+            FeeExGST: g.fee,
+            TotalAmount: total
+          });
           // Try to link attendee
           const firstAtt=g.attendees[0];
           const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
@@ -733,12 +731,11 @@ async function importInvoices(){
       // Update financial fields
       try{
         const invCols = window._invCols || {};
-        const invFields = {};
-        invFields[invCols['InvoiceNumber']||'InvoiceNumber'] = invNum;
-        invFields[invCols['FeeExGST']||'FeeExGST'] = g.fee;
-        invFields[invCols['GSTAmount']||invCols['GST Amount (PGK)']||'GSTAmount'] = g.gst;
-        invFields[invCols['TotalAmount']||invCols['Total (PGK)']||'TotalAmount'] = total;
-        await updateItem('invoices',inv.id,invFields);
+        await updateItem('invoices',inv.id,{
+          InvoiceNumber: invNum,
+          FeeExGST: g.fee,
+          TotalAmount: total
+        });
       }catch(e){}
       // Link to attendee using same pattern that worked for attendees
       if(attId){
