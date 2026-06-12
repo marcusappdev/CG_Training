@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v19</title>
+<title>CG Training — Data Importer v20</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -583,7 +583,7 @@ async function importRuns(){
   for(const r of RUNS_RAW){
     const startISO=excelDate(r.start);
     const key=r.course+'__'+startISO;
-    const ex=existing.find(e=>e.StartDate&&e.StartDate.startsWith(startISO)&&(e.CourseID===r.course||e.CourseName===r.course));
+    const ex=existing.find(e=>e.StartDate&&e.StartDate.startsWith(startISO));
     if(ex){ runMap[key]=ex.id; skipped++; continue; }
     const cid=courseMap[r.course];
     const fields={Title:r.course.substring(0,50)+' '+startISO,
@@ -608,7 +608,12 @@ async function importAttendees(){
     const runKey=a.course+'__'+startISO;
     const runId=runMap[runKey];
     const attKey=a.name+'__'+(runId||'');
-    if(existSet.has(attKey)){skipped++;continue;}
+    if(existSet.has(attKey)){
+      // Still populate attMap from existing record so invoices/certs can link
+      const existRec=existing.find(e=>(e.FullName||e.Title)===a.name&&(e.CourseRunIDId||e.CourseRunID)==runId);
+      if(existRec) attMap[a.name+'__'+runKey]=existRec.id;
+      skipped++;continue;
+    }
     const orgId=orgMap[a.org];
     const fields={Title:a.name};  // Lookups set via REST API after creation
     try{
