@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer</title>
+<title>CG Training — Data Importer v4</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -506,8 +506,8 @@ async function importCourses(){
       const ex=existing.find(e=>(e.CourseName||e.Title)===c.CourseName);
       courseMap[c.CourseName]=ex.id; skipped++; continue;
     }
-    const cols=await getColumnMap('courses');
-    const r=await createItem('courses',safeFields(cols,{...c,Title:c.CourseName}));
+    const r=await createItem('courses',{Title:c.CourseName,
+      CourseName:c.CourseName,Category:c.Category,FeeExGST:c.FeeExGST,GSTRate:c.GSTRate});
     courseMap[c.CourseName]=r.id;
     log(`Course: ${c.CourseName}`,'ok'); created++;
     await delay(200);
@@ -526,8 +526,7 @@ async function importOrgs(){
       const ex=existing.find(e=>(e.OrgName||e.Title)===name);
       orgMap[name]=ex.id; skipped++; continue;
     }
-    const cols=await getColumnMap('organisations');
-    const r=await createItem('organisations',safeFields(cols,{OrgName:name,Title:name}));
+    const r=await createItem('organisations',{Title:name});
     orgMap[name]=r.id;
     log(`Org: ${name}`,'ok'); created++;
     await delay(200);
@@ -543,8 +542,7 @@ async function importTrainers(){
   let created=0,skipped=0;
   for(const t of TRAINERS){
     if(existNames.has(t.FullName)){skipped++;continue;}
-    const cols=await getColumnMap('trainers');
-    await createItem('trainers',safeFields(cols,{...t,Title:t.FullName}));
+    await createItem('trainers',{Title:t.FullName,FullName:t.FullName,Specialisation:t.Specialisation});
     log(`Trainer: ${t.FullName}`,'ok'); created++;
     await delay(200);
   }
@@ -562,9 +560,8 @@ async function importRuns(){
     const ex=existing.find(e=>e.StartDate&&e.StartDate.startsWith(startISO)&&(e.CourseID===r.course||e.CourseName===r.course));
     if(ex){ runMap[key]=ex.id; skipped++; continue; }
     const cid=courseMap[r.course];
-    const cols=await getColumnMap('runs');
-    const fields=safeFields(cols,{StartDate:startISO,EndDate:excelDate(r.end),
-      Status:r.status,Capacity:7,Title:r.course.substring(0,50)+' '+startISO});
+    const fields={Title:r.course.substring(0,50)+' '+startISO,
+      StartDate:startISO,EndDate:excelDate(r.end),Status:r.status,Capacity:7};
     if(cid) fields.CourseIDId=+cid;
     const res=await createItem('runs',fields);
     runMap[key]=res.id;
@@ -587,9 +584,8 @@ async function importAttendees(){
     const attKey=a.name+'__'+(runId||'');
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
-    const cols=await getColumnMap('attendees');
-    const fields=safeFields(cols,{FullName:a.name,Title:a.name,Section65A:a.s65,
-      AttendanceStatus:'Completed',CertificateNumber:a.cert||''});
+    const fields={Title:a.name,FullName:a.name,Section65A:a.s65,
+      AttendanceStatus:'Completed',CertificateNumber:a.cert||''};
     if(orgId) fields.OrgIDId=+orgId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
@@ -620,8 +616,7 @@ async function importInvoices(){
     const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
     const attId=attMap[firstAtt.name+'__'+runKey];
     const total=g.fee+g.gst;
-    const cols=await getColumnMap('invoices');
-    const fields=safeFields(cols,{InvoiceNumber:invNum,Title:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total});
+    const fields={Title:invNum,InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total};
     if(attId) fields.AttendeeIDId=+attId;
     try{
       await createItem('invoices',fields);
@@ -644,8 +639,7 @@ async function importCertificates(){
     const runKey=a.course+'__'+excelDate(a.start);
     const runId=runMap[runKey];
     const attId=attMap[a.name+'__'+runKey];
-    const cols=await getColumnMap('certificates');
-    const fields=safeFields(cols,{CertificateNumber:a.cert,Title:a.cert,IssueDate:excelDate(a.start+4)});
+    const fields={Title:a.cert,CertificateNumber:a.cert,IssueDate:excelDate(a.start+4)};
     if(attId) fields.AttendeeIDId=+attId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
