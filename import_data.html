@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v5</title>
+<title>CG Training — Data Importer v6</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -227,7 +227,7 @@ async function resolveSite(){
   const ls=await graph(`/sites/${siteId}/lists?$select=id,name`);
   const map={CG_Courses:'courses',CG_CourseRuns:'runs',CG_Organisations:'organisations',
     CG_Attendees:'attendees',CG_Invoices:'invoices',CG_Payments:'payments',
-    CG_Trainers:'trainers',CG_Certificates:'certificates'};
+    Trainers:'trainers',CG_Certificates:'certificates'};
   ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
 
