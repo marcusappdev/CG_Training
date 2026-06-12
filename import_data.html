@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v12</title>
+<title>CG Training — Data Importer v13</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -590,8 +590,16 @@ async function importAttendees(){
     const attKey=a.name+'__'+(runId||'');
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
+    // Try all lookup field name variants in the POST itself
     const fields={Title:a.name};
-    // Lookup fields set via PATCH after creation (correct internal names confirmed)
+    if(orgId){
+      fields.OrgOIDId=+orgId;      // OrgOID internal name + Id
+      fields.OrgIDId=+orgId;       // fallback
+    }
+    if(runId){
+      fields.CourseRunIDId=+runId;  // CourseRunID internal name + Id
+      fields.CourseRunID0Id=+runId; // if recreated with numeric suffix
+    }
     try{
       const res=await createItem('attendees',fields);
       const aid=res.id;
@@ -600,14 +608,14 @@ async function importAttendees(){
       try{ await updateItem('attendees',aid,{FullName:a.name,Section65A:a.s65,
         AttendanceStatus:'Completed',CertificateNumber:a.cert||''}); }catch(e){}
       // Try lookup links - column name TBD from diagnostics
-      // Use dynamically discovered lookup field names
-      if(orgId && attOrgField){
-        try{ const f={}; f[attOrgField]=+orgId; await updateItem('attendees',aid,f); }
-        catch(e){ log('OrgLink warn: '+e.message,'info'); }
+      // Try each lookup variant individually via PATCH
+      for(const fn of ['OrgOIDId','OrgIDId','OrgId']){
+        if(orgId){ try{ const f={}; f[fn]=+orgId; await updateItem('attendees',aid,f);
+          log('OrgLink OK via '+fn,'info'); break; }catch(e){} }
       }
-      if(runId && attRunField){
-        try{ const f={}; f[attRunField]=+runId; await updateItem('attendees',aid,f); }
-        catch(e){ log('RunLink warn: '+e.message,'info'); }
+      for(const fn of ['CourseRunIDId','CourseRunID0Id','CourseRunId']){
+        if(runId){ try{ const f={}; f[fn]=+runId; await updateItem('attendees',aid,f);
+          log('RunLink OK via '+fn,'info'); break; }catch(e){} }
       }
       log(`Attendee: ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
