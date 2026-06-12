@@ -254,16 +254,18 @@ async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOOKUP HELPER — tries all variants ────────────────────────────────────
 async function tryLink(listKey,itemId,fieldBase,value){
-  // Confirmed working pattern: field name WITHOUT Id suffix
-  // e.g. AttendeeID works, OrgOID works, CourseRunID works
-  for(const fn of [fieldBase, fieldBase+'Id', fieldBase+'0', fieldBase+'0Id']){
+  // Try Id suffix first (XML shows OrgOIDId, CourseRunIDId as the field names)
+  // then without suffix as fallback
+  for(const fn of [fieldBase+'Id', fieldBase, fieldBase+'0Id', fieldBase+'0']){
     try{
       const f={};f[fn]=+value;
       await updateItem(listKey,itemId,f);
+      log(`  ${fieldBase} linked via ${fn}`,'ok');
       return fn;
     }
     catch(e){}
   }
+  log(`  WARNING: ${fieldBase}=${value} not linked on ${listKey}/${itemId}`,'in');
   return null;
 }
 
