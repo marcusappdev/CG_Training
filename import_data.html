@@ -254,6 +254,16 @@ async function resolveSite(){
     CG_Trainers:'trainers',CG_Certificates:'certificates'};
   ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
+  // Log actual list names found for diagnostics
+  const foundLists = ls.value.map(l=>l.name).join(', ');
+  log('Lists found: '+foundLists,'info');
+  // Log actual column names for organisations list
+  if(listIds['organisations']){
+    const cols = await graph(`/sites/${siteId}/lists/${listIds['organisations']}/columns?$select=name,displayName&$top=50`);
+    const colInfo = (cols.value||[]).filter(c=>!c.name.startsWith('_')&&c.name!=='ContentType'&&c.name!=='Attachments')
+      .map(c=>c.displayName+'='+c.name).join(', ');
+    log('Org columns: '+colInfo,'info');
+  }
 }
 
 async function createItem(listKey,fields){
