@@ -254,16 +254,14 @@ async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOOKUP HELPER — tries all variants ────────────────────────────────────
 async function tryLink(listKey,itemId,fieldBase,value){
-  // SharePoint Graph API lookup fields:
-  // Correct format is InternalName + 'Id' for setting numeric lookup ID
-  // e.g. OrgOID + Id = OrgOIDId, CourseRunID + Id = CourseRunIDId
-  // AttendeeID + Id = AttendeeIDId (but AttendeeID without suffix also works for that list)
-  await delay(150); // Rate limit protection
-  for(const fn of [fieldBase+'Id', fieldBase+'0Id']){
+  // CONFIRMED: SharePoint Graph API lookup fields use internal name WITHOUT Id suffix
+  // OrgOID (not OrgOIDId), CourseRunID (not CourseRunIDId), AttendeeID (not AttendeeIDId)
+  await delay(150);
+  for(const fn of [fieldBase, fieldBase+'0']){
     try{
       const f={};f[fn]=+value;
       await updateItem(listKey,itemId,f);
-      log(`  ${fieldBase} -> ${fn} ✓`,'ok');
+      log(`  ${fieldBase} linked via ${fn} ✓`,'ok');
       return fn;
     }
     catch(e){ log(`  ${fn} failed: ${e.message}`,'in'); }
@@ -540,13 +538,13 @@ async function importAttendees(){
       const existId = ex ? ex.id : null;
       if(existId){
         attMap[a.n]=existId;
-        // Update org and run links on existing record
-        if(orgId && !ex.OrgOIDId){
-          await tryLink('attendees',existId,'OrgOID',orgId);
-        }
-        if(runId && !ex.CourseRunIDId){
-          await tryLink('attendees',existId,'CourseRunID',runId);
-        }
+        // Update org name as text and attempt lookup links
+        try{ await updateItem('attendees',existId,{
+          OrgName:a.o,
+          CourseTitle:a.c
+        }); }catch(e){}
+        if(orgId){ await tryLink('attendees',existId,'OrgOID',orgId); }
+        if(runId){ await tryLink('attendees',existId,'CourseRunID',runId); }
       }
       skipped++; continue;
     }
@@ -555,14 +553,17 @@ async function importAttendees(){
       const res=await createItem('attendees',{Title:a.n});
       const aid=res.id;
       attMap[a.n]=aid;
-      // Update text fields
+      // Update text fields including org name and course run as text
+      const runKey2=a.c+'__'+excelDate(a.s);
+      const runTitle = a.c.substring(0,50)+' '+excelDate(a.s);
       try{ await updateItem('attendees',aid,{
         FullName:a.n, Section65A:a.s65, AttendanceStatus:'Completed',
-        CertificateNumber:a.cert||''
+        CertificateNumber:a.cert||'',
+        OrgName:a.o,
+        CourseTitle:a.c
       }); }catch(e){}
-      // Link org
+      // Also attempt lookup links
       if(orgId){ await tryLink('attendees',aid,'OrgOID',orgId); }
-      // Link run
       if(runId){ await tryLink('attendees',aid,'CourseRunID',runId); }
       log(`Attendee: ${a.n}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.n}: ${e.message}`,'er'); errs++; }
