@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v4</title>
+<title>CG Training — Data Importer v5</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -221,30 +221,6 @@ async function graph(path,method='GET',body=null){
   return r.json();
 }
 
-// Column internal name cache per list
-const colNames = {};
-
-async function getColumnMap(listKey){
-  if(colNames[listKey]) return colNames[listKey];
-  const lid = listIds[listKey];
-  if(!lid) return {};
-  const d = await graph(`/sites/${siteId}/lists/${lid}/columns?$select=name,displayName`);
-  const map = {};
-  (d.value||[]).forEach(c=>{ map[c.displayName] = c.name; map[c.name] = c.name; });
-  colNames[listKey] = map;
-  return map;
-}
-
-function safeFields(cols, obj){
-  // Map display names to internal names where possible, keep rest as-is
-  const out = {};
-  Object.entries(obj).forEach(([k,v])=>{
-    const internal = cols[k] || k;
-    out[internal] = v;
-  });
-  return out;
-}
-
 async function resolveSite(){
   if(siteId)return;
   const d=await graph(`/sites/${SP_SITE}:${SP_PATH}`);siteId=d.id;
@@ -254,21 +230,17 @@ async function resolveSite(){
     CG_Trainers:'trainers',CG_Certificates:'certificates'};
   ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
-  // Log actual list names found for diagnostics
-  const foundLists = ls.value.map(l=>l.name).join(', ');
-  log('Lists found: '+foundLists,'info');
-  // Log actual column names for organisations list
-  if(listIds['organisations']){
-    const cols = await graph(`/sites/${siteId}/lists/${listIds['organisations']}/columns?$select=name,displayName&$top=50`);
-    const colInfo = (cols.value||[]).filter(c=>!c.name.startsWith('_')&&c.name!=='ContentType'&&c.name!=='Attachments')
-      .map(c=>c.displayName+'='+c.name).join(', ');
-    log('Org columns: '+colInfo,'info');
-  }
+
 }
 
 async function createItem(listKey,fields){
   const lid=listIds[listKey];if(!lid)throw new Error('List not found: '+listKey);
   return graph(`/sites/${siteId}/lists/${lid}/items`,'POST',{fields});
+}
+
+async function updateItem(listKey,itemId,fields){
+  const lid=listIds[listKey];if(!lid)return;
+  return graph(`/sites/${siteId}/lists/${lid}/items/${itemId}/fields`,'PATCH',fields);
 }
 
 async function getExisting(listKey){
@@ -506,9 +478,10 @@ async function importCourses(){
       const ex=existing.find(e=>(e.CourseName||e.Title)===c.CourseName);
       courseMap[c.CourseName]=ex.id; skipped++; continue;
     }
-    const r=await createItem('courses',{Title:c.CourseName,
-      CourseName:c.CourseName,Category:c.Category,FeeExGST:c.FeeExGST,GSTRate:c.GSTRate});
-    courseMap[c.CourseName]=r.id;
+    const r=await createItem('courses',{Title:c.CourseName});
+    const crid=r.id;
+    courseMap[c.CourseName]=crid;
+    try{ await updateItem('courses',crid,{CourseName:c.CourseName,Category:c.Category,FeeExGST:c.FeeExGST,GSTRate:c.GSTRate}); }catch(e){}
     log(`Course: ${c.CourseName}`,'ok'); created++;
     await delay(200);
   }
@@ -527,7 +500,10 @@ async function importOrgs(){
       orgMap[name]=ex.id; skipped++; continue;
     }
     const r=await createItem('organisations',{Title:name});
-    orgMap[name]=r.id;
+    const oid = r.id;
+    orgMap[name]=oid;
+    // Update custom columns via PATCH
+    try{ await updateItem('organisations',oid,{OrgName:name}); }catch(e){}
     log(`Org: ${name}`,'ok'); created++;
     await delay(200);
   }
@@ -542,7 +518,8 @@ async function importTrainers(){
   let created=0,skipped=0;
   for(const t of TRAINERS){
     if(existNames.has(t.FullName)){skipped++;continue;}
-    await createItem('trainers',{Title:t.FullName,FullName:t.FullName,Specialisation:t.Specialisation});
+    const tr=await createItem('trainers',{Title:t.FullName});
+    try{ await updateItem('trainers',tr.id,{FullName:t.FullName,Specialisation:t.Specialisation}); }catch(e){}
     log(`Trainer: ${t.FullName}`,'ok'); created++;
     await delay(200);
   }
@@ -584,13 +561,15 @@ async function importAttendees(){
     const attKey=a.name+'__'+(runId||'');
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
-    const fields={Title:a.name,FullName:a.name,Section65A:a.s65,
-      AttendanceStatus:'Completed',CertificateNumber:a.cert||''};
+    const fields={Title:a.name};
     if(orgId) fields.OrgIDId=+orgId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
       const res=await createItem('attendees',fields);
-      attMap[a.name+'__'+runKey]=res.id;
+      const aid=res.id;
+      attMap[a.name+'__'+runKey]=aid;
+      try{ await updateItem('attendees',aid,{FullName:a.name,Section65A:a.s65,
+        AttendanceStatus:'Completed',CertificateNumber:a.cert||''}); }catch(e){}
       log(`Attendee: ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
     await delay(250);
@@ -616,10 +595,11 @@ async function importInvoices(){
     const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
     const attId=attMap[firstAtt.name+'__'+runKey];
     const total=g.fee+g.gst;
-    const fields={Title:invNum,InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total};
+    const fields={Title:invNum};
     if(attId) fields.AttendeeIDId=+attId;
     try{
-      await createItem('invoices',fields);
+      const inv=await createItem('invoices',fields);
+      try{ await updateItem('invoices',inv.id,{InvoiceNumber:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total}); }catch(e){}
       log(`Invoice: ${invNum} K${total.toFixed(2)}`,'ok'); created++;
     }catch(e){ log(`ERROR Invoice ${invNum}: ${e.message}`,'err'); }
     await delay(250);
@@ -639,11 +619,12 @@ async function importCertificates(){
     const runKey=a.course+'__'+excelDate(a.start);
     const runId=runMap[runKey];
     const attId=attMap[a.name+'__'+runKey];
-    const fields={Title:a.cert,CertificateNumber:a.cert,IssueDate:excelDate(a.start+4)};
+    const fields={Title:a.cert};
     if(attId) fields.AttendeeIDId=+attId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
-      await createItem('certificates',fields);
+      const cer=await createItem('certificates',fields);
+      try{ await updateItem('certificates',cer.id,{CertificateNumber:a.cert,IssueDate:excelDate(a.start+4)}); }catch(e){}
       log(`Certificate: ${a.cert} — ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR Cert ${a.cert}: ${e.message}`,'err'); }
     await delay(250);
