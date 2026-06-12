@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v14</title>
+<title>CG Training — Data Importer v15</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -127,6 +127,7 @@ const CLIENT_ID    = 'd5aef866-584f-4226-ab11-c941888fb519';
 const TENANT_ID    = 'ea9e105c-2df6-47ef-a8e3-b4aa1d788423';
 const SP_SITE      = 'conceptcompg.sharepoint.com';
 const SP_PATH      = '/sites/training.admin';
+const SITE_URL     = `https://${SP_SITE}${SP_PATH}`;
 const SCOPES       = 'https://graph.microsoft.com/Sites.ReadWrite.All User.Read offline_access';
 const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/+$/, '');
 const AUTH_EP      = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`;
