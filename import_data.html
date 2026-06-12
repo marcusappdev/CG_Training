@@ -176,10 +176,27 @@ function saveTokens(data){
   store.set('imp_access',_token);store.set('imp_refresh',_refresh||'');store.set('imp_expiry',String(_expiry));
   if(data.id_token){
     const c=parseJwt(data.id_token);
-    const name=c.name||c.preferred_username||'User';
-    store.set('imp_user',JSON.stringify({name,username:c.preferred_username||''}));
-    document.getElementById('user-label').textContent='Signed in as: '+name;
+    const name=c.name||(c.given_name&&c.family_name?(c.given_name+' '+c.family_name).trim():null)
+      ||c.given_name||c.unique_name||c.preferred_username||c.upn||'';
+    const username=c.preferred_username||c.upn||c.unique_name||c.email||'';
+    store.set('imp_user',JSON.stringify({name:name||username,username}));
+    document.getElementById('user-label').textContent='Signed in as: '+(name||username||'User');
   }
+  // Fetch real display name from Graph /me to override token claims
+  fetchUserProfile();
+}
+
+async function fetchUserProfile(){
+  try{
+    const r=await fetch('https://graph.microsoft.com/v1.0/me?$select=displayName,userPrincipalName,givenName,surname',
+      {headers:{'Authorization':'Bearer '+_token}});
+    if(!r.ok)return;
+    const me=await r.json();
+    const name=me.displayName||(me.givenName&&me.surname?me.givenName+' '+me.surname:'')||me.userPrincipalName||'User';
+    const username=me.userPrincipalName||'';
+    store.set('imp_user',JSON.stringify({name,username}));
+    document.getElementById('user-label').textContent='Signed in as: '+name;
+  }catch(e){/* non-critical */}
 }
 
 async function getToken(){
@@ -646,11 +663,12 @@ window.addEventListener('load',async()=>{
   }
   const st=store.get('imp_access'),ex=+(store.get('imp_expiry')||0),usr=store.get('imp_user');
   if(st&&ex>Date.now()){_token=st;_refresh=store.get('imp_refresh')||'';_expiry=ex;
-    if(usr){const u=JSON.parse(usr);document.getElementById('user-label').textContent='Signed in as: '+u.name;}
-    showImport();return;}
+    if(usr){const u=JSON.parse(usr);document.getElementById('user-label').textContent='Signed in as: '+(u.name||u.username||'User');}
+    showImport();fetchUserProfile();return;}
   const ref=store.get('imp_refresh');
   if(ref){_refresh=ref;try{await getToken();const u=JSON.parse(store.get('imp_user')||'{}');
-    document.getElementById('user-label').textContent='Signed in as: '+(u.name||'User');showImport();return;}catch{}}
+    document.getElementById('user-label').textContent='Signed in as: '+(u.name||u.username||'User');
+    showImport();fetchUserProfile();return;}catch{}}
 });
 
 function showImport(){
