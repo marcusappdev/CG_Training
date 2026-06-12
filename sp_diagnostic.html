@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>SP Diagnostic</title>
+<style>body{font-family:monospace;padding:20px;font-size:13px}
+.field{padding:4px;border-bottom:1px solid #eee}
+.name{color:#666;width:200px;display:inline-block}
+.val{color:#111;font-weight:bold}
+</style></head>
+<body>
+<h2>SharePoint Field Diagnostic</h2>
+<p>Reading first attendee record via Graph API...</p>
+<div id="out"></div>
+<script>
+const CLIENT_ID='d5aef866-584f-4226-ab11-c941888fb519';
+const TENANT_ID='ea9e105c-2df6-47ef-a8e3-b4aa1d788423';
+const SP_SITE='conceptcompg.sharepoint.com';
+const SP_PATH='/sites/training.admin';
+const SCOPES='https://graph.microsoft.com/Sites.ReadWrite.All User.Read offline_access';
+const REDIRECT_URI=window.location.href.split('?')[0].split('#')[0];
+const AUTH_EP=`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`;
+
+let _token=null;
+const store={
+  get(k){try{return localStorage.getItem(k);}catch{return null;}},
+  set(k,v){try{localStorage.setItem(k,v);}catch{}}
+};
+
+async function getToken(){
+  if(_token) return _token;
+  const t=store.get('diag_token');
+  const e=+(store.get('diag_exp')||0);
+  if(t&&e>Date.now()){_token=t;return _token;}
+  const ref=store.get('diag_refresh');
+  if(!ref) throw new Error('Not signed in');
+  const b=new URLSearchParams({client_id:CLIENT_ID,grant_type:'refresh_token',refresh_token:ref,scope:SCOPES});
+  const r=await fetch(AUTH_EP+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b.toString()});
+  const d=await r.json();
+  if(d.error) throw new Error(d.error_description);
+  _token=d.access_token;
+  store.set('diag_token',_token);
+  store.set('diag_exp',String(Date.now()+(d.expires_in||3600)*1000));
+  store.set('diag_refresh',d.refresh_token||ref);
+  return _token;
+}
+
+async function run(){
+  const out=document.getElementById('out');
+  try{
+    const t=await getToken();
+    // Get site
+    const site=await(await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}:${SP_PATH}`,
+      {headers:{Authorization:'Bearer '+t}})).json();
+    // Get attendees list
+    const lists=await(await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/lists?$select=id,name`,
+      {headers:{Authorization:'Bearer '+t}})).json();
+    const attList=lists.value.find(l=>l.name==='CG_Attendees');
+    if(!attList){out.innerHTML='CG_Attendees not found';return;}
+    // Get first item with all fields
+    const items=await(await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${site.id}/lists/${attList.id}/items?expand=fields&$top=1`,
+      {headers:{Authorization:'Bearer '+t}})).json();
+    if(!items.value||!items.value.length){out.innerHTML='No items found';return;}
+    const fields=items.value[0].fields;
+    let html='<h3>First attendee - all fields:</h3>';
+    Object.entries(fields).sort().forEach(([k,v])=>{
+      const style=k.toLowerCase().includes('org')||k.toLowerCase().includes('run')||k.toLowerCase().includes('att')||k.toLowerCase().includes('course')
+        ?'background:#fffde7':'';
+      html+=`<div class="field" style="${style}"><span class="name">${k}</span><span class="val">${JSON.stringify(v)}</span></div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){
+    // Need to sign in
+    out.innerHTML=`<p>Error: ${e.message}</p><button onclick="signIn()">Sign In</button>`;
+  }
+}
+
+async function signIn(){
+  function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+  const arr=new Uint8Array(32);crypto.getRandomValues(arr);
+  const v=b64url(arr);
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));
+  const c=b64url(d);
+  const st=b64url(new Uint8Array(16).map(()=>Math.random()*256));
+  store.set('diag_v',v);store.set('diag_s',st);
+  const p=new URLSearchParams({client_id:CLIENT_ID,response_type:'code',redirect_uri:REDIRECT_URI,
+    scope:SCOPES,response_mode:'query',state:st,code_challenge:c,code_challenge_method:'S256'});
+  window.location.href=AUTH_EP+'/authorize?'+p.toString();
+}
+
+window.addEventListener('load',async()=>{
+  const p=new URLSearchParams(window.location.search);
+  const code=p.get('code'),state=p.get('state');
+  if(code){
+    window.history.replaceState({},document.title,REDIRECT_URI);
+    const v=store.get('diag_v');
+    const b=new URLSearchParams({client_id:CLIENT_ID,grant_type:'authorization_code',
+      code,redirect_uri:REDIRECT_URI,code_verifier:v,scope:SCOPES});
+    const r=await fetch(AUTH_EP+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b.toString()});
+    const d=await r.json();
+    if(!d.error){
+      store.set('diag_token',d.access_token);
+      store.set('diag_exp',String(Date.now()+(d.expires_in||3600)*1000));
+      store.set('diag_refresh',d.refresh_token||'');
+      _token=d.access_token;
+    }
+  }
+  try{ await run(); }
+  catch(e){ document.getElementById('out').innerHTML=`<button onclick="signIn()">Sign In First</button>`; }
+});
+</script>
+</body></html>
