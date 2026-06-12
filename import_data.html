@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v15</title>
+<title>CG Training — Data Importer v16</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -129,6 +129,7 @@ const SP_SITE      = 'conceptcompg.sharepoint.com';
 const SP_PATH      = '/sites/training.admin';
 const SITE_URL     = `https://${SP_SITE}${SP_PATH}`;
 const SCOPES       = 'https://graph.microsoft.com/Sites.ReadWrite.All User.Read offline_access';
+const SP_SCOPES    = 'https://conceptcompg.sharepoint.com/AllSites.Write https://conceptcompg.sharepoint.com/AllSites.Read';
 const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/+$/, '');
 const AUTH_EP      = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`;
 
@@ -209,6 +210,24 @@ async function getToken(){
   saveTokens(d);return _token;
 }
 
+// Get SharePoint-specific access token for REST API
+async function getSpToken(){
+  const body = new URLSearchParams({
+    client_id:     CLIENT_ID,
+    grant_type:    'refresh_token',
+    refresh_token: _refresh || store.get('imp_refresh') || '',
+    scope:         SP_SCOPES,
+  });
+  const r = await fetch(AUTH_EP+'/token',{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:body.toString()
+  });
+  const data = await r.json();
+  if(data.error) throw new Error(data.error_description||data.error);
+  return data.access_token;
+}
+
 function signOut(){store.clear();_token=null;_refresh=null;_expiry=0;window.location.reload();}
 
 // ── GRAPH ──────────────────────────────────────────────────────────────────
@@ -224,7 +243,7 @@ async function graph(path,method='GET',body=null){
 
 // SharePoint REST API call for setting lookup fields
 async function spRest(listName, itemId, fields){
-  const token = await getToken();
+  const token = await getSpToken();
   // Get list item entity type first
   const metaUrl = `${SITE_URL}/_api/web/lists/getByTitle('${listName}')/ListItemEntityTypeFullName`;
   const metaR = await fetch(metaUrl, {
