@@ -256,9 +256,15 @@ async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 async function tryLink(listKey,itemId,fieldBase,value){
   // Try without Id suffix first (worked for attendees), then with
   for(const fn of [fieldBase, fieldBase+'Id', fieldBase+'0', fieldBase+'0Id']){
-    try{const f={};f[fn]=+value;await updateItem(listKey,itemId,f);return fn;}
-    catch(e){}
+    try{
+      const f={};f[fn]=+value;
+      await updateItem(listKey,itemId,f);
+      log(`  Linked ${fieldBase}=${value} via field ${fn}`,'ok');
+      return fn;
+    }
+    catch(e){ log(`  Try ${fn}=${value} failed: ${e.message}`,'in'); }
   }
+  log(`  WARNING: could not link ${fieldBase}=${value} on ${listKey}/${itemId}`,'in');
   return null;
 }
 
