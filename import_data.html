@@ -254,17 +254,16 @@ async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOOKUP HELPER — tries all variants ────────────────────────────────────
 async function tryLink(listKey,itemId,fieldBase,value){
-  // Try without Id suffix first (worked for attendees), then with
+  // Confirmed working pattern: field name WITHOUT Id suffix
+  // e.g. AttendeeID works, OrgOID works, CourseRunID works
   for(const fn of [fieldBase, fieldBase+'Id', fieldBase+'0', fieldBase+'0Id']){
     try{
       const f={};f[fn]=+value;
       await updateItem(listKey,itemId,f);
-      log(`  Linked ${fieldBase}=${value} via field ${fn}`,'ok');
       return fn;
     }
-    catch(e){ log(`  Try ${fn}=${value} failed: ${e.message}`,'in'); }
+    catch(e){}
   }
-  log(`  WARNING: could not link ${fieldBase}=${value} on ${listKey}/${itemId}`,'in');
   return null;
 }
 
@@ -531,10 +530,18 @@ async function importAttendees(){
     const orgId=orgMap[a.o];
 
     if(existNames.has(a.n)){
-      // Already exists - ensure attMap is populated
-      if(!attMap[a.n]){
-        const ex=existing.find(e=>(e.FullName||e.Title)===a.n);
-        if(ex) attMap[a.n]=ex.id;
+      // Get existing record ID
+      const ex=existing.find(e=>(e.FullName||e.Title)===a.n);
+      const existId = ex ? ex.id : null;
+      if(existId){
+        attMap[a.n]=existId;
+        // Update org and run links on existing record
+        if(orgId && !ex.OrgOIDId){
+          await tryLink('attendees',existId,'OrgOID',orgId);
+        }
+        if(runId && !ex.CourseRunIDId){
+          await tryLink('attendees',existId,'CourseRunID',runId);
+        }
       }
       skipped++; continue;
     }
