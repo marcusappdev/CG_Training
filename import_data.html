@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CG Training — Data Importer v13</title>
+<title>CG Training — Data Importer v14</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -219,6 +219,36 @@ async function graph(path,method='GET',body=null){
   if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'HTTP '+r.status);}
   if(r.status===204)return null;
   return r.json();
+}
+
+// SharePoint REST API call for setting lookup fields
+async function spRest(listName, itemId, fields){
+  const token = await getToken();
+  // Get list item entity type first
+  const metaUrl = `${SITE_URL}/_api/web/lists/getByTitle('${listName}')/ListItemEntityTypeFullName`;
+  const metaR = await fetch(metaUrl, {
+    headers:{'Authorization':'Bearer '+token,'Accept':'application/json;odata=verbose'}
+  });
+  const metaData = await metaR.json();
+  const entityType = metaData.d?.ListItemEntityTypeFullName || `SP.Data.${listName}ListItem`;
+
+  const body = Object.assign({'__metadata':{'type':entityType}}, fields);
+  const r = await fetch(`${SITE_URL}/_api/web/lists/getByTitle('${listName}')/items(${itemId})`, {
+    method: 'POST',
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Accept':'application/json;odata=verbose',
+      'Content-Type':'application/json;odata=verbose',
+      'X-HTTP-Method':'MERGE',
+      'IF-MATCH':'*'
+    },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok && r.status !== 204){
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.error?.message?.value || 'HTTP '+r.status);
+  }
+  return true;
 }
 
 async function resolveSite(){
@@ -590,16 +620,7 @@ async function importAttendees(){
     const attKey=a.name+'__'+(runId||'');
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
-    // Try all lookup field name variants in the POST itself
-    const fields={Title:a.name};
-    if(orgId){
-      fields.OrgOIDId=+orgId;      // OrgOID internal name + Id
-      fields.OrgIDId=+orgId;       // fallback
-    }
-    if(runId){
-      fields.CourseRunIDId=+runId;  // CourseRunID internal name + Id
-      fields.CourseRunID0Id=+runId; // if recreated with numeric suffix
-    }
+    const fields={Title:a.name};  // Lookups set via REST API after creation
     try{
       const res=await createItem('attendees',fields);
       const aid=res.id;
@@ -608,15 +629,16 @@ async function importAttendees(){
       try{ await updateItem('attendees',aid,{FullName:a.name,Section65A:a.s65,
         AttendanceStatus:'Completed',CertificateNumber:a.cert||''}); }catch(e){}
       // Try lookup links - column name TBD from diagnostics
-      // Try each lookup variant individually via PATCH
-      for(const fn of ['OrgOIDId','OrgIDId','OrgId']){
-        if(orgId){ try{ const f={}; f[fn]=+orgId; await updateItem('attendees',aid,f);
-          log('OrgLink OK via '+fn,'info'); break; }catch(e){} }
-      }
-      for(const fn of ['CourseRunIDId','CourseRunID0Id','CourseRunId']){
-        if(runId){ try{ const f={}; f[fn]=+runId; await updateItem('attendees',aid,f);
-          log('RunLink OK via '+fn,'info'); break; }catch(e){} }
-      }
+      // Use SharePoint REST API to set lookup fields (more reliable than Graph for lookups)
+      try{
+        const lookupFields = {};
+        if(orgId) lookupFields.OrgOIDId = +orgId;
+        if(runId) lookupFields.CourseRunIDId = +runId;
+        if(Object.keys(lookupFields).length > 0){
+          await spRest('CG_Attendees', aid, lookupFields);
+          log('Links set via REST ✓','info');
+        }
+      }catch(e){ log('REST link warn: '+e.message,'info'); }
       log(`Attendee: ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
     await delay(250);
