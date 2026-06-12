@@ -221,6 +221,30 @@ async function graph(path,method='GET',body=null){
   return r.json();
 }
 
+// Column internal name cache per list
+const colNames = {};
+
+async function getColumnMap(listKey){
+  if(colNames[listKey]) return colNames[listKey];
+  const lid = listIds[listKey];
+  if(!lid) return {};
+  const d = await graph(`/sites/${siteId}/lists/${lid}/columns?$select=name,displayName`);
+  const map = {};
+  (d.value||[]).forEach(c=>{ map[c.displayName] = c.name; map[c.name] = c.name; });
+  colNames[listKey] = map;
+  return map;
+}
+
+function safeFields(cols, obj){
+  // Map display names to internal names where possible, keep rest as-is
+  const out = {};
+  Object.entries(obj).forEach(([k,v])=>{
+    const internal = cols[k] || k;
+    out[internal] = v;
+  });
+  return out;
+}
+
 async function resolveSite(){
   if(siteId)return;
   const d=await graph(`/sites/${SP_SITE}:${SP_PATH}`);siteId=d.id;
@@ -472,8 +496,9 @@ async function importCourses(){
       const ex=existing.find(e=>(e.CourseName||e.Title)===c.CourseName);
       courseMap[c.CourseName]=ex.id; skipped++; continue;
     }
-    const r=await createItem('courses',{...c,Title:c.CourseName});
-    courseMap[c.CourseName]=r.fields.id||r.id;
+    const cols=await getColumnMap('courses');
+    const r=await createItem('courses',safeFields(cols,{...c,Title:c.CourseName}));
+    courseMap[c.CourseName]=r.id;
     log(`Course: ${c.CourseName}`,'ok'); created++;
     await delay(200);
   }
@@ -491,8 +516,9 @@ async function importOrgs(){
       const ex=existing.find(e=>(e.OrgName||e.Title)===name);
       orgMap[name]=ex.id; skipped++; continue;
     }
-    const r=await createItem('organisations',{OrgName:name,Title:name});
-    orgMap[name]=r.fields.id||r.id;
+    const cols=await getColumnMap('organisations');
+    const r=await createItem('organisations',safeFields(cols,{OrgName:name,Title:name}));
+    orgMap[name]=r.id;
     log(`Org: ${name}`,'ok'); created++;
     await delay(200);
   }
@@ -507,7 +533,8 @@ async function importTrainers(){
   let created=0,skipped=0;
   for(const t of TRAINERS){
     if(existNames.has(t.FullName)){skipped++;continue;}
-    await createItem('trainers',{...t,Title:t.FullName});
+    const cols=await getColumnMap('trainers');
+    await createItem('trainers',safeFields(cols,{...t,Title:t.FullName}));
     log(`Trainer: ${t.FullName}`,'ok'); created++;
     await delay(200);
   }
@@ -525,11 +552,12 @@ async function importRuns(){
     const ex=existing.find(e=>e.StartDate&&e.StartDate.startsWith(startISO)&&(e.CourseID===r.course||e.CourseName===r.course));
     if(ex){ runMap[key]=ex.id; skipped++; continue; }
     const cid=courseMap[r.course];
-    const fields={StartDate:startISO,EndDate:excelDate(r.end),Status:r.status,Capacity:7,
-      Title:r.course.substring(0,50)+' '+startISO};
+    const cols=await getColumnMap('runs');
+    const fields=safeFields(cols,{StartDate:startISO,EndDate:excelDate(r.end),
+      Status:r.status,Capacity:7,Title:r.course.substring(0,50)+' '+startISO});
     if(cid) fields.CourseIDId=+cid;
     const res=await createItem('runs',fields);
-    runMap[key]=res.fields.id||res.id;
+    runMap[key]=res.id;
     log(`Run: ${r.course.substring(0,30)} ${startISO}`,'ok'); created++;
     await delay(300);
   }
@@ -549,13 +577,14 @@ async function importAttendees(){
     const attKey=a.name+'__'+(runId||'');
     if(existSet.has(attKey)){skipped++;continue;}
     const orgId=orgMap[a.org];
-    const fields={FullName:a.name,Title:a.name,Section65A:a.s65,
-      AttendanceStatus:'Completed',CertificateNumber:a.cert||''};
+    const cols=await getColumnMap('attendees');
+    const fields=safeFields(cols,{FullName:a.name,Title:a.name,Section65A:a.s65,
+      AttendanceStatus:'Completed',CertificateNumber:a.cert||''});
     if(orgId) fields.OrgIDId=+orgId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
       const res=await createItem('attendees',fields);
-      attMap[a.name+'__'+runKey]=res.fields.id||res.id;
+      attMap[a.name+'__'+runKey]=res.id;
       log(`Attendee: ${a.name}`,'ok'); created++;
     }catch(e){ log(`ERROR ${a.name}: ${e.message}`,'err'); errs++; }
     await delay(250);
@@ -581,7 +610,8 @@ async function importInvoices(){
     const runKey=firstAtt.course+'__'+excelDate(firstAtt.start);
     const attId=attMap[firstAtt.name+'__'+runKey];
     const total=g.fee+g.gst;
-    const fields={InvoiceNumber:invNum,Title:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total};
+    const cols=await getColumnMap('invoices');
+    const fields=safeFields(cols,{InvoiceNumber:invNum,Title:invNum,FeeExGST:g.fee,GSTAmount:g.gst,TotalAmount:total});
     if(attId) fields.AttendeeIDId=+attId;
     try{
       await createItem('invoices',fields);
@@ -604,7 +634,8 @@ async function importCertificates(){
     const runKey=a.course+'__'+excelDate(a.start);
     const runId=runMap[runKey];
     const attId=attMap[a.name+'__'+runKey];
-    const fields={CertificateNumber:a.cert,Title:a.cert,IssueDate:excelDate(a.start+4)};
+    const cols=await getColumnMap('certificates');
+    const fields=safeFields(cols,{CertificateNumber:a.cert,Title:a.cert,IssueDate:excelDate(a.start+4)});
     if(attId) fields.AttendeeIDId=+attId;
     if(runId) fields.CourseRunIDId=+runId;
     try{
