@@ -254,16 +254,19 @@ async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOOKUP HELPER — tries all variants ────────────────────────────────────
 async function tryLink(listKey,itemId,fieldBase,value){
-  // Try Id suffix first (XML shows OrgOIDId, CourseRunIDId as the field names)
-  // then without suffix as fallback
-  for(const fn of [fieldBase+'Id', fieldBase, fieldBase+'0Id', fieldBase+'0']){
+  // SharePoint Graph API lookup fields:
+  // Correct format is InternalName + 'Id' for setting numeric lookup ID
+  // e.g. OrgOID + Id = OrgOIDId, CourseRunID + Id = CourseRunIDId
+  // AttendeeID + Id = AttendeeIDId (but AttendeeID without suffix also works for that list)
+  await delay(150); // Rate limit protection
+  for(const fn of [fieldBase+'Id', fieldBase+'0Id']){
     try{
       const f={};f[fn]=+value;
       await updateItem(listKey,itemId,f);
-      log(`  ${fieldBase} linked via ${fn}`,'ok');
+      log(`  ${fieldBase} -> ${fn} ✓`,'ok');
       return fn;
     }
-    catch(e){}
+    catch(e){ log(`  ${fn} failed: ${e.message}`,'in'); }
   }
   log(`  WARNING: ${fieldBase}=${value} not linked on ${listKey}/${itemId}`,'in');
   return null;
@@ -500,7 +503,7 @@ async function importRuns(){
   for(const r of RUNS){
     const startISO=excelDate(r.s);
     const key=r.c+'__'+startISO;
-    const ex=existing.find(e=>e.StartDate&&e.StartDate.startsWith(startISO));
+    const ex=existing.find(e=>(e.StartDate&&e.StartDate.startsWith(startISO))||(e.Title&&e.Title.includes(startISO)));
     if(ex){ runMap[key]=ex.id; skipped++; continue; }
     const cid=courseMap[r.c];
     const fields={Title:r.c.substring(0,50)+' '+startISO,StartDate:startISO,
