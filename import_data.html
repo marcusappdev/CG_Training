@@ -503,7 +503,7 @@ async function importRuns(){
     const cid=courseMap[r.c];
     const fields={Title:r.c.substring(0,50)+' '+startISO,StartDate:startISO,
       EndDate:excelDate(r.e),Status:r.st,Capacity:7};
-    if(cid) fields.CourseIDId=+cid;
+    if(cid) fields.CourseID=+cid;
     try{
       const res=await createItem('runs',fields);
       runMap[key]=res.id;
