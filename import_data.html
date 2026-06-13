@@ -662,8 +662,21 @@ async function importCertificates(){
   const certsToImport=ATTENDEES.filter(a=>a.cert);
 
   let created=0,skipped=0;
+  // Build map of existing cert IDs
+  const existCertMap={};
+  existing.forEach(c=>{ existCertMap[c.CertificateNumber||c.Title]=c.id; });
+
   for(const a of certsToImport){
-    if(existNums.has(a.cert)){ skipped++; continue; }
+    if(existNums.has(a.cert)){
+      // Update existing cert with text fields
+      const eid=existCertMap[a.cert];
+      if(eid){
+        try{
+          await updateItem('certs',eid,{AttendeeName:a.n, CourseRunTitle:a.c});
+        }catch(e){}
+      }
+      skipped++; continue;
+    }
     const startISO=excelDate(a.s);
     const runKey=a.c+'__'+startISO;
     const runId=runMap[runKey];
