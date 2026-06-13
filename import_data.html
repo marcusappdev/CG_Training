@@ -598,7 +598,8 @@ async function importInvoices(){
       if(eid){
         try{
           await updateItem('invoices',eid,{
-            InvoiceNumber:invNum, FeeExGST:g.fee, GSTAmount:g.gst, TotalAmount:g.total
+            InvoiceNumber:invNum, FeeExGST:g.fee, GSTAmount:g.gst, TotalAmount:g.total,
+            AttendeeName:g.atts[0].n
           });
           if(attId){ await tryLink('invoices',eid,'AttendeeID',attId); }
           log(`Updated: ${invNum} K${g.total.toFixed(2)}`,'ok'); updated++;
@@ -612,7 +613,8 @@ async function importInvoices(){
       const iid=res.id;
       invMap[invNum]=iid;
       await updateItem('invoices',iid,{
-        InvoiceNumber:invNum, FeeExGST:g.fee, GSTAmount:g.gst, TotalAmount:g.total
+        InvoiceNumber:invNum, FeeExGST:g.fee, GSTAmount:g.gst, TotalAmount:g.total,
+        AttendeeName:g.atts[0].n
       });
       if(attId){ await tryLink('invoices',iid,'AttendeeID',attId); }
       log(`Invoice: ${invNum} K${g.total.toFixed(2)}`,'ok'); created++;
@@ -643,7 +645,7 @@ async function importPayments(){
     try{
       const res=await createItem('payments',{Title:payTitle});
       const pid=res.id;
-      await updateItem('payments',pid,{AmountPaid:p.paid,RemittanceRef:invNum});
+      await updateItem('payments',pid,{AmountPaid:p.paid,RemittanceRef:invNum,InvoiceNumber:invNum});
       if(invId){ await tryLink('payments',pid,'InvoiceID',invId); }
       log(`Payment: ${invNum} K${p.paid.toFixed(2)}`,'ok'); created++;
     }catch(e){ log(`ERROR Payment ${invNum}: ${e.message}`,'er'); }
@@ -669,7 +671,10 @@ async function importCertificates(){
     try{
       const res=await createItem('certs',{Title:a.cert});
       const cid=res.id;
-      await updateItem('certs',cid,{CertificateNumber:a.cert,IssueDate:excelDate(a.s+4)});
+      await updateItem('certs',cid,{
+        CertificateNumber:a.cert, IssueDate:excelDate(a.s+4),
+        AttendeeName:a.n, CourseRunTitle:a.c
+      });
       if(attId){ await tryLink('certs',cid,'AttendeeID',attId); }
       if(runId){ await tryLink('certs',cid,'CourseRunID',runId); }
       log(`Cert: ${a.cert} — ${a.n}`,'ok'); created++;
