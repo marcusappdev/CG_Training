@@ -541,7 +541,7 @@ async function importAttendees(){
         // Update org name as text and attempt lookup links
         try{ await updateItem('attendees',existId,{
           OrgName:a.o,
-          CourseTitle:a.c
+          CourseTitle:a.c+' '+excelDate(a.s)
         }); }catch(e){}
         if(orgId){ await tryLink('attendees',existId,'OrgOID',orgId); }
         if(runId){ await tryLink('attendees',existId,'CourseRunID',runId); }
@@ -560,7 +560,7 @@ async function importAttendees(){
         FullName:a.n, Section65A:a.s65, AttendanceStatus:'Completed',
         CertificateNumber:a.cert||'',
         OrgName:a.o,
-        CourseTitle:a.c
+        CourseTitle:a.c+' '+excelDate(a.s)
       }); }catch(e){}
       // Also attempt lookup links
       if(orgId){ await tryLink('attendees',aid,'OrgOID',orgId); }
