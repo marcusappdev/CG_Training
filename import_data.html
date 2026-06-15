@@ -226,11 +226,11 @@ async function getExisting(listKey){
 async function resolveSite(){
   if(siteId)return;
   const d=await graph(`/sites/${SP_SITE}:${SP_PATH}`);siteId=d.id;
-  const ls=await graph(`/sites/${siteId}/lists?$select=id,name`);
+  const ls=await graph(`/sites/${siteId}/lists?$select=id,name,displayName`);
   const map={CG_Courses:'courses',CG_CourseRuns:'runs',CG_Organisations:'orgs',
     CG_Attendees:'attendees',CG_Invoices:'invoices',CG_Payments:'payments',
-    Trainers:'trainers',CG_Certificates:'certs'};
-  ls.value.forEach(l=>{const k=map[l.name];if(k)listIds[k]=l.id;});
+    CG_Trainers:'trainers',CG_Certificates:'certs'};
+  ls.value.forEach(l=>{const k=map[l.name]||map[l.displayName];if(k)listIds[k]=l.id;});
   log('Connected to SharePoint ✓','ok');
 }
 
