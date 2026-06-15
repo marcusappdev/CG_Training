@@ -1,0 +1,303 @@
+<!--
+  CG Training Management System
+  © Concept Group. All rights reserved.
+  ONE-OFF MIGRATION: populate CG_Quotes from existing CG_Invoices.QuoteRef values
+  Safe to run multiple times - skips invoices whose QuoteRef already has a matching Quote.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CG Training — Quotes Migration</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a2744;--teal:#0e9f6e;--teal-d:#065f46;--teal-l:#d1fae5;--red:#ef4444;--red-l:#fee2e2;--amber:#f59e0b;--g100:#f3f4f6;--g200:#e5e7eb;--g500:#6b7280;--g700:#374151;--g900:#111827;--white:#fff;--r:8px;--rl:12px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--g100);color:var(--g900);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+.box{background:var(--white);border-radius:var(--rl);border:1px solid var(--g200);width:100%;max-width:780px;overflow:hidden;margin-bottom:20px}
+.box-header{padding:16px 20px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.box-header h2{font-size:15px;font-weight:700}
+.box-body{padding:20px}
+h1{font-size:22px;font-weight:700;text-align:center;margin-bottom:4px}
+.sub{font-size:13px;color:var(--g500);text-align:center;margin-bottom:24px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--teal);color:#fff}.btn-primary:hover{background:var(--teal-d)}
+.btn-outline{background:#fff;color:var(--g700);border:1px solid var(--g200)}.btn-outline:hover{background:var(--g100)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ms-btn{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1a1a1a;border:1px solid var(--g200);border-radius:var(--r);padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer}
+.ms-btn:hover{background:var(--g100)}
+.prog-wrap{background:var(--g200);border-radius:4px;height:8px;overflow:hidden;margin:14px 0}
+.prog-fill{height:100%;background:var(--teal);border-radius:4px;transition:width .3s}
+.log{background:var(--g100);border-radius:var(--r);padding:14px;font-size:12px;font-family:monospace;max-height:400px;overflow-y:auto;line-height:1.9}
+.lok{color:var(--teal-d)}.ler{color:var(--red)}.lin{color:var(--g700)}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.sc{background:var(--g100);border-radius:var(--r);padding:12px;text-align:center}
+.sc .sv{font-size:20px;font-weight:700;color:var(--teal-d)}
+.sc .sl{font-size:11px;color:var(--g500);margin-top:2px}
+#run-section{display:none}
+.warn{background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r);padding:12px 14px;font-size:12px;color:#92400e;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div style="font-size:32px;color:#0e9f6e;margin-bottom:6px;text-align:center"><i class="ti ti-arrows-transfer-up"></i></div>
+<h1>CG Training — Quotes Migration</h1>
+<p class="sub">One-off: create CG_Quotes records from existing Invoice Quote References</p>
+
+<div class="box" id="login-box">
+  <div class="box-body" style="text-align:center;padding:28px">
+    <p style="font-size:13px;color:var(--g500);margin-bottom:16px">Sign in with your M365 account to run the migration.</p>
+    <button class="ms-btn" onclick="signIn()">
+      <svg viewBox="0 0 21 21" fill="none" style="width:18px;height:18px"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <div id="login-err" style="color:var(--red);font-size:12px;margin-top:10px"></div>
+    <div id="login-status" style="color:var(--g500);font-size:12px;margin-top:6px"></div>
+  </div>
+</div>
+
+<div class="box" id="run-section">
+  <div class="box-header">
+    <div>
+      <h2>Ready to migrate</h2>
+      <div style="font-size:12px;color:var(--g500)" id="user-label">—</div>
+    </div>
+    <button class="btn btn-outline" style="font-size:12px" onclick="signOut()"><i class="ti ti-logout"></i>Sign out</button>
+  </div>
+  <div class="box-body">
+    <div class="warn"><i class="ti ti-info-circle"></i> This will scan every CG_Invoices record for a non-empty Quote Reference, and for each unique reference not already present in CG_Quotes, create a new Quote record (Title = quote number, plus Attendee/Organisation/Fee/GST/Total copied from the invoice, Status set to "Converted to Invoice"). Existing quotes are not duplicated — safe to re-run.</div>
+    <div class="summary-grid">
+      <div class="sc"><div class="sv" id="sum-invoices">—</div><div class="sl">Invoices Scanned</div></div>
+      <div class="sc"><div class="sv" id="sum-refs">—</div><div class="sl">Unique Quote Refs Found</div></div>
+      <div class="sc"><div class="sv" id="sum-created">—</div><div class="sl">Quotes Created</div></div>
+    </div>
+    <div class="prog-wrap" id="prog-wrap" style="display:none"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div style="display:flex;gap:10px;margin-top:6px;align-items:center">
+      <button class="btn btn-primary" id="run-btn" onclick="runMigration()"><i class="ti ti-player-play"></i>Run Migration</button>
+      <span id="run-status" style="font-size:12px;color:var(--g500)"></span>
+    </div>
+    <div id="log-wrap" style="margin-top:16px;display:none">
+      <div style="font-size:12px;font-weight:600;color:var(--g700);margin-bottom:6px">Migration log</div>
+      <div class="log" id="log"></div>
+    </div>
+    <div id="done-banner" style="display:none;margin-top:16px;background:var(--teal-l);border-radius:var(--r);padding:16px 20px">
+      <div style="font-weight:700;color:var(--teal-d);font-size:14px;margin-bottom:4px"><i class="ti ti-check"></i> Migration complete!</div>
+      <div style="font-size:13px;color:var(--teal-d)">Open the <a href="https://marcusappdev.github.io/CG_Training/" style="color:var(--teal-d);font-weight:600">CG Training app</a> and check the Quotes page.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────
+const CLIENT_ID  = 'd5aef866-584f-4226-ab11-c941888fb519';
+const TENANT_ID  = 'ea9e105c-2df6-47ef-a8e3-b4aa1d788423';
+const SP_SITE    = 'conceptcompg.sharepoint.com';
+const SP_PATH    = '/sites/training.admin';
+const SCOPES     = 'https://graph.microsoft.com/Sites.ReadWrite.All User.Read offline_access';
+const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/+$/,'');
+const AUTH_EP    = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`;
+
+// ── AUTH ────────────────────────────────────────────────────────────────
+let _token=null,_expiry=0,_refresh=null;
+const store={
+  _m:{},
+  set(k,v){try{localStorage.setItem(k,v);}catch{this._m[k]=v;}},
+  get(k){try{return localStorage.getItem(k);}catch{return this._m[k]||null;}},
+  del(k){try{localStorage.removeItem(k);}catch{delete this._m[k];}},
+  clear(){['mq_a','mq_r','mq_e','mq_u','mq_pv','mq_ps'].forEach(k=>{try{localStorage.removeItem(k);}catch{}delete this._m[k];})}
+};
+function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+async function pkce(){const a=new Uint8Array(32);crypto.getRandomValues(a);const v=b64url(a);const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return{verifier:v,challenge:b64url(d)};}
+function parseJwt(t){try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch{return{};}}
+function saveTokens(data){
+  _token=data.access_token;_refresh=data.refresh_token||_refresh;
+  _expiry=Date.now()+(+(data.expires_in)||3600)*1000;
+  store.set('mq_a',_token);store.set('mq_r',_refresh||'');store.set('mq_e',String(_expiry));
+  if(data.id_token){const c=parseJwt(data.id_token);const name=c.name||c.preferred_username||'User';
+    store.set('mq_u',JSON.stringify({name,username:c.preferred_username||''}));
+    document.getElementById('user-label').textContent='Signed in as: '+name;}
+  fetchMe();
+}
+async function fetchMe(){
+  try{const r=await fetch('https://graph.microsoft.com/v1.0/me?$select=displayName,userPrincipalName',
+    {headers:{'Authorization':'Bearer '+_token}});
+    if(!r.ok)return;const me=await r.json();
+    const name=me.displayName||me.userPrincipalName||'User';
+    store.set('mq_u',JSON.stringify({name,username:me.userPrincipalName||''}));
+    document.getElementById('user-label').textContent='Signed in as: '+name;
+  }catch(e){}
+}
+async function getToken(){
+  if(_token&&Date.now()<_expiry-60000)return _token;
+  const ref=_refresh||store.get('mq_r');if(!ref)throw new Error('Not signed in');
+  const b=new URLSearchParams({client_id:CLIENT_ID,grant_type:'refresh_token',refresh_token:ref,scope:SCOPES});
+  const r=await fetch(AUTH_EP+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b.toString()});
+  const d=await r.json();if(d.error)throw new Error(d.error_description||d.error);
+  saveTokens(d);return _token;
+}
+async function signIn(){
+  document.getElementById('login-err').textContent='';
+  document.getElementById('login-status').textContent='Redirecting...';
+  const{verifier,challenge}=await pkce();
+  const st=b64url(new Uint8Array(16).fill(0).map(()=>(crypto.getRandomValues(new Uint8Array(1))[0])));
+  store.set('mq_pv',verifier);store.set('mq_ps',st);
+  const p=new URLSearchParams({client_id:CLIENT_ID,response_type:'code',redirect_uri:REDIRECT_URI,
+    scope:SCOPES,response_mode:'query',state:st,code_challenge:challenge,code_challenge_method:'S256',prompt:'select_account'});
+  window.location.href=AUTH_EP+'/authorize?'+p.toString();
+}
+async function exchangeCode(code,verifier){
+  const b=new URLSearchParams({client_id:CLIENT_ID,grant_type:'authorization_code',code,redirect_uri:REDIRECT_URI,code_verifier:verifier,scope:SCOPES});
+  const r=await fetch(AUTH_EP+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b.toString()});
+  const d=await r.json();if(d.error)throw new Error(d.error_description||d.error);return d;
+}
+function signOut(){store.clear();_token=null;_refresh=null;_expiry=0;window.location.reload();}
+function showRun(){document.getElementById('login-box').style.display='none';document.getElementById('run-section').style.display='block';}
+
+window.addEventListener('load',async()=>{
+  const p=new URLSearchParams(window.location.search);
+  const code=p.get('code'),state=p.get('state'),err=p.get('error');
+  if(code||err){
+    window.history.replaceState({},document.title,REDIRECT_URI);
+    if(err){document.getElementById('login-err').textContent=p.get('error_description')||err;return;}
+    const sv=store.get('mq_ps'),vv=store.get('mq_pv');
+    store.del('mq_ps');store.del('mq_pv');
+    if(!sv||state!==sv){document.getElementById('login-err').textContent='State mismatch.';return;}
+    document.getElementById('login-status').textContent='Completing sign-in...';
+    try{const t=await exchangeCode(code,vv);saveTokens(t);showRun();}
+    catch(e){document.getElementById('login-err').textContent='Failed: '+e.message;}
+    return;
+  }
+  const st=store.get('mq_a'),ex=+(store.get('mq_e')||0),usr=store.get('mq_u'),ref=store.get('mq_r');
+  if(st&&ex>Date.now()){_token=st;_refresh=ref||'';_expiry=ex;
+    if(usr){const u=JSON.parse(usr);document.getElementById('user-label').textContent='Signed in as: '+u.name;}
+    showRun();fetchMe();return;}
+  if(ref){_refresh=ref;try{await getToken();const u=JSON.parse(store.get('mq_u')||'{}');
+    document.getElementById('user-label').textContent='Signed in as: '+(u.name||'User');showRun();fetchMe();return;}catch{}}
+});
+
+// ── GRAPH API ───────────────────────────────────────────────────────────
+let siteId=null,listIds={};
+async function graph(path,method='GET',body=null){
+  const t=await getToken();
+  const opts={method,headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json','Accept':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const r=await fetch('https://graph.microsoft.com/v1.0'+path,opts);
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'HTTP '+r.status);}
+  if(r.status===204)return null;return r.json();
+}
+async function createItem(listKey,fields){
+  const lid=listIds[listKey];if(!lid)throw new Error('List not found: '+listKey);
+  return graph(`/sites/${siteId}/lists/${lid}/items`,'POST',{fields});
+}
+async function getExisting(listKey){
+  const lid=listIds[listKey];if(!lid)return[];
+  const d=await graph(`/sites/${siteId}/lists/${lid}/items?expand=fields&$top=999`);
+  return(d.value||[]).map(i=>({id:i.id,...i.fields}));
+}
+async function resolveSite(){
+  if(siteId)return;
+  const d=await graph(`/sites/${SP_SITE}:${SP_PATH}`);siteId=d.id;
+  const ls=await graph(`/sites/${siteId}/lists?$select=id,name,displayName`);
+  const map={CG_Invoices:'invoices',CG_Quotes:'quotes',CG_Attendees:'attendees'};
+  ls.value.forEach(l=>{const k=map[l.name]||map[l.displayName];if(k)listIds[k]=l.id;});
+  if(!listIds.invoices) throw new Error('CG_Invoices list not found');
+  if(!listIds.quotes) throw new Error('CG_Quotes list not found - check the list name in SharePoint');
+  log('Connected to SharePoint ✓','ok');
+}
+
+// ── LOGGING ─────────────────────────────────────────────────────────────
+function log(msg,type='in'){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  d.className=type==='ok'?'lok':type==='er'?'ler':'lin';
+  d.textContent=(type==='ok'?'✓ ':type==='er'?'✗ ':'  ')+msg;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function setProgress(pct){document.getElementById('prog-fill').style.width=pct+'%';}
+async function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── MIGRATION ───────────────────────────────────────────────────────────
+async function runMigration(){
+  const btn=document.getElementById('run-btn');
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader" style="animation:spin .7s linear infinite"></i> Running...';
+  document.getElementById('prog-wrap').style.display='block';
+  document.getElementById('log-wrap').style.display='block';
+  document.getElementById('run-status').textContent='Running...';
+  log('Starting migration — connecting to SharePoint...','in');
+  try{
+    await resolveSite();
+
+    const invoices = await getExisting('invoices');
+    const attendees = await getExisting('attendees');
+    const existingQuotes = await getExisting('quotes');
+    document.getElementById('sum-invoices').textContent = invoices.length;
+
+    const existingTitles = new Set(existingQuotes.map(q=>(q.Title||'').trim().toLowerCase()).filter(Boolean));
+
+    // Group invoices by QuoteRef (an invoice's QuoteRef may not be unique if multiple
+    // attendees were grouped under one invoice/quote, but we only need one Quote per ref)
+    const refGroups = {};
+    invoices.filter(i=>(i.QuoteRef||'').trim()).forEach(i=>{
+      const ref=(i.QuoteRef||'').trim();
+      if(!refGroups[ref]) refGroups[ref]=[];
+      refGroups[ref].push(i);
+    });
+    const uniqueRefs = Object.keys(refGroups);
+    document.getElementById('sum-refs').textContent = uniqueRefs.length;
+    log(`Found ${uniqueRefs.length} unique Quote Reference(s) across ${invoices.length} invoices`,'in');
+
+    let created=0, skipped=0;
+    let i=0;
+    for(const ref of uniqueRefs){
+      i++;
+      setProgress(Math.round((i/uniqueRefs.length)*100));
+      const refLower = ref.toLowerCase();
+      if(existingTitles.has(refLower)){
+        log(`Skip "${ref}" — Quote already exists`,'in');
+        skipped++; continue;
+      }
+      // Use the first invoice in this group as the source for attendee/financials
+      const inv = refGroups[ref][0];
+      const attName = inv.AttendeeName || '';
+      const att = attName ? attendees.find(a=>(a.FullName||a.Title||'').trim().toLowerCase()===attName.trim().toLowerCase()) : null;
+      // Sum financials across all invoices sharing this quote ref
+      const fee = refGroups[ref].reduce((s,x)=>s+(+x.FeeExGST||0),0);
+      const gst = refGroups[ref].reduce((s,x)=>s+(+x.GSTAmount||0),0);
+      const total = refGroups[ref].reduce((s,x)=>s+(+x.TotalAmount||0),0);
+
+      const fields = {
+        Title: ref,
+        QuoteDate: inv.InvoiceDate || null,
+        AttendeeName: attName,
+        OrgName: att?.OrgName || '',
+        FeeExGST: fee,
+        GSTAmount: gst,
+        TotalAmount: total,
+        Status: 'Converted to Invoice'
+      };
+      try{
+        await createItem('quotes', fields);
+        log(`Created Quote "${ref}" — ${attName||'(no attendee)'} — K${total.toFixed(2)}`,'ok');
+        created++;
+      }catch(e){
+        log(`ERROR creating Quote "${ref}": ${e.message}`,'er');
+      }
+      await delay(200);
+    }
+
+    document.getElementById('sum-created').textContent = created;
+    log(`Done. Created ${created}, skipped ${skipped} (already existed).`,'ok');
+    document.getElementById('run-status').textContent='Complete ✓';
+    document.getElementById('done-banner').style.display='block';
+  }catch(e){
+    log('FATAL: '+e.message,'er');
+    document.getElementById('run-status').textContent='Failed — see log';
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-refresh"></i> Retry';
+  }
+}
+</script>
+</body>
+</html>
