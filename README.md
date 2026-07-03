@@ -1,1 +1,2 @@
-Web hosting of CG Training App
+Web hosting of CG Training Hub App
+(c) Concept Group Limited
