@@ -7,118 +7,195 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <style>
   :root {
-    --navy: #132036;
-    --teal: #1D9E75;
-    --purple: #7F77DD;
-    --purple-l: #EEEDFE; --purple-d: #26215C;
-    --teal-l: #E1F5EE; --teal-d: #04342C;
-    --coral: #D85A30;
-    --coral-l: #FAECE7; --coral-d: #4A1B0C;
-    --pink: #D4537E;
-    --pink-l: #FBEAF0; --pink-d: #4B1528;
-    --green-l: #EAF3DE; --green-d: #27500A;
-    --red-l: #FCEBEB; --red-d: #791F1F;
-    --amber-l: #FAEEDA; --amber-d: #633806;
-    --border: #E2E0D8;
-    --card-bg: #FAFAF8;
-    --text-primary: #1A1A1A;
-    --text-muted: #6B7280;
+    --blue: #2A2FE0;
+    --blue-dark: #1B1FA8;
+    --blue-light: #E8E9FD;
+    --teal: #1D9E75;   --teal-l: #DFF3E8;  --teal-d: #0F6E56;
+    --purple: #7F77DD; --purple-l: #EEEDFE; --purple-d: #26215C;
+    --coral: #E0663B;  --coral-l: #FBE7DD; --coral-d: #7A3216;
+    --pink: #D4537E;   --pink-l: #FBEAF0;  --pink-d: #4B1528;
+    --amber-l: #FDEFD6; --amber-d: #7A4A06;
+    --gray-l: #EEEEF0; --gray-d: #5B5D66;
+    --border: #E5E4EE;
+    --text-primary: #1A1B23;
+    --text-muted: #6E7080;
+    --page-bg: #F4F4F8;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; font-family: Arial, Helvetica, sans-serif;
-    background: #FFFFFF; color: var(--text-primary);
+    margin: 0; font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    background: var(--page-bg); color: var(--text-primary);
   }
+  .app-shell { max-width: 460px; margin: 0 auto; background: #fff; min-height: 100vh; padding-bottom: 76px; position: relative; }
+
   header.app-header {
-    background: var(--navy); color: #fff;
-    padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+    color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px;
   }
-  header.app-header h1 { font-size: 16px; margin: 0; font-weight: 700; }
-  #signout-btn {
-    background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #fff;
-    border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; display: none;
+  .logo-mark {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    background: linear-gradient(135deg, #FF4FA3, #7F77DD, #2A9FE0);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; color: #fff;
   }
+  header.app-header h1 { font-size: 15px; margin: 0; font-weight: 700; }
 
   #signin-screen {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 70vh; text-align: center; padding: 20px;
   }
   #signin-screen button {
-    background: var(--navy); color: #fff; border: none; border-radius: 8px;
+    background: var(--blue); color: #fff; border: none; border-radius: 8px;
     padding: 12px 28px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px;
   }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 20px; display: none; }
+  main { display: none; padding: 16px; }
 
-  .toggle-pills { display: flex; background: var(--card-bg); border-radius: 8px; padding: 3px; gap: 2px; border: 1px solid var(--border); width: fit-content; }
-  .toggle-pills button {
-    border: none; background: transparent; padding: 6px 16px; font-size: 13px; border-radius: 6px;
-    cursor: pointer; color: var(--text-muted); font-family: inherit;
+  .greeting-row { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
+  .avatar-circle {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--purple-l); color: var(--purple-d);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;
   }
-  .toggle-pills button.active { background: #fff; box-shadow: 0 0 0 1px var(--border); font-weight: 600; color: var(--text-primary); }
+  .greeting-row .welcome { font-size: 12px; color: var(--text-muted); margin: 0; }
+  .greeting-row .name { font-size: 17px; font-weight: 700; margin: 1px 0 0; }
+  .greeting-row .sub { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
 
-  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
-  .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
-  .stat-card .label { font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }
-  .stat-card .value { font-size: 22px; font-weight: 700; margin: 0; }
+  .hero-card {
+    background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+    border-radius: 16px; padding: 18px; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .hero-card .label { font-size: 11px; opacity: 0.85; margin: 0 0 6px; }
+  .hero-card .rating { font-size: 30px; font-weight: 800; margin: 0; }
+  .hero-card .rating-word { font-size: 12px; font-weight: 600; margin: 2px 0 0; }
+  .hero-card .trend { font-size: 11px; margin: 6px 0 0; opacity: 0.9; }
+  .hero-ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
+  .hero-ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; }
 
-  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 24px 0 10px; }
+  .tile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+  .tile { border-radius: 12px; padding: 10px 8px; text-align: left; }
+  .tile .num { font-size: 17px; font-weight: 800; margin: 4px 0 0; }
+  .tile .lbl { font-size: 10px; color: var(--text-muted); margin: 1px 0 0; line-height: 1.2; }
+  .tile-icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 
-  .goal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
-  .goal-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; display: flex; gap: 14px; background: #fff; }
-  .ring { flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .ring .hole { width: 38px; height: 38px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
-  .badge { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 20px; margin-bottom: 6px; font-weight: 600; }
-  .goal-card .title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
-  .goal-card .due { font-size: 12px; color: var(--text-muted); margin: 0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+  .panel { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: #fff; }
+  .panel .panel-title { font-size: 12px; font-weight: 700; margin: 0 0 8px; display: flex; justify-content: space-between; }
+  .panel .panel-title a { font-size: 11px; color: var(--blue); font-weight: 600; text-decoration: none; }
+
+  .review-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--purple-l); color: var(--purple-d); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+  .review-title { font-size: 13px; font-weight: 700; margin: 0; }
+  .review-sub { font-size: 11px; color: var(--text-muted); margin: 2px 0 6px; }
+  .status-chip { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; margin-bottom: 6px; }
+  .due-line { font-size: 10px; color: var(--text-muted); margin: 4px 0 8px; }
+  .progress-track { height: 6px; background: var(--gray-l); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+  .progress-fill { height: 100%; background: var(--blue); }
+  .continue-btn { display: block; width: 100%; background: var(--blue); color: #fff; border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; }
+
+  .goals-summary-ring { width: 70px; height: 70px; margin: 4px auto 10px; position: relative; }
+  .goals-summary-ring .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .goals-summary-ring .center .n { font-size: 16px; font-weight: 800; }
+  .goals-summary-ring .center .l { font-size: 8px; color: var(--text-muted); }
+  .legend-row { display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; margin: 3px 0; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .encourage-box { background: var(--teal-l); color: var(--teal-d); border-radius: 8px; padding: 6px 8px; font-size: 10.5px; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+
+  .growth-banner { background: var(--blue-light); border-radius: 14px; padding: 14px; display: flex; align-items: center; gap: 12px; margin: 14px 0; }
+  .growth-banner .star { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--blue); font-size: 16px; }
+  .growth-banner .title { font-size: 12px; font-weight: 700; margin: 0; }
+  .growth-banner .desc { font-size: 10.5px; color: var(--text-muted); margin: 2px 0 0; }
+  .growth-banner .go-btn { margin-left: auto; background: var(--blue); color: #fff; border: none; border-radius: 7px; padding: 7px 10px; font-size: 10.5px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 20px 0 10px; }
+  .goal-grid { display: flex; flex-direction: column; gap: 10px; }
+  .goal-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; background: #fff; }
+  .ring { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .ring .hole { width: 36px; height: 36px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .badge { display: inline-block; font-size: 10.5px; padding: 2px 9px; border-radius: 20px; margin-bottom: 5px; font-weight: 600; }
+  .goal-card .title { font-size: 13px; font-weight: 700; margin: 0 0 2px; }
+  .goal-card .due { font-size: 11px; color: var(--text-muted); margin: 0; }
 
   .checkin-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  .checkin-row { padding: 12px 18px; border-top: 1px solid var(--border); }
+  .checkin-row { padding: 10px 14px; border-top: 1px solid var(--border); }
   .checkin-row:first-child { border-top: none; }
-  .checkin-row .who { font-size: 13px; font-weight: 600; margin: 0; }
-  .checkin-row .notes { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
-  .checkin-row .date { font-size: 11px; color: var(--text-muted); margin: 4px 0 0; }
+  .checkin-row .who { font-size: 12px; font-weight: 700; margin: 0; }
+  .checkin-row .notes { font-size: 11px; color: var(--text-muted); margin: 3px 0 0; }
+  .checkin-row .date { font-size: 10px; color: var(--text-muted); margin: 3px 0 0; }
 
-  table.roster { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  table.roster th { text-align: left; font-size: 12px; color: var(--text-muted); background: var(--card-bg); padding: 10px 14px; font-weight: 600; }
-  table.roster td { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13px; }
-  .avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-right: 8px; vertical-align: middle; }
+  table.roster { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 11.5px; }
+  table.roster th { text-align: left; font-size: 10.5px; color: var(--text-muted); background: var(--page-bg); padding: 8px 10px; font-weight: 600; }
+  table.roster td { padding: 8px 10px; border-top: 1px solid var(--border); }
+  .avatar-sm { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; margin-right: 6px; vertical-align: middle; }
 
-  .loading, .empty-state, .error-state { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
-  .error-state { color: var(--red-d); }
+  .feedback-row { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .feedback-row .top { display: flex; justify-content: space-between; align-items: center; }
+  .feedback-row .from { font-size: 12px; font-weight: 700; }
+  .feedback-row .msg { font-size: 11.5px; color: var(--text-muted); margin: 5px 0 0; }
+  .feedback-row .date { font-size: 10px; color: var(--text-muted); margin: 5px 0 0; }
+  .dot-unread { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); display: inline-block; margin-left: 6px; }
+
+  .me-panel { text-align: center; padding: 30px 16px; }
+  .me-panel .avatar-circle { width: 64px; height: 64px; font-size: 20px; margin: 0 auto 10px; }
+  .me-menu { text-align: left; margin-top: 20px; }
+  .me-menu a { display: block; padding: 12px 4px; border-bottom: 1px solid var(--border); color: var(--text-primary); text-decoration: none; font-size: 13px; }
+  #signout-btn { width: 100%; margin-top: 20px; background: var(--pink-l); color: var(--pink-d); border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+  nav.tab-bar {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 460px; background: #fff; border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(5, 1fr); z-index: 10;
+  }
+  nav.tab-bar button {
+    background: none; border: none; padding: 9px 0 8px; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; font-size: 9.5px; color: var(--text-muted); cursor: pointer; font-family: inherit;
+  }
+  nav.tab-bar button .icon { font-size: 16px; }
+  nav.tab-bar button.active { color: var(--blue); font-weight: 700; }
+
+  .loading, .empty-state, .error-state { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
+  .error-state { color: var(--pink-d); }
 </style>
 </head>
 <body>
 
-<header class="app-header">
-  <h1>Performance Management</h1>
-  <button id="signout-btn">Sign out</button>
-</header>
+<div class="app-shell">
 
-<div id="signin-screen">
-  <p>Sign in with your Concept Group Microsoft 365 account to continue.</p>
-  <button id="signin-btn">Sign in</button>
-</div>
-
-<main id="app-main">
-  <div class="toggle-pills">
-    <button id="tab-my" class="active">My view</button>
-    <button id="tab-team">Team view</button>
+  <div id="signin-screen">
+    <p>Sign in with your Concept Group Microsoft 365 account to continue.</p>
+    <button id="signin-btn">Sign in</button>
   </div>
 
-  <section id="view-my"></section>
-  <section id="view-team" style="display:none"></section>
-</main>
+  <div id="app-wrap" style="display:none">
+    <header class="app-header">
+      <div class="logo-mark">M</div>
+      <h1>Performance Management</h1>
+    </header>
+
+    <main id="app-main">
+      <section id="view-dashboard"></section>
+      <section id="view-goals" style="display:none"></section>
+      <section id="view-feedback" style="display:none"></section>
+      <section id="view-team" style="display:none"></section>
+      <section id="view-me" style="display:none"></section>
+    </main>
+
+    <nav class="tab-bar">
+      <button id="tab-dashboard" class="active"><span class="icon">&#8962;</span>Dashboard</button>
+      <button id="tab-goals"><span class="icon">&#9673;</span>Goals</button>
+      <button id="tab-feedback"><span class="icon">&#9998;</span>Feedback</button>
+      <button id="tab-team"><span class="icon">&#128101;</span>Team</button>
+      <button id="tab-me"><span class="icon">&#9787;</span>Me</button>
+    </nav>
+  </div>
+
+</div>
 
 <script>
 /* ============================================================================
-   CONFIG — update these before deploying
+   CONFIG
    ============================================================================ */
 const CONFIG = {
-  clientId: "d5aef866-584f-4226-ab11-c941888fb519", // existing Azure AD app (shared with PSP HUB / Training Hub)
-                                                       // NOTE: add this app's GitHub Pages URL as a redirect URI
-                                                       // in Azure AD > App registrations before first use.
-  tenantId: "conceptcompg.onmicrosoft.com",           // or the tenant GUID
+  clientId: "d5aef866-584f-4226-ab11-c941888fb519",
+  tenantId: "conceptcompg.onmicrosoft.com",
   redirectUri: window.location.origin + window.location.pathname,
   siteHostname: "conceptcompg.sharepoint.com",
   sitePath: "/sites/perforM",
@@ -142,7 +219,7 @@ const CATEGORY_COLORS = {
   Customer: { bg: "var(--coral-l)",  fg: "var(--coral-d)",  ring: "var(--coral)" },
   Company:  { bg: "var(--purple-l)", fg: "var(--purple-d)", ring: "var(--purple)" }
 };
-const AT_RISK = { bg: "var(--red-l)", fg: "var(--red-d)", ring: "var(--pink)" };
+const AT_RISK = { bg: "var(--pink-l)", fg: "var(--pink-d)", ring: "var(--pink)" };
 
 /* ============================================================================
    AUTH (MSAL PKCE)
@@ -167,7 +244,6 @@ async function initAuth() {
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) currentAccount = accounts[0];
   }
-
   if (currentAccount) {
     showApp();
   } else {
@@ -178,9 +254,6 @@ async function initAuth() {
 document.getElementById("signin-btn").addEventListener("click", () => {
   msalInstance.loginRedirect({ scopes: CONFIG.scopes });
 });
-document.getElementById("signout-btn").addEventListener("click", () => {
-  msalInstance.logoutRedirect();
-});
 
 async function getAccessToken() {
   const request = { scopes: CONFIG.scopes, account: currentAccount };
@@ -189,7 +262,7 @@ async function getAccessToken() {
     return result.accessToken;
   } catch (e) {
     const result = await msalInstance.acquireTokenRedirect(request);
-    return result.accessToken; // page will redirect; this line rarely returns
+    return result.accessToken;
   }
 }
 
@@ -197,7 +270,7 @@ async function getAccessToken() {
    GRAPH API HELPERS
    ============================================================================ */
 let siteIdCache = null;
-let listIdCache = {}; // displayName -> id
+let listIdCache = {};
 
 async function graphFetch(path, options = {}) {
   const token = await getAccessToken();
@@ -242,32 +315,19 @@ async function getListItems(displayName, filter) {
   return (data.value || []).map(item => ({ id: item.id, ...item.fields }));
 }
 
-async function createListItem(displayName, fields) {
-  const siteId = await getSiteId();
-  const listId = await getListId(displayName);
-  return graphFetch(`/sites/${siteId}/lists/${listId}/items`, {
-    method: "POST",
-    body: JSON.stringify({ fields })
-  });
-}
-
 /* ============================================================================
-   ORG RESOLUTION — Employee ID, position, peers, direct reports
+   ORG RESOLUTION
    ============================================================================ */
-let me = null; // { EmployeeID, GivenName, FamilyName, EmailAddress, ... }
-let myPosition = null; // Establishment row where EmployeeID = me.EmployeeID
+let me = null;
+let myPosition = null;
 
 async function resolveCurrentEmployee() {
-  const email = currentAccount.username; // signed-in UPN/email
+  const email = currentAccount.username;
   const matches = await getListItems(LISTS.employees, `fields/EmailAddress eq '${email}'`);
   if (matches.length === 0) {
-    throw new Error(
-      `No PMS_Employees record found with EmailAddress = ${email}. ` +
-      `This person's Employee ID needs to be linked before they can use the app.`
-    );
+    throw new Error(`No PMS_Employees record found with EmailAddress = ${email}.`);
   }
   me = matches[0];
-
   const posMatches = await getListItems(LISTS.establishment, `fields/EmployeeID eq '${me.EmployeeID}'`);
   myPosition = posMatches[0] || null;
 }
@@ -277,104 +337,245 @@ async function getDirectReports() {
   const reports = await getListItems(LISTS.establishment, `fields/ReportsTo eq '${myPosition.JobKey}'`);
   return attachEmployeeDetails(reports);
 }
-
 async function getPeers() {
   if (!myPosition || !myPosition.ReportsTo) return [];
   const peers = await getListItems(LISTS.establishment, `fields/ReportsTo eq '${myPosition.ReportsTo}'`);
-  const filtered = peers.filter(p => p.JobKey !== myPosition.JobKey);
-  return attachEmployeeDetails(filtered);
+  return attachEmployeeDetails(peers.filter(p => p.JobKey !== myPosition.JobKey));
 }
-
 async function attachEmployeeDetails(positionRows) {
   const results = [];
   for (const pos of positionRows) {
     if (!pos.EmployeeID || pos.EmployeeID === "0") continue;
     const empMatches = await getListItems(LISTS.employees, `fields/EmployeeID eq '${pos.EmployeeID}'`);
-    if (empMatches.length > 0) {
-      results.push({ ...empMatches[0], PositionTitle: pos.PositionTitle });
-    }
+    if (empMatches.length > 0) results.push({ ...empMatches[0], PositionTitle: pos.PositionTitle });
   }
   return results;
 }
 
 /* ============================================================================
-   RENDERING — My View
+   SHARED HELPERS
    ============================================================================ */
 function initials(emp) {
   const g = (emp.GivenName || "?")[0] || "?";
   const f = (emp.FamilyName || "?")[0] || "?";
   return (g + f).toUpperCase();
 }
-
-function ringSvg(pct, color) {
-  return `<div class="ring" style="background: conic-gradient(${color} ${pct * 3.6}deg, #F0EFEA 0deg)">
-            <div class="hole">${pct}%</div>
+function ringHtml(pct, color, size, holeSize, fontSize) {
+  return `<div class="ring" style="width:${size}px;height:${size}px;background: conic-gradient(${color} ${pct * 3.6}deg, #EEEEF0 0deg)">
+            <div class="hole" style="width:${holeSize}px;height:${holeSize}px;font-size:${fontSize}px">${pct}%</div>
           </div>`;
 }
+function ratingWord(rating) {
+  if (rating === null || rating === undefined) return "Not rated";
+  if (rating >= 4.5) return "Excellent";
+  if (rating >= 4.0) return "Very Good";
+  if (rating >= 3.0) return "Good";
+  if (rating >= 2.0) return "Needs Improvement";
+  return "Unsatisfactory";
+}
+function fmtDate(d) {
+  return d ? new Date(d).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "—";
+}
 
+/* ============================================================================
+   DASHBOARD
+   ============================================================================ */
+async function renderDashboard() {
+  const el = document.getElementById("view-dashboard");
+  el.innerHTML = `<div class="loading">Loading your overview...</div>`;
+
+  const [goals, feedback, reviews, devPlan] = await Promise.all([
+    getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${me.EmployeeID}'`),
+    getListItems(LISTS.feedback, `fields/ToEmployeeID eq '${me.EmployeeID}'`),
+    getListItems(LISTS.reviews, `fields/EmployeeID eq '${me.EmployeeID}'`),
+    getListItems(LISTS.developmentPlan, `fields/EmployeeID eq '${me.EmployeeID}'`)
+  ]);
+
+  const onTrackCount   = goals.filter(g => g.Status === "On Track").length;
+  const atRiskCount    = goals.filter(g => g.Status === "At Risk").length;
+  const behindCount    = goals.filter(g => g.Status === "Behind").length;
+  const completeCount  = goals.filter(g => g.Status === "Complete").length;
+  const avgProgress    = goals.length ? Math.round(goals.reduce((s, g) => s + (g.ProgressPercent || 0), 0) / goals.length) : 0;
+
+  const unreadFeedback = feedback.filter(f => f.IsRead === false || f.IsRead === "false" || f.IsRead === 0).length;
+
+  const activeReview = reviews.sort((a, b) => new Date(a.DueDate || 0) - new Date(b.DueDate || 0))[0];
+  const overallRating = activeReview ? activeReview.OverallRating : null;
+  const prevRating = activeReview ? activeReview.PreviousRating : null;
+  const ratingDelta = (overallRating != null && prevRating != null) ? (overallRating - prevRating).toFixed(1) : null;
+
+  const inProgressDev = devPlan.filter(d => d.PlanStatus === "In Progress").length;
+  const reviewsDue = reviews.filter(r => r.ReviewStatus !== "Completed").length;
+
+  const heroPct = activeReview ? (activeReview.CompletionPercent || 0) : avgProgress;
+
+  el.innerHTML = `
+    <div class="greeting-row">
+      <div class="avatar-circle">${initials(me)}</div>
+      <div>
+        <p class="welcome">Good day</p>
+        <p class="name">${me.GivenName} ${me.FamilyName}</p>
+        <p class="sub">${myPosition ? myPosition.PositionTitle : ""}</p>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <div>
+        <p class="label">Overall Performance</p>
+        <p class="rating">${overallRating != null ? overallRating.toFixed(1) : "—"}</p>
+        <p class="rating-word">${ratingWord(overallRating)}</p>
+        ${ratingDelta != null ? `<p class="trend">${ratingDelta >= 0 ? "&#8593;" : "&#8595;"} ${Math.abs(ratingDelta)} vs last review</p>` : ""}
+      </div>
+      <div class="hero-ring">
+        <div style="width:92px;height:92px;border-radius:50%;background: conic-gradient(#fff ${heroPct * 3.6}deg, rgba(255,255,255,0.25) 0deg)"></div>
+        <div class="pct">${heroPct}%</div>
+      </div>
+    </div>
+
+    <div class="tile-row">
+      <div class="tile" style="background:var(--purple-l)">
+        <div class="tile-icon" style="background:rgba(255,255,255,0.6);color:var(--purple-d)">&#10003;</div>
+        <p class="num" style="color:var(--purple-d)">${goals.length}</p>
+        <p class="lbl">Goals<br>${onTrackCount} On Track</p>
+      </div>
+      <div class="tile" style="background:var(--teal-l)">
+        <div class="tile-icon" style="background:rgba(255,255,255,0.6);color:var(--teal-d)">&#9998;</div>
+        <p class="num" style="color:var(--teal-d)">${feedback.length}</p>
+        <p class="lbl">Feedback<br>${unreadFeedback} New</p>
+      </div>
+      <div class="tile" style="background:var(--coral-l)">
+        <div class="tile-icon" style="background:rgba(255,255,255,0.6);color:var(--coral-d)">&#8986;</div>
+        <p class="num" style="color:var(--coral-d)">${reviewsDue}</p>
+        <p class="lbl">Review Task<br>${reviewsDue > 0 ? "Due Soon" : "None due"}</p>
+      </div>
+      <div class="tile" style="background:var(--blue-light)">
+        <div class="tile-icon" style="background:rgba(255,255,255,0.6);color:var(--blue-dark)">&#128200;</div>
+        <p class="num" style="color:var(--blue-dark)">${inProgressDev}</p>
+        <p class="lbl">Development<br>Progress</p>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <p class="panel-title">Upcoming Review <a href="#" data-nav="goals">View all</a></p>
+        ${activeReview ? `
+          <div class="review-icon">&#128203;</div>
+          <p class="review-title">Performance Review</p>
+          <p class="review-sub">${activeReview.Title || "Review Cycle"}</p>
+          <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${activeReview.ReviewStatus}</span>
+          <p class="due-line">Due on ${fmtDate(activeReview.DueDate)}</p>
+          <div class="progress-track"><div class="progress-fill" style="width:${activeReview.CompletionPercent || 0}%"></div></div>
+          <a class="continue-btn" href="#">Continue Review</a>
+        ` : `<div class="empty-state" style="padding:10px 0">No active review.</div>`}
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Goals Summary <a href="#" data-nav="goals">View all</a></p>
+        <div class="goals-summary-ring">
+          <div style="width:70px;height:70px;border-radius:50%;background: conic-gradient(
+            var(--teal) 0 ${goals.length ? completeCount/goals.length*360 : 0}deg,
+            var(--purple) ${goals.length ? completeCount/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg,
+            var(--coral) ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg,
+            var(--gray-d) ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg 360deg
+          )"></div>
+          <div class="center"><span class="n">${goals.length}</span><span class="l">Total Goals</span></div>
+        </div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--purple)"></span>On-Track</span><b>${onTrackCount}</b></div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--coral)"></span>At Risk</span><b>${atRiskCount}</b></div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--gray-d)"></span>Behind</span><b>${behindCount}</b></div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--teal)"></span>Complete</span><b>${completeCount}</b></div>
+        ${goals.length ? `<div class="encourage-box">&#10003; ${onTrackCount + completeCount} of ${goals.length} goals are on track</div>` : ""}
+      </div>
+    </div>
+
+    <div class="growth-banner">
+      <div class="star">&#9733;</div>
+      <div>
+        <p class="title">Keep growing!</p>
+        <p class="desc">Complete your development activities</p>
+      </div>
+      <button class="go-btn" data-nav="me">Go to Development</button>
+    </div>
+  `;
+
+  el.querySelectorAll("[data-nav]").forEach(elm => {
+    elm.addEventListener("click", (e) => { e.preventDefault(); switchTab(elm.getAttribute("data-nav")); });
+  });
+}
+
+/* ============================================================================
+   GOALS TAB
+   ============================================================================ */
 function goalCardHtml(goal) {
-  const status = goal.Status === "At Risk" || goal.Status === "Behind" ? AT_RISK : (CATEGORY_COLORS[goal.Category] || CATEGORY_COLORS.Company);
-  const badgeLabel = goal.Status === "At Risk" || goal.Status === "Behind" ? goal.Status : goal.Category;
-  const dueDate = goal.DueDate ? new Date(goal.DueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+  const status = (goal.Status === "At Risk" || goal.Status === "Behind") ? AT_RISK : (CATEGORY_COLORS[goal.Category] || CATEGORY_COLORS.Company);
+  const badgeLabel = (goal.Status === "At Risk" || goal.Status === "Behind") ? goal.Status : goal.Category;
   return `
     <div class="goal-card">
-      ${ringSvg(goal.ProgressPercent || 0, status.ring)}
+      ${ringHtml(goal.ProgressPercent || 0, status.ring, 48, 36, 11)}
       <div>
         <span class="badge" style="background:${status.bg};color:${status.fg}">${badgeLabel}</span>
         <p class="title">${goal.Title || ""}</p>
-        <p class="due">Due ${dueDate}</p>
+        <p class="due">Due ${fmtDate(goal.DueDate)}</p>
       </div>
     </div>`;
 }
 
-async function renderMyView() {
-  const el = document.getElementById("view-my");
+async function renderGoals() {
+  const el = document.getElementById("view-goals");
   el.innerHTML = `<div class="loading">Loading your goals...</div>`;
-
   const [goals, checkIns] = await Promise.all([
     getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${me.EmployeeID}'`),
     getListItems(LISTS.checkIns, `fields/EmployeeID eq '${me.EmployeeID}'`)
   ]);
-
-  const onTrack = goals.filter(g => g.Status === "On Track" || g.Status === "Complete").length;
-  const nextCheckIn = checkIns
-    .filter(c => c.NextCheckInDate)
-    .sort((a, b) => new Date(a.NextCheckInDate) - new Date(b.NextCheckInDate))[0];
-
   el.innerHTML = `
-    <p style="font-size:15px;font-weight:600;margin:16px 0 0">Good day, ${me.GivenName}</p>
-    <p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">${myPosition ? myPosition.PositionTitle : ""}</p>
-
-    <div class="stat-row">
-      <div class="stat-card"><p class="label">Active goals</p><p class="value">${goals.length}</p></div>
-      <div class="stat-card"><p class="label">On track</p><p class="value" style="color:var(--teal-d)">${onTrack}</p></div>
-      <div class="stat-card"><p class="label">Next check-in</p><p class="value">${nextCheckIn ? new Date(nextCheckIn.NextCheckInDate).toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "—"}</p></div>
-    </div>
-
-    <p class="section-title">Your goals</p>
-    <div class="goal-grid">
-      ${goals.length ? goals.map(goalCardHtml).join("") : `<div class="empty-state">No goals yet.</div>`}
-    </div>
-
+    <p class="section-title" style="margin-top:8px">Your goals</p>
+    <div class="goal-grid">${goals.length ? goals.map(goalCardHtml).join("") : `<div class="empty-state">No goals yet.</div>`}</div>
     <p class="section-title">Recent check-ins</p>
     <div class="checkin-panel">
       ${checkIns.length ? checkIns.map(c => `
         <div class="checkin-row">
-          <p class="who">Check-in on ${new Date(c.CheckInDate).toLocaleDateString()}</p>
+          <p class="who">Check-in on ${fmtDate(c.CheckInDate)}</p>
           <p class="notes">${c.Notes || ""}</p>
-          <p class="date">Next: ${c.NextCheckInDate ? new Date(c.NextCheckInDate).toLocaleDateString() : "—"}</p>
+          <p class="date">Next: ${fmtDate(c.NextCheckInDate)}</p>
         </div>`).join("") : `<div class="empty-state">No check-ins logged yet.</div>`}
     </div>
   `;
 }
 
 /* ============================================================================
-   RENDERING — Team View
+   FEEDBACK TAB
    ============================================================================ */
-async function renderTeamView() {
+async function renderFeedback() {
+  const el = document.getElementById("view-feedback");
+  el.innerHTML = `<div class="loading">Loading feedback...</div>`;
+  const feedback = await getListItems(LISTS.feedback, `fields/ToEmployeeID eq '${me.EmployeeID}'`);
+  feedback.sort((a, b) => new Date(b.DateSubmitted || 0) - new Date(a.DateSubmitted || 0));
+
+  const rows = await Promise.all(feedback.map(async (f) => {
+    const fromEmp = await getListItems(LISTS.employees, `fields/EmployeeID eq '${f.FromEmployeeID}'`);
+    return { ...f, fromName: fromEmp[0] ? `${fromEmp[0].GivenName} ${fromEmp[0].FamilyName}` : f.FromEmployeeID };
+  }));
+
+  el.innerHTML = `
+    <p class="section-title" style="margin-top:8px">Feedback (${feedback.length})</p>
+    ${rows.length ? rows.map(f => `
+      <div class="feedback-row">
+        <div class="top">
+          <span class="from">${f.fromName}${(f.IsRead === false || f.IsRead === "false") ? `<span class="dot-unread"></span>` : ""}</span>
+          <span class="badge" style="background:var(--purple-l);color:var(--purple-d)">${f.RelationshipType || ""}</span>
+        </div>
+        <p class="msg">${f.Message || ""}</p>
+        <p class="date">${fmtDate(f.DateSubmitted)}</p>
+      </div>`).join("") : `<div class="empty-state">No feedback yet.</div>`}
+  `;
+}
+
+/* ============================================================================
+   TEAM TAB
+   ============================================================================ */
+async function renderTeam() {
   const el = document.getElementById("view-team");
   el.innerHTML = `<div class="loading">Loading your team...</div>`;
-
   const reports = await getDirectReports();
   const peers = await getPeers();
   const list = reports.length > 0 ? reports : peers;
@@ -384,35 +585,23 @@ async function renderTeamView() {
     el.innerHTML = `<div class="empty-state">No team members found in the org hierarchy.</div>`;
     return;
   }
-
   const rows = await Promise.all(list.map(async (person) => {
     const goals = await getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${person.EmployeeID}'`);
-    const avgProgress = goals.length
-      ? Math.round(goals.reduce((sum, g) => sum + (g.ProgressPercent || 0), 0) / goals.length)
-      : 0;
+    const avgProgress = goals.length ? Math.round(goals.reduce((s, g) => s + (g.ProgressPercent || 0), 0) / goals.length) : 0;
     const atRisk = goals.some(g => g.Status === "At Risk" || g.Status === "Behind");
     return { person, avgProgress, atRisk, goalCount: goals.length };
   }));
 
   el.innerHTML = `
-    <p class="section-title">Your ${label} (${list.length})</p>
+    <p class="section-title" style="margin-top:8px">Your ${label} (${list.length})</p>
     <table class="roster">
-      <thead><tr><th>Employee</th><th>Goal progress</th><th>Goals</th><th>Status</th></tr></thead>
+      <thead><tr><th>Employee</th><th>Progress</th><th>Status</th></tr></thead>
       <tbody>
         ${rows.map(r => `
           <tr>
-            <td>
-              <span class="avatar" style="background:var(--purple-l);color:var(--purple-d)">${initials(r.person)}</span>
-              ${r.person.GivenName} ${r.person.FamilyName}
-              <div style="font-size:11px;color:var(--text-muted);margin-left:38px">${r.person.PositionTitle || ""}</div>
-            </td>
+            <td><span class="avatar-sm" style="background:var(--purple-l);color:var(--purple-d)">${initials(r.person)}</span>${r.person.GivenName} ${r.person.FamilyName}</td>
             <td>${r.avgProgress}%</td>
-            <td>${r.goalCount}</td>
-            <td>
-              <span class="badge" style="background:${r.atRisk ? 'var(--red-l)' : 'var(--green-l)'};color:${r.atRisk ? 'var(--red-d)' : 'var(--green-d)'}">
-                ${r.atRisk ? 'At risk' : 'On track'}
-              </span>
-            </td>
+            <td><span class="badge" style="background:${r.atRisk ? 'var(--pink-l)' : 'var(--teal-l)'};color:${r.atRisk ? 'var(--pink-d)' : 'var(--teal-d)'}">${r.atRisk ? 'At risk' : 'On track'}</span></td>
           </tr>`).join("")}
       </tbody>
     </table>
@@ -420,11 +609,40 @@ async function renderTeamView() {
 }
 
 /* ============================================================================
+   ME TAB
+   ============================================================================ */
+function renderMe() {
+  const el = document.getElementById("view-me");
+  el.innerHTML = `
+    <div class="me-panel">
+      <div class="avatar-circle">${initials(me)}</div>
+      <p style="font-size:16px;font-weight:700;margin:0">${me.GivenName} ${me.FamilyName}</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${myPosition ? myPosition.PositionTitle : ""}</p>
+      <div class="me-menu">
+        <a href="#">Career Goals</a>
+        <a href="#">Development Plan</a>
+        <a href="#">Learning</a>
+        <a href="#">Achievements</a>
+        <a href="#">Documents</a>
+        <a href="#">Settings</a>
+        <a href="#">Help &amp; Support</a>
+      </div>
+      <button id="signout-btn">Sign out</button>
+    </div>
+  `;
+  document.getElementById("signout-btn").addEventListener("click", () => {
+    msalInstance.logoutRedirect();
+  });
+}
+
+/* ============================================================================
    APP SHELL
    ============================================================================ */
+const renderedTabs = new Set();
+
 async function showApp() {
   document.getElementById("signin-screen").style.display = "none";
-  document.getElementById("signout-btn").style.display = "inline-block";
+  document.getElementById("app-wrap").style.display = "block";
   document.getElementById("app-main").style.display = "block";
 
   try {
@@ -434,19 +652,25 @@ async function showApp() {
     return;
   }
 
-  await renderMyView();
+  await renderDashboard();
+  renderedTabs.add("dashboard");
 
-  document.getElementById("tab-my").addEventListener("click", () => switchTab("my"));
-  document.getElementById("tab-team").addEventListener("click", () => switchTab("team"));
+  ["dashboard", "goals", "feedback", "team", "me"].forEach(tab => {
+    document.getElementById(`tab-${tab}`).addEventListener("click", () => switchTab(tab));
+  });
 }
 
 async function switchTab(tab) {
-  document.getElementById("tab-my").classList.toggle("active", tab === "my");
-  document.getElementById("tab-team").classList.toggle("active", tab === "team");
-  document.getElementById("view-my").style.display = tab === "my" ? "block" : "none";
-  document.getElementById("view-team").style.display = tab === "team" ? "block" : "none";
-  if (tab === "team" && document.getElementById("view-team").innerHTML === "") {
-    await renderTeamView();
+  ["dashboard", "goals", "feedback", "team", "me"].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle("active", t === tab);
+    document.getElementById(`view-${t}`).style.display = t === tab ? "block" : "none";
+  });
+  if (!renderedTabs.has(tab)) {
+    renderedTabs.add(tab);
+    if (tab === "goals") await renderGoals();
+    if (tab === "feedback") await renderFeedback();
+    if (tab === "team") await renderTeam();
+    if (tab === "me") renderMe();
   }
 }
 
