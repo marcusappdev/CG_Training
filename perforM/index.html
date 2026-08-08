@@ -172,6 +172,30 @@
 
   .loading, .empty-state, .error-state { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
   .error-state { color: var(--pink-d); }
+
+  .row-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .btn-sm { font-size: 10.5px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); cursor: pointer; font-family: inherit; font-weight: 600; }
+  .btn-sm.primary { background: var(--blue); color: #fff; border: none; }
+  .goal-update-btn { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px; font-size: 10px; font-weight: 700; color: var(--blue); cursor: pointer; font-family: inherit; margin-top: 8px; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(20,20,30,0.45); display: none; align-items: flex-end; justify-content: center; z-index: 50; }
+  .modal-box { background: #fff; border-radius: 18px 18px 0 0; padding: 20px; width: 100%; max-width: 460px; max-height: 82vh; overflow-y: auto; }
+  .modal-box h3 { margin: 0 0 3px; font-size: 15px; }
+  .modal-box .modal-sub { margin: 0 0 14px; color: var(--text-muted); font-size: 12px; }
+  .modal-box label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 14px 0 5px; }
+  .modal-box textarea, .modal-box select, .modal-box input[type="date"] {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px;
+    font-size: 13px; font-family: inherit; box-sizing: border-box; color: var(--text-primary);
+  }
+  .modal-box textarea { min-height: 70px; resize: vertical; }
+  .modal-box input[type="range"] { width: 100%; accent-color: var(--blue); }
+  .range-value { font-size: 13px; font-weight: 700; color: var(--blue); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal-actions button { flex: 1; padding: 11px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; }
+  .modal-actions .btn-cancel { background: var(--gray-l); color: var(--text-primary); }
+  .modal-actions .btn-save { background: var(--blue); color: #fff; }
+  .modal-actions .btn-save:disabled { opacity: 0.6; cursor: default; }
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12.5px; z-index: 60; }
 </style>
 </head>
 <body>
@@ -206,6 +230,10 @@
     </nav>
   </div>
 
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box" id="modal-box"></div>
 </div>
 
 <script>
@@ -334,11 +362,31 @@ async function getListItems(displayName, filter) {
   return (data.value || []).map(item => ({ id: item.id, ...item.fields }));
 }
 
+async function createListItem(displayName, fields) {
+  const siteId = await getSiteId();
+  const listId = await getListId(displayName);
+  return graphFetch(`/sites/${siteId}/lists/${listId}/items`, {
+    method: "POST",
+    body: JSON.stringify({ fields })
+  });
+}
+
+async function updateListItemFields(displayName, itemId, fields) {
+  const siteId = await getSiteId();
+  const listId = await getListId(displayName);
+  return graphFetch(`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`, {
+    method: "PATCH",
+    body: JSON.stringify(fields)
+  });
+}
+
 /* ============================================================================
    ORG RESOLUTION
    ============================================================================ */
 let me = null;
 let myPosition = null;
+let goalsCache = {};
+let teamCache = {};
 
 async function resolveCurrentEmployee() {
   const email = currentAccount.username;
@@ -401,6 +449,28 @@ function ratingBadgeColor(rating) {
 }
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "—";
+}
+
+/* ============================================================================
+   MODAL + TOAST
+   ============================================================================ */
+function openModal(html) {
+  document.getElementById("modal-box").innerHTML = html;
+  document.getElementById("modal-overlay").style.display = "flex";
+}
+function closeModal() {
+  document.getElementById("modal-overlay").style.display = "none";
+  document.getElementById("modal-box").innerHTML = "";
+}
+document.getElementById("modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "modal-overlay") closeModal();
+});
+function showToast(message) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = message;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
 }
 
 /* ============================================================================
@@ -545,10 +615,11 @@ function goalCardHtml(goal) {
   return `
     <div class="goal-card">
       ${ringHtml(goal.ProgressPercent || 0, status.ring, 48, 32, 11)}
-      <div>
+      <div style="flex:1">
         <span class="badge" style="background:${status.bg};color:${status.fg}">${badgeLabel}</span>
         <p class="title">${goal.Title || ""}</p>
         <p class="due">Due ${fmtDate(goal.DueDate)}</p>
+        <button class="goal-update-btn" onclick="openGoalUpdateModal('${goal.id}')">Update progress</button>
       </div>
     </div>`;
 }
@@ -560,6 +631,7 @@ async function renderGoals() {
     getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${me.EmployeeID}'`),
     getListItems(LISTS.checkIns, `fields/EmployeeID eq '${me.EmployeeID}'`)
   ]);
+  goals.forEach(g => { goalsCache[g.id] = g; });
   el.innerHTML = `
     <p class="section-title" style="margin-top:8px">Your goals</p>
     <div class="goal-grid">${goals.length ? goals.map(goalCardHtml).join("") : `<div class="empty-state">No goals yet.</div>`}</div>
@@ -575,6 +647,57 @@ async function renderGoals() {
   `;
 }
 
+function openGoalUpdateModal(goalId) {
+  const goal = goalsCache[goalId];
+  if (!goal) return;
+  const pct = goal.ProgressPercent || 0;
+  const statuses = ["On Track", "At Risk", "Behind", "Complete"];
+  openModal(`
+    <h3>Update progress</h3>
+    <p class="modal-sub">${goal.Title}</p>
+    <label>Progress <span class="range-value" id="prog-val">${pct}%</span></label>
+    <input type="range" id="prog-input" min="0" max="100" step="5" value="${pct}"
+      oninput="document.getElementById('prog-val').textContent = this.value + '%'">
+    <label>Status</label>
+    <select id="status-input">
+      ${statuses.map(s => `<option value="${s}" ${goal.Status === s ? "selected" : ""}>${s}</option>`).join("")}
+    </select>
+    <label>What changed? (optional)</label>
+    <textarea id="comment-input" placeholder="Add a short update..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="goal-save-btn" onclick="submitGoalUpdate('${goalId}')">Save</button>
+    </div>
+  `);
+}
+
+async function submitGoalUpdate(goalId) {
+  const btn = document.getElementById("goal-save-btn");
+  const progress = parseInt(document.getElementById("prog-input").value, 10);
+  const status = document.getElementById("status-input").value;
+  const comment = document.getElementById("comment-input").value;
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  try {
+    await updateListItemFields(LISTS.goals, goalId, { ProgressPercent: progress, Status: status });
+    await createListItem(LISTS.goalUpdates, {
+      Title: "Update",
+      GoalID: goalId,
+      UpdateDate: new Date().toISOString(),
+      ProgressPercent: progress,
+      Comment: comment,
+      UpdatedByEmployeeID: me.EmployeeID
+    });
+    closeModal();
+    showToast("Goal updated");
+    renderedTabs.delete("dashboard");
+    await renderGoals();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Save";
+    showToast("Couldn't save — try again");
+  }
+}
 /* ============================================================================
    FEEDBACK TAB
    ============================================================================ */
@@ -625,6 +748,7 @@ async function renderTeam() {
       getListItems(LISTS.reviews, `fields/EmployeeID eq '${person.EmployeeID}'`)
     ]);
     const latestReview = reviews.sort((a, b) => new Date(b.DueDate || 0) - new Date(a.DueDate || 0))[0];
+    teamCache[person.EmployeeID] = person;
     return { person, goals, rating: latestReview ? latestReview.OverallRating : null };
   }));
 
@@ -688,11 +812,15 @@ async function renderTeam() {
       ${enriched.map(e => {
         const rc = ratingBadgeColor(e.rating);
         return `
-        <div class="peer-row">
+        <div class="peer-row" style="align-items:flex-start;flex-wrap:wrap">
           <span class="avatar-sm" style="width:34px;height:34px;font-size:11px;background:var(--purple-l);color:var(--purple-d)">${initials(e.person)}</span>
           <div class="info">
             <p class="pname">${e.person.GivenName} ${e.person.FamilyName}</p>
             <p class="prole">${e.person.PositionTitle || ""}</p>
+            <div class="row-actions">
+              <button class="btn-sm" onclick="openCheckinModal('${e.person.EmployeeID}')">Log check-in</button>
+              <button class="btn-sm" onclick="openFeedbackModal('${e.person.EmployeeID}')">Give feedback</button>
+            </div>
           </div>
           <span class="rating-badge" style="background:${rc.bg};color:${rc.fg}">${e.rating != null ? e.rating.toFixed(1) : "—"}</span>
         </div>`;
@@ -708,6 +836,103 @@ async function renderTeam() {
         </div>`).join("") : `<div class="empty-state" style="padding:10px 0">No company-wide focus goals set.</div>`}
     </div>
   `;
+}
+
+function openCheckinModal(employeeId) {
+  const person = teamCache[employeeId];
+  if (!person) return;
+  openModal(`
+    <h3>Log a check-in</h3>
+    <p class="modal-sub">${person.GivenName} ${person.FamilyName}</p>
+    <label>What did you discuss?</label>
+    <textarea id="ci-notes" placeholder="Notes from the conversation..."></textarea>
+    <label>Next check-in date (optional)</label>
+    <input type="date" id="ci-next">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="ci-save-btn" onclick="submitCheckin('${employeeId}')">Save</button>
+    </div>
+  `);
+}
+
+async function submitCheckin(employeeId) {
+  const btn = document.getElementById("ci-save-btn");
+  const notes = document.getElementById("ci-notes").value;
+  const nextDate = document.getElementById("ci-next").value;
+  if (!notes.trim()) { showToast("Add a note before saving"); return; }
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  try {
+    await createListItem(LISTS.checkIns, {
+      Title: "Check-in",
+      EmployeeID: employeeId,
+      ManagerID: me.EmployeeID,
+      CheckInDate: new Date().toISOString(),
+      Notes: notes,
+      NextCheckInDate: nextDate ? new Date(nextDate).toISOString() : null,
+      CheckInStatus: "Completed"
+    });
+    closeModal();
+    showToast("Check-in logged");
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Save";
+    showToast("Couldn't save — try again");
+  }
+}
+
+function openFeedbackModal(employeeId) {
+  const person = teamCache[employeeId];
+  if (!person) return;
+  openModal(`
+    <h3>Give feedback</h3>
+    <p class="modal-sub">${person.GivenName} ${person.FamilyName}</p>
+    <label>Relationship</label>
+    <select id="fb-rel">
+      <option value="Manager">Manager</option>
+      <option value="Peer">Peer</option>
+      <option value="Direct report">Direct report</option>
+    </select>
+    <label>Message</label>
+    <textarea id="fb-msg" placeholder="Share something specific..."></textarea>
+    <label>Rating (optional)</label>
+    <select id="fb-rating">
+      <option value="">No rating</option>
+      ${[5, 4, 3, 2, 1].map(n => `<option value="${n}">${n}</option>`).join("")}
+    </select>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="fb-save-btn" onclick="submitFeedback('${employeeId}')">Send</button>
+    </div>
+  `);
+}
+
+async function submitFeedback(employeeId) {
+  const btn = document.getElementById("fb-save-btn");
+  const rel = document.getElementById("fb-rel").value;
+  const msg = document.getElementById("fb-msg").value;
+  const ratingVal = document.getElementById("fb-rating").value;
+  if (!msg.trim()) { showToast("Add a message before sending"); return; }
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  try {
+    await createListItem(LISTS.feedback, {
+      Title: "Feedback",
+      FromEmployeeID: me.EmployeeID,
+      ToEmployeeID: employeeId,
+      RelationshipType: rel,
+      Message: msg,
+      Rating: ratingVal ? parseInt(ratingVal, 10) : null,
+      IsRead: false,
+      DateSubmitted: new Date().toISOString()
+    });
+    closeModal();
+    showToast("Feedback sent");
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Send";
+    showToast("Couldn't send — try again");
+  }
 }
 
 /* ============================================================================
