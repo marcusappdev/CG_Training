@@ -196,6 +196,27 @@
   .modal-actions .btn-save { background: var(--blue); color: #fff; }
   .modal-actions .btn-save:disabled { opacity: 0.6; cursor: default; }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12.5px; z-index: 60; }
+
+  .review-close { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin: 4px 0 14px; padding: 0; font-family: inherit; }
+  .review-step-label { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; font-weight: 600; }
+  .review-progress-track { height: 6px; background: var(--gray-l); border-radius: 4px; margin-bottom: 20px; overflow: hidden; }
+  .review-progress-fill { height: 100%; background: var(--blue); border-radius: 4px; transition: width 0.25s ease; }
+  .review-step-title { font-size: 16px; font-weight: 800; margin: 0 0 3px; }
+  .review-step-sub { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; }
+  .criterion-row { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+  .criterion-row:last-of-type { border-bottom: none; }
+  .criterion-label { font-size: 13.5px; font-weight: 600; flex: 1; }
+  .star-rating { display: flex; gap: 3px; flex-shrink: 0; }
+  .star { font-size: 21px; line-height: 1; cursor: pointer; color: #DEDCE8; user-select: none; transition: color 0.1s; }
+  .star.filled { color: var(--gold); }
+  .review-info-box { background: var(--purple-l); color: var(--purple-d); border-radius: 10px; padding: 12px 14px; font-size: 11.5px; margin: 18px 0 4px; display: flex; gap: 9px; align-items: flex-start; line-height: 1.4; }
+  .review-info-box b { display: block; margin-bottom: 2px; }
+  .review-nav { display: flex; gap: 10px; margin-top: 22px; }
+  .review-nav button { flex: 1; padding: 12px; border-radius: 10px; font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; }
+  .review-nav .btn-back { background: var(--gray-l); color: var(--text-primary); }
+  .review-nav .btn-back:disabled { opacity: 0.4; cursor: default; }
+  .review-nav .btn-next { background: var(--blue); color: #fff; }
+  .review-nav .btn-next:disabled { opacity: 0.6; cursor: default; }
 </style>
 </head>
 <body>
@@ -219,6 +240,7 @@
       <section id="view-feedback" style="display:none"></section>
       <section id="view-team" style="display:none"></section>
       <section id="view-me" style="display:none"></section>
+      <section id="view-review" style="display:none"></section>
     </main>
 
     <nav class="tab-bar">
@@ -256,6 +278,9 @@ const LISTS = {
   goalUpdates: "PMS_GoalUpdates",
   checkIns: "PMS_CheckIns",
   reviews: "PMS_Reviews",
+  reviewCycles: "PMS_ReviewCycles",
+  reviewCriteria: "PMS_ReviewCriteria",
+  reviewResponses: "PMS_ReviewResponses",
   feedback: "PMS_Feedback",
   developmentPlan: "PMS_DevelopmentPlan"
 };
@@ -567,7 +592,7 @@ async function renderDashboard() {
           <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${activeReview.ReviewStatus}</span>
           <p class="due-line">Due on ${fmtDate(activeReview.DueDate)}</p>
           <div class="progress-track"><div class="progress-fill" style="width:${activeReview.CompletionPercent || 0}%"></div></div>
-          <a class="continue-btn" href="#">Continue Review</a>
+          <button type="button" class="continue-btn" onclick="openReviewWizard('${activeReview.CycleID}')">Continue Review</button>
         ` : `<div class="empty-state" style="padding:10px 0">No active review.</div>`}
       </div>
 
@@ -960,6 +985,158 @@ function renderMe() {
   document.getElementById("signout-btn").addEventListener("click", () => {
     msalInstance.logoutRedirect();
   });
+}
+
+/* ============================================================================
+   SELF-REVIEW WIZARD
+   ============================================================================ */
+let reviewState = null;
+
+async function openReviewWizard(cycleId) {
+  const reviewRows = await getListItems(LISTS.reviews, `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${me.EmployeeID}'`);
+  const reviewItem = reviewRows[0] || null;
+
+  const criteria = await getListItems(LISTS.reviewCriteria);
+  const byStep = {};
+  criteria.forEach(c => { (byStep[c.StepNumber] = byStep[c.StepNumber] || []).push(c); });
+  Object.values(byStep).forEach(arr => arr.sort((a, b) => (a.DisplayOrder || 0) - (b.DisplayOrder || 0)));
+  const stepNumbers = Object.keys(byStep).map(Number).sort((a, b) => a - b);
+
+  const existingResponses = await getListItems(
+    LISTS.reviewResponses,
+    `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${me.EmployeeID}' and fields/RaterType eq 'Self'`
+  );
+  const answers = {};
+  const responseIds = {};
+  existingResponses.forEach(r => { answers[r.CriteriaID] = r.Rating; responseIds[r.CriteriaID] = r.id; });
+
+  const startStepNum = reviewItem ? (reviewItem.CurrentStep || 1) : 1;
+  let stepIndex = stepNumbers.indexOf(startStepNum);
+  if (stepIndex === -1) stepIndex = 0;
+
+  reviewState = { cycleId, reviewItemId: reviewItem ? reviewItem.id : null, byStep, stepNumbers, stepIndex, answers, responseIds };
+
+  document.querySelector("nav.tab-bar").style.display = "none";
+  ["dashboard", "goals", "feedback", "team", "me"].forEach(t => { document.getElementById(`view-${t}`).style.display = "none"; });
+  document.getElementById("view-review").style.display = "block";
+  renderReviewStep();
+}
+
+function renderReviewStep() {
+  const stepNum = reviewState.stepNumbers[reviewState.stepIndex];
+  const items = reviewState.byStep[stepNum];
+  const stepName = items[0].StepName;
+  const totalSteps = reviewState.stepNumbers.length;
+  const isLastStep = reviewState.stepIndex === totalSteps - 1;
+
+  const el = document.getElementById("view-review");
+  el.innerHTML = `
+    <button class="review-close" onclick="closeReviewWizard()">&larr; Close</button>
+    <p class="review-step-label">Step ${reviewState.stepIndex + 1} of ${totalSteps}</p>
+    <div class="review-progress-track"><div class="review-progress-fill" style="width:${((reviewState.stepIndex + 1) / totalSteps) * 100}%"></div></div>
+    <p class="review-step-title">${stepName}</p>
+    <p class="review-step-sub">Rate your performance in the areas below</p>
+    ${items.map(c => `
+      <div class="criterion-row">
+        <span class="criterion-label">${c.Title}</span>
+        <span class="star-rating">
+          ${[1, 2, 3, 4, 5].map(n => `<span class="star ${((reviewState.answers[c.id] || 0) >= n) ? "filled" : ""}" onclick="setStarRating('${c.id}', ${n})">&#9733;</span>`).join("")}
+        </span>
+      </div>`).join("")}
+    <div class="review-info-box">
+      <span>&#9432;</span>
+      <span><b>Your input matters</b>Your self review helps you and your manager align on your achievements and growth areas.</span>
+    </div>
+    <div class="review-nav">
+      <button class="btn-back" ${reviewState.stepIndex === 0 ? "disabled" : ""} onclick="reviewGoBack()">Back</button>
+      <button class="btn-next" id="review-next-btn" onclick="reviewGoNext()">${isLastStep ? "Submit" : "Next"}</button>
+    </div>
+  `;
+}
+
+function setStarRating(criteriaId, value) {
+  reviewState.answers[criteriaId] = value;
+  renderReviewStep();
+}
+
+function reviewGoBack() {
+  if (reviewState.stepIndex > 0) {
+    reviewState.stepIndex--;
+    renderReviewStep();
+  }
+}
+
+async function reviewGoNext() {
+  const stepNum = reviewState.stepNumbers[reviewState.stepIndex];
+  const items = reviewState.byStep[stepNum];
+  const missing = items.some(c => !reviewState.answers[c.id]);
+  if (missing) { showToast("Please rate every item before continuing"); return; }
+
+  const btn = document.getElementById("review-next-btn");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  try {
+    for (const c of items) {
+      const rating = reviewState.answers[c.id];
+      if (reviewState.responseIds[c.id]) {
+        await updateListItemFields(LISTS.reviewResponses, reviewState.responseIds[c.id], {
+          Rating: rating, SubmittedDate: new Date().toISOString()
+        });
+      } else {
+        const created = await createListItem(LISTS.reviewResponses, {
+          Title: "Response", CycleID: reviewState.cycleId, EmployeeID: me.EmployeeID,
+          CriteriaID: c.id, RaterType: "Self", RaterEmployeeID: me.EmployeeID,
+          Rating: rating, SubmittedDate: new Date().toISOString()
+        });
+        reviewState.responseIds[c.id] = created.id;
+      }
+    }
+
+    const totalSteps = reviewState.stepNumbers.length;
+    const isLastStep = reviewState.stepIndex === totalSteps - 1;
+
+    if (isLastStep) {
+      const allRatings = Object.values(reviewState.answers);
+      const overall = allRatings.length ? allRatings.reduce((s, r) => s + r, 0) / allRatings.length : null;
+      if (reviewState.reviewItemId) {
+        await updateListItemFields(LISTS.reviews, reviewState.reviewItemId, {
+          CurrentStep: totalSteps,
+          ReviewStatus: "Completed",
+          CompletionPercent: 100,
+          OverallRating: overall != null ? Math.round(overall * 10) / 10 : null
+        });
+      }
+      closeReviewWizard();
+      showToast("Self review submitted");
+      renderedTabs.delete("dashboard");
+      await renderDashboard();
+    } else {
+      const nextStepNum = reviewState.stepNumbers[reviewState.stepIndex + 1];
+      if (reviewState.reviewItemId) {
+        await updateListItemFields(LISTS.reviews, reviewState.reviewItemId, {
+          CurrentStep: nextStepNum,
+          CompletionPercent: Math.round(((reviewState.stepIndex + 1) / totalSteps) * 100)
+        });
+      }
+      reviewState.stepIndex++;
+      renderReviewStep();
+    }
+  } catch (e) {
+    showToast("Couldn't save — try again");
+    const stillThere = document.getElementById("review-next-btn");
+    if (stillThere) {
+      stillThere.disabled = false;
+      stillThere.textContent = reviewState.stepIndex === reviewState.stepNumbers.length - 1 ? "Submit" : "Next";
+    }
+  }
+}
+
+function closeReviewWizard() {
+  document.getElementById("view-review").style.display = "none";
+  document.querySelector("nav.tab-bar").style.display = "";
+  reviewState = null;
+  switchTab("dashboard");
 }
 
 /* ============================================================================
