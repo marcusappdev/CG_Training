@@ -714,7 +714,7 @@ async function renderGoals() {
   goals.forEach(g => { goalsCache[g.id] = g; });
   el.innerHTML = `
     <p class="section-title" style="margin-top:8px">Your goals</p>
-    <div class="goal-grid">${goals.length ? goals.map(goalCardHtml).join("") : `<div class="empty-state">No goals yet.</div>`}</div>
+    <div class="goal-grid">${goals.length ? goals.map(g => goalCardHtml(g)).join("") : `<div class="empty-state">No goals yet.</div>`}</div>
     <p class="section-title">Recent check-ins</p>
     <div class="checkin-panel">
       ${checkIns.length ? checkIns.map(c => `
