@@ -268,7 +268,7 @@ const CONFIG = {
   redirectUri: window.location.origin + window.location.pathname,
   siteHostname: "conceptcompg.sharepoint.com",
   sitePath: "/sites/perforM",
-  scopes: ["Sites.ReadWrite.All", "User.Read"]
+  scopes: ["Sites.ReadWrite.All", "User.Read", "User.ReadBasic.All"]
 };
 
 const LISTS = {
@@ -497,6 +497,34 @@ function applyPhotoTo(elementId) {
     const el = document.getElementById(elementId);
     if (url && el) {
       el.innerHTML = `<img src="${url}" alt="${me.GivenName} ${me.FamilyName}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    }
+  });
+}
+
+const userPhotoCache = new Map();
+async function getPhotoUrlForUser(identifier) {
+  if (!identifier) return null;
+  if (userPhotoCache.has(identifier)) return userPhotoCache.get(identifier);
+  let url = null;
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(identifier)}/photo/$value`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const blob = await res.blob();
+      url = URL.createObjectURL(blob);
+    }
+  } catch (e) { /* no photo or no access — fall back to initials */ }
+  userPhotoCache.set(identifier, url);
+  return url;
+}
+function applyUserPhotoTo(elementId, identifier) {
+  if (!identifier) return;
+  getPhotoUrlForUser(identifier).then(url => {
+    const el = document.getElementById(elementId);
+    if (url && el) {
+      el.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     }
   });
 }
@@ -864,7 +892,7 @@ async function renderTeam() {
         const rc = ratingBadgeColor(e.rating);
         return `
         <div class="peer-row" style="align-items:flex-start;flex-wrap:wrap">
-          <span class="avatar-sm" style="width:34px;height:34px;font-size:11px;background:var(--purple-l);color:var(--purple-d)">${initials(e.person)}</span>
+          <span class="avatar-sm" id="team-avatar-${e.person.EmployeeID}" style="width:34px;height:34px;font-size:11px;background:var(--purple-l);color:var(--purple-d)">${initials(e.person)}</span>
           <div class="info">
             <p class="pname">${e.person.GivenName} ${e.person.FamilyName}</p>
             <p class="prole">${e.person.PositionTitle || ""}</p>
@@ -887,6 +915,10 @@ async function renderTeam() {
         </div>`).join("") : `<div class="empty-state" style="padding:10px 0">No company-wide focus goals set.</div>`}
     </div>
   `;
+
+  enriched.forEach(e => {
+    applyUserPhotoTo(`team-avatar-${e.person.EmployeeID}`, e.person.EmailAddress);
+  });
 }
 
 function openCheckinModal(employeeId) {
