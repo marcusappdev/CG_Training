@@ -476,6 +476,31 @@ function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "—";
 }
 
+let profilePhotoUrl; // undefined = not checked yet, null = checked and none exists, string = usable blob URL
+async function getMyPhotoUrl() {
+  if (profilePhotoUrl !== undefined) return profilePhotoUrl;
+  try {
+    const token = await getAccessToken();
+    const res = await fetch("https://graph.microsoft.com/v1.0/me/photo/$value", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!res.ok) { profilePhotoUrl = null; return null; }
+    const blob = await res.blob();
+    profilePhotoUrl = URL.createObjectURL(blob);
+  } catch (e) {
+    profilePhotoUrl = null;
+  }
+  return profilePhotoUrl;
+}
+function applyPhotoTo(elementId) {
+  getMyPhotoUrl().then(url => {
+    const el = document.getElementById(elementId);
+    if (url && el) {
+      el.innerHTML = `<img src="${url}" alt="${me.GivenName} ${me.FamilyName}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    }
+  });
+}
+
 /* ============================================================================
    MODAL + TOAST
    ============================================================================ */
@@ -532,7 +557,7 @@ async function renderDashboard() {
 
   el.innerHTML = `
     <div class="greeting-row">
-      <div class="avatar-circle">${initials(me)}</div>
+      <div class="avatar-circle" id="dashboard-avatar">${initials(me)}</div>
       <div>
         <p class="welcome">Good day</p>
         <p class="name">${me.GivenName} ${me.FamilyName}</p>
@@ -629,6 +654,7 @@ async function renderDashboard() {
   el.querySelectorAll("[data-nav]").forEach(elm => {
     elm.addEventListener("click", (e) => { e.preventDefault(); switchTab(elm.getAttribute("data-nav")); });
   });
+  applyPhotoTo("dashboard-avatar");
 }
 
 /* ============================================================================
@@ -967,7 +993,7 @@ function renderMe() {
   const el = document.getElementById("view-me");
   el.innerHTML = `
     <div class="me-panel">
-      <div class="avatar-circle">${initials(me)}</div>
+      <div class="avatar-circle" id="me-avatar">${initials(me)}</div>
       <p style="font-size:16px;font-weight:700;margin:0">${me.GivenName} ${me.FamilyName}</p>
       <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${myPosition ? myPosition.PositionTitle : ""}</p>
       <div class="me-menu">
@@ -985,6 +1011,7 @@ function renderMe() {
   document.getElementById("signout-btn").addEventListener("click", () => {
     msalInstance.logoutRedirect();
   });
+  applyPhotoTo("me-avatar");
 }
 
 /* ============================================================================
