@@ -592,7 +592,7 @@ async function renderDashboard() {
           <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${activeReview.ReviewStatus}</span>
           <p class="due-line">Due on ${fmtDate(activeReview.DueDate)}</p>
           <div class="progress-track"><div class="progress-fill" style="width:${activeReview.CompletionPercent || 0}%"></div></div>
-          <button type="button" class="continue-btn" onclick="openReviewWizard('${activeReview.CycleID}')">${(activeReview.ReviewStatus === "Not Started" || !activeReview.CompletionPercent) ? "Start Review" : "Continue Review"}</button>
+          <button type="button" class="continue-btn" onclick="openReviewWizard('${activeReview.CycleID}')">${activeReview.ReviewStatus === "Completed" ? "View Summary" : ((activeReview.ReviewStatus === "Not Started" || !activeReview.CompletionPercent) ? "Start Review" : "Continue Review")}</button>
         ` : `<div class="empty-state" style="padding:10px 0">No active review.</div>`}
       </div>
 
@@ -1014,7 +1014,10 @@ async function openReviewWizard(cycleId) {
   let stepIndex = stepNumbers.indexOf(startStepNum);
   if (stepIndex === -1) stepIndex = 0;
 
-  reviewState = { cycleId, reviewItemId: reviewItem ? reviewItem.id : null, byStep, stepNumbers, stepIndex, answers, responseIds };
+  reviewState = {
+    cycleId, reviewItemId: reviewItem ? reviewItem.id : null, byStep, stepNumbers, stepIndex, answers, responseIds,
+    readOnly: reviewItem ? reviewItem.ReviewStatus === "Completed" : false
+  };
 
   document.querySelector("nav.tab-bar").style.display = "none";
   ["dashboard", "goals", "feedback", "team", "me"].forEach(t => { document.getElementById(`view-${t}`).style.display = "none"; });
@@ -1032,24 +1035,25 @@ function renderReviewStep() {
   const el = document.getElementById("view-review");
   el.innerHTML = `
     <button class="review-close" onclick="closeReviewWizard()">&larr; Close</button>
-    <p class="review-step-label">Step ${reviewState.stepIndex + 1} of ${totalSteps}</p>
+    <p class="review-step-label">Step ${reviewState.stepIndex + 1} of ${totalSteps}${reviewState.readOnly ? " · Submitted" : ""}</p>
     <div class="review-progress-track"><div class="review-progress-fill" style="width:${((reviewState.stepIndex + 1) / totalSteps) * 100}%"></div></div>
     <p class="review-step-title">${stepName}</p>
-    <p class="review-step-sub">Rate your performance in the areas below</p>
+    <p class="review-step-sub">${reviewState.readOnly ? "Your submitted ratings for this section" : "Rate your performance in the areas below"}</p>
     ${items.map(c => `
       <div class="criterion-row">
         <span class="criterion-label">${c.Title}</span>
         <span class="star-rating">
-          ${[1, 2, 3, 4, 5].map(n => `<span class="star ${((reviewState.answers[c.id] || 0) >= n) ? "filled" : ""}" onclick="setStarRating('${c.id}', ${n})">&#9733;</span>`).join("")}
+          ${[1, 2, 3, 4, 5].map(n => `<span class="star ${((reviewState.answers[c.id] || 0) >= n) ? "filled" : ""}" ${reviewState.readOnly ? "" : `onclick="setStarRating('${c.id}', ${n})"`} style="${reviewState.readOnly ? "cursor:default" : ""}">&#9733;</span>`).join("")}
         </span>
       </div>`).join("")}
+    ${reviewState.readOnly ? "" : `
     <div class="review-info-box">
       <span>&#9432;</span>
       <span><b>Your input matters</b>Your self review helps you and your manager align on your achievements and growth areas.</span>
-    </div>
+    </div>`}
     <div class="review-nav">
       <button class="btn-back" ${reviewState.stepIndex === 0 ? "disabled" : ""} onclick="reviewGoBack()">Back</button>
-      <button class="btn-next" id="review-next-btn" onclick="reviewGoNext()">${isLastStep ? "Submit" : "Next"}</button>
+      <button class="btn-next" id="review-next-btn" onclick="reviewGoNext()">${reviewState.readOnly ? (isLastStep ? "Close" : "Next") : (isLastStep ? "Submit" : "Next")}</button>
     </div>
   `;
 }
@@ -1067,6 +1071,19 @@ function reviewGoBack() {
 }
 
 async function reviewGoNext() {
+  const totalSteps = reviewState.stepNumbers.length;
+  const isLastStep = reviewState.stepIndex === totalSteps - 1;
+
+  if (reviewState.readOnly) {
+    if (isLastStep) {
+      closeReviewWizard();
+    } else {
+      reviewState.stepIndex++;
+      renderReviewStep();
+    }
+    return;
+  }
+
   const stepNum = reviewState.stepNumbers[reviewState.stepIndex];
   const items = reviewState.byStep[stepNum];
   const missing = items.some(c => !reviewState.answers[c.id]);
@@ -1092,9 +1109,6 @@ async function reviewGoNext() {
         reviewState.responseIds[c.id] = created.id;
       }
     }
-
-    const totalSteps = reviewState.stepNumbers.length;
-    const isLastStep = reviewState.stepIndex === totalSteps - 1;
 
     if (isLastStep) {
       const allRatings = Object.values(reviewState.answers);
