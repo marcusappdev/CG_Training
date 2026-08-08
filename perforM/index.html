@@ -422,6 +422,7 @@ let me = null;
 let myPosition = null;
 let goalsCache = {};
 let teamCache = {};
+let personDetailContext = null;
 
 async function resolveCurrentEmployee() {
   const email = currentAccount.username;
@@ -888,7 +889,7 @@ async function submitNewGoal(employeeId) {
     showToast(isAssigning ? "Goal assigned" : "Goal added");
     renderedTabs.delete("dashboard");
     if (isAssigning) {
-      await openPersonDetail(employeeId);
+      await openPersonDetail(employeeId, personDetailContext ? personDetailContext.isDirectReport : false);
     } else {
       await renderGoals();
     }
@@ -1012,7 +1013,7 @@ async function renderTeam() {
       ${enriched.map(e => {
         const rc = ratingBadgeColor(e.rating);
         return `
-        <div class="peer-row" style="align-items:flex-start;flex-wrap:wrap;cursor:pointer" onclick="openPersonDetail('${e.person.EmployeeID}')">
+        <div class="peer-row" style="align-items:flex-start;flex-wrap:wrap;cursor:pointer" onclick="openPersonDetail('${e.person.EmployeeID}', ${reports.length > 0})">
           <span class="avatar-sm" id="team-avatar-${e.person.EmployeeID}" style="width:34px;height:34px;font-size:11px;background:var(--purple-l);color:var(--purple-d)">${initials(e.person)}</span>
           <div class="info">
             <p class="pname">${e.person.GivenName} ${e.person.FamilyName}</p>
@@ -1043,9 +1044,10 @@ async function renderTeam() {
   });
 }
 
-async function openPersonDetail(employeeId) {
+async function openPersonDetail(employeeId, isDirectReport) {
   const person = teamCache[employeeId];
   if (!person) return;
+  personDetailContext = { employeeId, isDirectReport };
 
   document.querySelector("nav.tab-bar").style.display = "none";
   ["dashboard", "goals", "feedback", "team", "me"].forEach(t => { document.getElementById(`view-${t}`).style.display = "none"; });
@@ -1087,6 +1089,11 @@ async function openPersonDetail(employeeId) {
         <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${latestReview.ReviewStatus}</span>
       </div>
     ` : `<div class="empty-state">No review on file.</div>`}
+
+    ${isDirectReport ? `
+      <p class="section-title">Manager review</p>
+      ${managerReviewPanelHtml(latestReview, employeeId)}
+    ` : ""}
 
     <p class="section-title">Goals (${goals.length})</p>
     <div class="goal-grid">${goals.length ? goals.map(g => goalCardHtml(g, true)).join("") : `<div class="empty-state">No goals yet.</div>`}</div>
@@ -1401,6 +1408,209 @@ function closeReviewWizard() {
   document.querySelector("nav.tab-bar").style.display = "";
   reviewState = null;
   switchTab("dashboard");
+}
+
+/* ============================================================================
+   MANAGER REVIEW WIZARD
+   ============================================================================ */
+function managerReviewPanelHtml(review, employeeId) {
+  if (!review) return `<div class="empty-state">No review cycle assigned yet.</div>`;
+  if (review.ReviewStatus !== "Completed") {
+    return `<div class="panel"><p style="font-size:12px;color:var(--text-muted);margin:0">Waiting for their self review to be completed before you can add your assessment.</p></div>`;
+  }
+  const mgrStatus = review.ManagerReviewStatus || "Not Started";
+  const label = mgrStatus === "Completed" ? "View Summary" : (mgrStatus === "In Progress" ? "Continue Manager Review" : "Start Manager Review");
+  return `
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <p style="font-size:20px;font-weight:800;margin:0">${review.ManagerOverallRating != null ? review.ManagerOverallRating.toFixed(1) : "—"} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">/5</span></p>
+          <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${ratingWord(review.ManagerOverallRating)}</p>
+        </div>
+        <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${mgrStatus}</span>
+      </div>
+      <button type="button" class="continue-btn" onclick="openManagerReviewWizard('${review.CycleID}', '${employeeId}')">${label}</button>
+    </div>
+  `;
+}
+
+let mrState = null;
+
+async function openManagerReviewWizard(cycleId, employeeId) {
+  const reviewRows = await getListItems(LISTS.reviews, `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${employeeId}'`);
+  const reviewItem = reviewRows[0] || null;
+
+  const criteria = await getListItems(LISTS.reviewCriteria, `fields/RaterType ne 'Self'`);
+  const byStep = {};
+  criteria.forEach(c => { (byStep[c.StepNumber] = byStep[c.StepNumber] || []).push(c); });
+  Object.values(byStep).forEach(arr => arr.sort((a, b) => (a.DisplayOrder || 0) - (b.DisplayOrder || 0)));
+  const stepNumbers = Object.keys(byStep).map(Number).sort((a, b) => a - b);
+
+  const selfResponses = await getListItems(
+    LISTS.reviewResponses,
+    `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${employeeId}' and fields/RaterType eq 'Self'`
+  );
+  const selfAnswers = {};
+  selfResponses.forEach(r => { selfAnswers[r.CriteriaID] = r.Rating; });
+
+  const mgrResponses = await getListItems(
+    LISTS.reviewResponses,
+    `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${employeeId}' and fields/RaterType eq 'Manager' and fields/RaterEmployeeID eq '${me.EmployeeID}'`
+  );
+  const managerAnswers = {};
+  const responseIds = {};
+  mgrResponses.forEach(r => { managerAnswers[r.CriteriaID] = r.Rating; responseIds[r.CriteriaID] = r.id; });
+
+  const isCompleted = reviewItem ? reviewItem.ManagerReviewStatus === "Completed" : false;
+  const startStepNum = isCompleted ? stepNumbers[0] : (reviewItem && reviewItem.ManagerCurrentStep ? reviewItem.ManagerCurrentStep : stepNumbers[0]);
+  let stepIndex = stepNumbers.indexOf(startStepNum);
+  if (stepIndex === -1) stepIndex = 0;
+
+  mrState = {
+    cycleId, employeeId, reviewItemId: reviewItem ? reviewItem.id : null,
+    byStep, stepNumbers, stepIndex, selfAnswers, managerAnswers, responseIds, readOnly: isCompleted
+  };
+
+  document.querySelector("nav.tab-bar").style.display = "none";
+  document.getElementById("view-person-detail").style.display = "none";
+  document.getElementById("view-review").style.display = "block";
+  renderManagerReviewStep();
+}
+
+function renderManagerReviewStep() {
+  const stepNum = mrState.stepNumbers[mrState.stepIndex];
+  const items = mrState.byStep[stepNum];
+  const stepName = items[0].StepName;
+  const totalSteps = mrState.stepNumbers.length;
+  const isLastStep = mrState.stepIndex === totalSteps - 1;
+
+  const el = document.getElementById("view-review");
+  el.innerHTML = `
+    <button class="review-close" onclick="closeManagerReviewWizard()">&larr; Close</button>
+    <p class="review-step-label">Step ${mrState.stepIndex + 1} of ${totalSteps}${mrState.readOnly ? " · Submitted" : ""}</p>
+    <div class="review-progress-track"><div class="review-progress-fill" style="width:${((mrState.stepIndex + 1) / totalSteps) * 100}%"></div></div>
+    <p class="review-step-title">${stepName}</p>
+    <p class="review-step-sub">${mrState.readOnly ? "Your submitted manager ratings" : "Rate this section as their manager"}</p>
+    ${items.map(c => {
+      const selfVal = mrState.selfAnswers[c.id];
+      const mgrVal = mrState.managerAnswers[c.id] || 0;
+      return `
+      <div class="criterion-row" style="flex-direction:column;align-items:stretch">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="criterion-label">${c.Title}</span>
+          <span class="star-rating">
+            ${[1, 2, 3, 4, 5].map(n => `<span class="star ${(mgrVal >= n) ? "filled" : ""}" ${mrState.readOnly ? "" : `onclick="setManagerStarRating('${c.id}', ${n})"`} style="${mrState.readOnly ? "cursor:default" : ""}">&#9733;</span>`).join("")}
+          </span>
+        </div>
+        ${c.RaterType === "Both" ? `<p style="font-size:10.5px;color:var(--text-muted);margin:3px 0 0">Self-rated: ${selfVal != null ? selfVal + "/5" : "not rated"}</p>` : ""}
+      </div>`;
+    }).join("")}
+    ${mrState.readOnly ? "" : `
+    <div class="review-info-box">
+      <span>&#9432;</span>
+      <span><b>Compare and reflect</b>Where your rating differs from their self-rating, that's worth discussing directly.</span>
+    </div>`}
+    <div class="review-nav">
+      <button class="btn-back" ${mrState.stepIndex === 0 ? "disabled" : ""} onclick="managerReviewGoBack()">Back</button>
+      <button class="btn-next" id="review-next-btn" onclick="managerReviewGoNext()">${mrState.readOnly ? (isLastStep ? "Close" : "Next") : (isLastStep ? "Submit" : "Next")}</button>
+    </div>
+  `;
+}
+
+function setManagerStarRating(criteriaId, value) {
+  mrState.managerAnswers[criteriaId] = value;
+  renderManagerReviewStep();
+}
+
+function managerReviewGoBack() {
+  if (mrState.stepIndex > 0) {
+    mrState.stepIndex--;
+    renderManagerReviewStep();
+  }
+}
+
+async function managerReviewGoNext() {
+  const totalSteps = mrState.stepNumbers.length;
+  const isLastStep = mrState.stepIndex === totalSteps - 1;
+
+  if (mrState.readOnly) {
+    if (isLastStep) { closeManagerReviewWizard(); } else { mrState.stepIndex++; renderManagerReviewStep(); }
+    return;
+  }
+
+  const stepNum = mrState.stepNumbers[mrState.stepIndex];
+  const items = mrState.byStep[stepNum];
+  const missing = items.some(c => !mrState.managerAnswers[c.id]);
+  if (missing) { showToast("Please rate every item before continuing"); return; }
+
+  const btn = document.getElementById("review-next-btn");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  try {
+    for (const c of items) {
+      const rating = mrState.managerAnswers[c.id];
+      if (mrState.responseIds[c.id]) {
+        await updateListItemFields(LISTS.reviewResponses, mrState.responseIds[c.id], {
+          Rating: rating, SubmittedDate: new Date().toISOString()
+        });
+      } else {
+        const created = await createListItem(LISTS.reviewResponses, {
+          Title: "Response", CycleID: mrState.cycleId, EmployeeID: mrState.employeeId,
+          CriteriaID: c.id, RaterType: "Manager", RaterEmployeeID: me.EmployeeID,
+          Rating: rating, SubmittedDate: new Date().toISOString()
+        });
+        mrState.responseIds[c.id] = created.id;
+      }
+    }
+
+    if (isLastStep) {
+      const allRatings = Object.values(mrState.managerAnswers);
+      const overall = allRatings.length ? allRatings.reduce((s, r) => s + r, 0) / allRatings.length : null;
+      const finalRating = overall != null ? Math.round(overall * 10) / 10 : null;
+      if (mrState.reviewItemId) {
+        await updateListItemFields(LISTS.reviews, mrState.reviewItemId, {
+          ManagerCurrentStep: totalSteps,
+          ManagerReviewStatus: "Completed",
+          ManagerCompletionPercent: 100,
+          ManagerOverallRating: finalRating,
+          OverallRating: finalRating
+        });
+      }
+      closeManagerReviewWizard();
+      showToast("Manager review submitted");
+    } else {
+      const nextStepNum = mrState.stepNumbers[mrState.stepIndex + 1];
+      if (mrState.reviewItemId) {
+        await updateListItemFields(LISTS.reviews, mrState.reviewItemId, {
+          ManagerCurrentStep: nextStepNum,
+          ManagerReviewStatus: "In Progress",
+          ManagerCompletionPercent: Math.round(((mrState.stepIndex + 1) / totalSteps) * 100)
+        });
+      }
+      mrState.stepIndex++;
+      renderManagerReviewStep();
+    }
+  } catch (e) {
+    showToast("Couldn't save — try again");
+    const stillThere = document.getElementById("review-next-btn");
+    if (stillThere) {
+      stillThere.disabled = false;
+      stillThere.textContent = isLastStep ? "Submit" : "Next";
+    }
+  }
+}
+
+function closeManagerReviewWizard() {
+  const employeeId = mrState ? mrState.employeeId : null;
+  document.getElementById("view-review").style.display = "none";
+  mrState = null;
+  if (employeeId) {
+    openPersonDetail(employeeId, personDetailContext ? personDetailContext.isDirectReport : true);
+  } else {
+    document.querySelector("nav.tab-bar").style.display = "";
+    switchTab("team");
+  }
 }
 
 /* ============================================================================
