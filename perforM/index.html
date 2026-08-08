@@ -14,9 +14,11 @@
     --blue-dark: #211CC7;
     --blue-light: #E8E9FD;
     --teal: #52C41A;   --teal-l: #E9F9D9;  --teal-d: #2B7A0B;
+    --gold: #FFB300;   --gold-l: #FFF3D6;  --gold-d: #8A5A00;
     --purple: #7B3FE4; --purple-l: #EFE8FE; --purple-d: #4A1D9E;
     --coral: #FF5C39;  --coral-l: #FFE8E0; --coral-d: #B23405;
     --pink: #EC4899;   --pink-l: #FDE6F1;  --pink-d: #99215F;
+    --red: #FF3B5C;
     --amber-l: #FDEFD6; --amber-d: #7A4A06;
     --gray-l: #EEEEF0; --gray-d: #52545E;
     --border: #E5E4EE;
@@ -452,10 +454,10 @@ async function renderDashboard() {
       </div>
       <div class="hero-ring">
         <div class="ring-outer" style="width:92px;height:92px;background: conic-gradient(
-          var(--teal) 0 ${goals.length ? completeCount/goals.length*360 : 0}deg,
-          var(--purple) ${goals.length ? completeCount/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg,
-          var(--coral) ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg,
-          var(--gray-d) ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg 360deg
+          var(--teal) 0 ${goals.length ? onTrackCount/goals.length*360 : 0}deg,
+          var(--gold) ${goals.length ? onTrackCount/goals.length*360 : 0}deg ${goals.length ? (onTrackCount+completeCount)/goals.length*360 : 0}deg,
+          var(--coral) ${goals.length ? (onTrackCount+completeCount)/goals.length*360 : 0}deg ${goals.length ? (onTrackCount+completeCount+atRiskCount)/goals.length*360 : 0}deg,
+          var(--red) ${goals.length ? (onTrackCount+completeCount+atRiskCount)/goals.length*360 : 0}deg 360deg
         )"></div>
         <div class="ring-hole"></div>
         <div class="pct">${heroPct}%</div>
@@ -503,18 +505,18 @@ async function renderDashboard() {
         <p class="panel-title">Goals Summary <a href="#" data-nav="goals">View all</a></p>
         <div class="goals-summary-ring">
           <div class="ring-outer" style="width:70px;height:70px;background: conic-gradient(
-            var(--teal) 0 ${goals.length ? completeCount/goals.length*360 : 0}deg,
-            var(--purple) ${goals.length ? completeCount/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg,
-            var(--coral) ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg,
-            var(--gray-d) ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg 360deg
+            var(--teal) 0 ${goals.length ? onTrackCount/goals.length*360 : 0}deg,
+            var(--gold) ${goals.length ? onTrackCount/goals.length*360 : 0}deg ${goals.length ? (onTrackCount+completeCount)/goals.length*360 : 0}deg,
+            var(--coral) ${goals.length ? (onTrackCount+completeCount)/goals.length*360 : 0}deg ${goals.length ? (onTrackCount+completeCount+atRiskCount)/goals.length*360 : 0}deg,
+            var(--red) ${goals.length ? (onTrackCount+completeCount+atRiskCount)/goals.length*360 : 0}deg 360deg
           )"></div>
           <div class="donut-hole"></div>
           <div class="center"><span class="n">${goals.length}</span><span class="l">Total Goals</span></div>
         </div>
-        <div class="legend-row"><span><span class="legend-dot" style="background:var(--purple)"></span>On-Track</span><b>${onTrackCount}</b></div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--teal)"></span>On-Track</span><b>${onTrackCount}</b></div>
         <div class="legend-row"><span><span class="legend-dot" style="background:var(--coral)"></span>At Risk</span><b>${atRiskCount}</b></div>
-        <div class="legend-row"><span><span class="legend-dot" style="background:var(--gray-d)"></span>Behind</span><b>${behindCount}</b></div>
-        <div class="legend-row"><span><span class="legend-dot" style="background:var(--teal)"></span>Complete</span><b>${completeCount}</b></div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--red)"></span>Behind</span><b>${behindCount}</b></div>
+        <div class="legend-row"><span><span class="legend-dot" style="background:var(--gold)"></span>Complete</span><b>${completeCount}</b></div>
         ${goals.length ? `<div class="encourage-box">&#10003; ${onTrackCount + completeCount} of ${goals.length} goals are on track</div>` : ""}
       </div>
     </div>
@@ -653,10 +655,10 @@ async function renderTeam() {
       </div>
       <div class="hero-ring">
         <div class="ring-outer" style="width:92px;height:92px;background: conic-gradient(
-          var(--teal) 0 ${teamGoalsTotal ? teamComplete/teamGoalsTotal*360 : 0}deg,
-          var(--purple) ${teamGoalsTotal ? teamComplete/teamGoalsTotal*360 : 0}deg ${teamGoalsTotal ? teamOnTrackCombined/teamGoalsTotal*360 : 0}deg,
+          var(--teal) 0 ${teamGoalsTotal ? teamOnTrackOnly/teamGoalsTotal*360 : 0}deg,
+          var(--gold) ${teamGoalsTotal ? teamOnTrackOnly/teamGoalsTotal*360 : 0}deg ${teamGoalsTotal ? teamOnTrackCombined/teamGoalsTotal*360 : 0}deg,
           var(--coral) ${teamGoalsTotal ? teamOnTrackCombined/teamGoalsTotal*360 : 0}deg ${teamGoalsTotal ? (teamOnTrackCombined+teamAtRisk)/teamGoalsTotal*360 : 0}deg,
-          var(--gray-d) ${teamGoalsTotal ? (teamOnTrackCombined+teamAtRisk)/teamGoalsTotal*360 : 0}deg 360deg
+          var(--red) ${teamGoalsTotal ? (teamOnTrackCombined+teamAtRisk)/teamGoalsTotal*360 : 0}deg 360deg
         )"></div>
         <div class="ring-hole"></div>
         <div class="pct">${heroPct}%</div>
