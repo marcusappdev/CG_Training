@@ -1010,13 +1010,14 @@ async function openReviewWizard(cycleId) {
   const responseIds = {};
   existingResponses.forEach(r => { answers[r.CriteriaID] = r.Rating; responseIds[r.CriteriaID] = r.id; });
 
-  const startStepNum = reviewItem ? (reviewItem.CurrentStep || 1) : 1;
+  const isCompleted = reviewItem ? reviewItem.ReviewStatus === "Completed" : false;
+  const startStepNum = isCompleted ? stepNumbers[0] : (reviewItem ? (reviewItem.CurrentStep || 1) : 1);
   let stepIndex = stepNumbers.indexOf(startStepNum);
   if (stepIndex === -1) stepIndex = 0;
 
   reviewState = {
     cycleId, reviewItemId: reviewItem ? reviewItem.id : null, byStep, stepNumbers, stepIndex, answers, responseIds,
-    readOnly: reviewItem ? reviewItem.ReviewStatus === "Completed" : false
+    readOnly: isCompleted
   };
 
   document.querySelector("nav.tab-bar").style.display = "none";
