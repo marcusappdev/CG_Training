@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Performance Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <style>
   :root {
@@ -23,7 +26,7 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    margin: 0; font-family: 'Inter', 'Segoe UI', Arial, Helvetica, sans-serif;
     background: var(--page-bg); color: var(--text-primary);
   }
   .app-shell { max-width: 460px; margin: 0 auto; background: #fff; min-height: 100vh; padding-bottom: 76px; position: relative; }
@@ -65,8 +68,10 @@
   .hero-card .rating { font-size: 30px; font-weight: 800; margin: 0; }
   .hero-card .rating-word { font-size: 12px; font-weight: 600; margin: 2px 0 0; }
   .hero-card .trend { font-size: 11px; margin: 6px 0 0; opacity: 0.9; }
-  .hero-ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15)); }
-  .hero-ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; }
+  .hero-ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.18)); }
+  .hero-ring .ring-outer { width: 92px; height: 92px; border-radius: 50%; box-shadow: 0 0 0 3px #fff; }
+  .hero-ring .ring-hole { position: absolute; top: 13px; left: 13px; width: 66px; height: 66px; border-radius: 50%; background: #fff; }
+  .hero-ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; color: var(--blue-dark); }
 
   .tile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
   .tile { border-radius: 12px; padding: 10px 8px; text-align: left; }
@@ -89,6 +94,7 @@
   .continue-btn { display: block; width: 100%; background: var(--blue); color: #fff; border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; }
 
   .goals-summary-ring { width: 70px; height: 70px; margin: 4px auto 10px; position: relative; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.10)); }
+  .goals-summary-ring .ring-outer { box-shadow: 0 0 0 3px #fff; border-radius: 50%; }
   .goals-summary-ring .donut-hole { position: absolute; top: 12px; left: 12px; width: 46px; height: 46px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05); }
   .goals-summary-ring .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .goals-summary-ring .center .n { font-size: 15px; font-weight: 800; line-height: 1.1; }
@@ -106,7 +112,7 @@
   .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 20px 0 10px; }
   .goal-grid { display: flex; flex-direction: column; gap: 10px; }
   .goal-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; background: #fff; }
-  .ring { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.12)); }
+  .ring { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.12)); box-shadow: 0 0 0 2px #fff; }
   .ring .hole { width: 32px; height: 32px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04); }
   .badge { display: inline-block; font-size: 10.5px; padding: 2px 9px; border-radius: 20px; margin-bottom: 5px; font-weight: 600; }
   .goal-card .title { font-size: 13px; font-weight: 700; margin: 0 0 2px; }
@@ -425,7 +431,13 @@ async function renderDashboard() {
         ${ratingDelta != null ? `<p class="trend">${ratingDelta >= 0 ? "&#8593;" : "&#8595;"} ${Math.abs(ratingDelta)} vs last review</p>` : ""}
       </div>
       <div class="hero-ring">
-        <div style="width:92px;height:92px;border-radius:50%;background: conic-gradient(#fff ${heroPct * 3.6}deg, rgba(255,255,255,0.25) 0deg)"></div>
+        <div class="ring-outer" style="width:92px;height:92px;background: conic-gradient(
+          var(--teal) 0 ${goals.length ? completeCount/goals.length*360 : 0}deg,
+          var(--purple) ${goals.length ? completeCount/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg,
+          var(--coral) ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg,
+          var(--gray-d) ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg 360deg
+        )"></div>
+        <div class="ring-hole"></div>
         <div class="pct">${heroPct}%</div>
       </div>
     </div>
@@ -470,7 +482,7 @@ async function renderDashboard() {
       <div class="panel">
         <p class="panel-title">Goals Summary <a href="#" data-nav="goals">View all</a></p>
         <div class="goals-summary-ring">
-          <div style="width:70px;height:70px;border-radius:50%;background: conic-gradient(
+          <div class="ring-outer" style="width:70px;height:70px;background: conic-gradient(
             var(--teal) 0 ${goals.length ? completeCount/goals.length*360 : 0}deg,
             var(--purple) ${goals.length ? completeCount/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg,
             var(--coral) ${goals.length ? (completeCount+onTrackCount)/goals.length*360 : 0}deg ${goals.length ? (completeCount+onTrackCount+atRiskCount)/goals.length*360 : 0}deg,
