@@ -979,6 +979,13 @@ async function renderFeedback() {
       </div>
     ` : ""}
   `;
+
+  const unreadIds = aboutMeRows.filter(f => f.IsRead === false || f.IsRead === "false").map(f => f.id);
+  if (unreadIds.length) {
+    Promise.all(unreadIds.map(id => updateListItemFields(LISTS.feedback, id, { IsRead: true })))
+      .then(() => { renderedTabs.delete("dashboard"); })
+      .catch(() => {});
+  }
 }
 
 async function openRequestFeedbackModal() {
