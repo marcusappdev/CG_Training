@@ -641,6 +641,7 @@ async function renderDashboard() {
         <p class="rating">${overallRating != null ? overallRating.toFixed(1) : "—"}</p>
         <p class="rating-word">${ratingWord(overallRating)}</p>
         ${ratingDelta != null ? `<p class="trend">${ratingDelta >= 0 ? "&#8593;" : "&#8595;"} ${Math.abs(ratingDelta)} vs last review</p>` : ""}
+        ${(activeReview && activeReview.SelfOverallRating != null && activeReview.ManagerOverallRating != null) ? `<p class="trend">You rated yourself ${activeReview.SelfOverallRating.toFixed(1)}</p>` : ""}
       </div>
       <div class="hero-ring">
         <div class="ring-outer" style="width:92px;height:92px;background: conic-gradient(
@@ -1265,12 +1266,20 @@ async function openPersonDetail(employeeId, isDirectReport) {
 
     <p class="section-title">Latest review</p>
     ${latestReview ? `
-      <div class="panel" style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <p style="font-size:20px;font-weight:800;margin:0">${latestReview.OverallRating != null ? latestReview.OverallRating.toFixed(1) : "—"} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">/5</span></p>
-          <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${ratingWord(latestReview.OverallRating)}</p>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <p style="font-size:20px;font-weight:800;margin:0">${latestReview.OverallRating != null ? latestReview.OverallRating.toFixed(1) : "—"} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">/5</span></p>
+            <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${ratingWord(latestReview.OverallRating)}</p>
+          </div>
+          <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${latestReview.ReviewStatus}</span>
         </div>
-        <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${latestReview.ReviewStatus}</span>
+        ${(latestReview.SelfOverallRating != null || latestReview.ManagerOverallRating != null) ? `
+          <div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <p style="font-size:11px;color:var(--text-muted);margin:0">Self-rated: <b style="color:var(--text-primary)">${latestReview.SelfOverallRating != null ? latestReview.SelfOverallRating.toFixed(1) : "—"}</b></p>
+            <p style="font-size:11px;color:var(--text-muted);margin:0">Manager-rated: <b style="color:var(--text-primary)">${latestReview.ManagerOverallRating != null ? latestReview.ManagerOverallRating.toFixed(1) : "—"}</b></p>
+          </div>
+        ` : ""}
       </div>
     ` : `<div class="empty-state">No review on file.</div>`}
 
@@ -1554,12 +1563,14 @@ async function reviewGoNext() {
     if (isLastStep) {
       const allRatings = Object.values(reviewState.answers);
       const overall = allRatings.length ? allRatings.reduce((s, r) => s + r, 0) / allRatings.length : null;
+      const finalSelfRating = overall != null ? Math.round(overall * 10) / 10 : null;
       if (reviewState.reviewItemId) {
         await updateListItemFields(LISTS.reviews, reviewState.reviewItemId, {
           CurrentStep: totalSteps,
           ReviewStatus: "Completed",
           CompletionPercent: 100,
-          OverallRating: overall != null ? Math.round(overall * 10) / 10 : null
+          OverallRating: finalSelfRating,
+          SelfOverallRating: finalSelfRating
         });
       }
       closeReviewWizard();
@@ -1606,13 +1617,14 @@ function managerReviewPanelHtml(review, employeeId) {
   const label = mgrStatus === "Completed" ? "View Summary" : (mgrStatus === "In Progress" ? "Continue Manager Review" : "Start Manager Review");
   return `
     <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${review.SelfOverallRating != null ? 4 : 10}px">
         <div>
           <p style="font-size:20px;font-weight:800;margin:0">${review.ManagerOverallRating != null ? review.ManagerOverallRating.toFixed(1) : "—"} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">/5</span></p>
           <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${ratingWord(review.ManagerOverallRating)}</p>
         </div>
         <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${mgrStatus}</span>
       </div>
+      ${review.SelfOverallRating != null ? `<p style="font-size:11px;color:var(--text-muted);margin:0 0 10px">They rated themselves <b style="color:var(--text-primary)">${review.SelfOverallRating.toFixed(1)}</b></p>` : ""}
       <button type="button" class="continue-btn" onclick="openManagerReviewWizard('${review.CycleID}', '${employeeId}')">${label}</button>
     </div>
   `;
