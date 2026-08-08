@@ -139,6 +139,11 @@
   .peer-row .prole { font-size: 11px; color: var(--text-muted); margin: 1px 0 0; }
   .rating-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; flex-shrink: 0; }
 
+  .nominee-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .nominee-row:last-child { border-bottom: none; }
+  .nominee-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--blue); flex-shrink: 0; }
+  .nominee-row .nname { font-size: 13px; font-weight: 600; flex: 1; }
+
   .focus-item { margin-bottom: 12px; }
   .focus-item:last-child { margin-bottom: 0; }
   .focus-item .flabel { font-size: 12px; font-weight: 600; margin: 0 0 5px; display: flex; justify-content: space-between; }
@@ -453,6 +458,24 @@ async function attachEmployeeDetails(positionRows) {
     if (empMatches.length > 0) results.push({ ...empMatches[0], PositionTitle: pos.PositionTitle });
   }
   return results;
+}
+
+async function getManager() {
+  if (!myPosition || !myPosition.ReportsTo) return null;
+  const mgrPos = await getListItems(LISTS.establishment, `fields/JobKey eq '${myPosition.ReportsTo}'`);
+  if (!mgrPos[0] || !mgrPos[0].EmployeeID || mgrPos[0].EmployeeID === "0") return null;
+  const mgrEmp = await getListItems(LISTS.employees, `fields/EmployeeID eq '${mgrPos[0].EmployeeID}'`);
+  if (!mgrEmp[0]) return null;
+  return { ...mgrEmp[0], PositionTitle: mgrPos[0].PositionTitle };
+}
+
+const employeeNameCache = {};
+async function getEmployeeName(employeeId) {
+  if (employeeNameCache[employeeId]) return employeeNameCache[employeeId];
+  const rows = await getListItems(LISTS.employees, `fields/EmployeeID eq '${employeeId}'`);
+  const name = rows[0] ? `${rows[0].GivenName} ${rows[0].FamilyName}` : employeeId;
+  employeeNameCache[employeeId] = name;
+  return name;
 }
 
 /* ============================================================================
@@ -905,17 +928,26 @@ async function submitNewGoal(employeeId) {
 async function renderFeedback() {
   const el = document.getElementById("view-feedback");
   el.innerHTML = `<div class="loading">Loading feedback...</div>`;
-  const feedback = await getListItems(LISTS.feedback, `fields/ToEmployeeID eq '${me.EmployeeID}'`);
-  feedback.sort((a, b) => new Date(b.DateSubmitted || 0) - new Date(a.DateSubmitted || 0));
 
-  const rows = await Promise.all(feedback.map(async (f) => {
-    const fromEmp = await getListItems(LISTS.employees, `fields/EmployeeID eq '${f.FromEmployeeID}'`);
-    return { ...f, fromName: fromEmp[0] ? `${fromEmp[0].GivenName} ${fromEmp[0].FamilyName}` : f.FromEmployeeID };
-  }));
+  const [toMe, awaitingMe] = await Promise.all([
+    getListItems(LISTS.feedback, `fields/ToEmployeeID eq '${me.EmployeeID}'`),
+    getListItems(LISTS.feedback, `fields/FromEmployeeID eq '${me.EmployeeID}' and fields/RequestStatus eq 'Pending'`)
+  ]);
+
+  const aboutMe = toMe.filter(f => f.RequestStatus !== "Pending");
+  const sentRequests = toMe.filter(f => f.RequestStatus === "Pending");
+  aboutMe.sort((a, b) => new Date(b.DateSubmitted || 0) - new Date(a.DateSubmitted || 0));
+
+  const aboutMeRows = await Promise.all(aboutMe.map(async f => ({ ...f, fromName: await getEmployeeName(f.FromEmployeeID) })));
+  const sentRows = await Promise.all(sentRequests.map(async f => ({ ...f, fromName: await getEmployeeName(f.FromEmployeeID) })));
+  const awaitingRows = await Promise.all(awaitingMe.map(async f => ({ ...f, toName: await getEmployeeName(f.ToEmployeeID) })));
 
   el.innerHTML = `
-    <p class="section-title" style="margin-top:8px">Feedback (${feedback.length})</p>
-    ${rows.length ? rows.map(f => `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+      <p class="section-title" style="margin:0">Feedback (${aboutMeRows.length})</p>
+      <button class="btn-sm primary" onclick="openRequestFeedbackModal()">+ Request feedback</button>
+    </div>
+    ${aboutMeRows.length ? aboutMeRows.map(f => `
       <div class="feedback-row">
         <div class="top">
           <span class="from">${f.fromName}${(f.IsRead === false || f.IsRead === "false") ? `<span class="dot-unread"></span>` : ""}</span>
@@ -924,7 +956,147 @@ async function renderFeedback() {
         <p class="msg">${f.Message || ""}</p>
         <p class="date">${fmtDate(f.DateSubmitted)}</p>
       </div>`).join("") : `<div class="empty-state">No feedback yet.</div>`}
+
+    ${sentRows.length ? `
+      <p class="section-title">Requests you've sent (${sentRows.length})</p>
+      <div class="panel" style="padding:4px 14px">
+        ${sentRows.map(f => `
+          <div class="peer-row">
+            <div class="info"><p class="pname">${f.fromName}</p><p class="prole">${f.RelationshipType || ""}</p></div>
+            <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">Pending</span>
+          </div>`).join("")}
+      </div>
+    ` : ""}
+
+    ${awaitingRows.length ? `
+      <p class="section-title">Requests awaiting your response (${awaitingRows.length})</p>
+      <div class="panel" style="padding:4px 14px">
+        ${awaitingRows.map(f => `
+          <div class="peer-row">
+            <div class="info"><p class="pname">${f.toName}</p><p class="prole">Wants your feedback</p></div>
+            <button class="btn-sm primary" onclick="openRespondToRequestModal('${f.id}', '${escAttr(f.toName)}')">Respond</button>
+          </div>`).join("")}
+      </div>
+    ` : ""}
   `;
+}
+
+async function openRequestFeedbackModal() {
+  const [peers, reports, manager] = await Promise.all([getPeers(), getDirectReports(), getManager()]);
+  const candidates = [
+    ...peers.map(p => ({ ...p, relationship: "Peer" })),
+    ...reports.map(p => ({ ...p, relationship: "Direct report" })),
+    ...(manager ? [{ ...manager, relationship: "Manager" }] : [])
+  ];
+  if (candidates.length === 0) {
+    openModal(`
+      <h3>Request feedback</h3>
+      <p class="modal-sub">No peers, reports, or manager found in the org hierarchy to request from.</p>
+      <div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">Close</button></div>
+    `);
+    return;
+  }
+  openModal(`
+    <h3>Request feedback</h3>
+    <p class="modal-sub">Choose who you'd like feedback from</p>
+    <div style="max-height:260px;overflow-y:auto;margin-top:6px">
+      ${candidates.map(c => `
+        <label class="nominee-row">
+          <input type="checkbox" value="${c.EmployeeID}" data-rel="${c.relationship}">
+          <span class="nname">${c.GivenName} ${c.FamilyName}</span>
+          <span class="badge" style="background:var(--purple-l);color:var(--purple-d)">${c.relationship}</span>
+        </label>`).join("")}
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="req-save-btn" onclick="submitFeedbackRequests()">Send requests</button>
+    </div>
+  `);
+}
+
+async function submitFeedbackRequests() {
+  const btn = document.getElementById("req-save-btn");
+  const checked = Array.from(document.querySelectorAll(".nominee-row input[type=checkbox]:checked"));
+  if (checked.length === 0) { showToast("Select at least one person"); return; }
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  try {
+    const activeCycles = await getListItems(LISTS.reviewCycles, `fields/CycleStatus eq 'Active'`);
+    const cycleId = activeCycles[0] ? activeCycles[0].id : "";
+    for (const cb of checked) {
+      await createListItem(LISTS.feedback, {
+        Title: "Feedback request",
+        FromEmployeeID: cb.value,
+        ToEmployeeID: me.EmployeeID,
+        RelationshipType: cb.getAttribute("data-rel"),
+        Message: "",
+        IsRead: false,
+        RequestStatus: "Pending",
+        LinkedCycleID: cycleId
+      });
+    }
+    closeModal();
+    showToast(`Sent ${checked.length} request${checked.length > 1 ? "s" : ""}`);
+    await renderFeedback();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Send requests";
+    showToast("Couldn't send — try again");
+  }
+}
+
+function openRespondToRequestModal(feedbackItemId, requesterName) {
+  openModal(`
+    <h3>Give feedback</h3>
+    <p class="modal-sub">${requesterName} requested your feedback</p>
+    <label>Message</label>
+    <textarea id="resp-msg" placeholder="Share something specific..."></textarea>
+    <label>Rating (optional)</label>
+    <select id="resp-rating">
+      <option value="">No rating</option>
+      ${[5, 4, 3, 2, 1].map(n => `<option value="${n}">${n}</option>`).join("")}
+    </select>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="declineFeedbackRequest('${feedbackItemId}')">Decline</button>
+      <button class="btn-save" id="resp-save-btn" onclick="submitFeedbackResponse('${feedbackItemId}')">Send</button>
+    </div>
+  `);
+}
+
+async function submitFeedbackResponse(feedbackItemId) {
+  const btn = document.getElementById("resp-save-btn");
+  const msg = document.getElementById("resp-msg").value;
+  const ratingVal = document.getElementById("resp-rating").value;
+  if (!msg.trim()) { showToast("Add a message before sending"); return; }
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  try {
+    await updateListItemFields(LISTS.feedback, feedbackItemId, {
+      Message: msg,
+      Rating: ratingVal ? parseInt(ratingVal, 10) : null,
+      RequestStatus: "Submitted",
+      DateSubmitted: new Date().toISOString(),
+      IsRead: false
+    });
+    closeModal();
+    showToast("Feedback sent");
+    await renderFeedback();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Send";
+    showToast("Couldn't send — try again");
+  }
+}
+
+async function declineFeedbackRequest(feedbackItemId) {
+  try {
+    await updateListItemFields(LISTS.feedback, feedbackItemId, { RequestStatus: "Declined" });
+    closeModal();
+    showToast("Request declined");
+    await renderFeedback();
+  } catch (e) {
+    showToast("Couldn't update — try again");
+  }
 }
 
 /* ============================================================================
