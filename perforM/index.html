@@ -241,6 +241,7 @@
       <section id="view-team" style="display:none"></section>
       <section id="view-me" style="display:none"></section>
       <section id="view-review" style="display:none"></section>
+      <section id="view-person-detail" style="display:none"></section>
     </main>
 
     <nav class="tab-bar">
@@ -688,7 +689,7 @@ async function renderDashboard() {
 /* ============================================================================
    GOALS TAB
    ============================================================================ */
-function goalCardHtml(goal) {
+function goalCardHtml(goal, readOnly) {
   const status = (goal.Status === "At Risk" || goal.Status === "Behind") ? AT_RISK : (CATEGORY_COLORS[goal.Category] || CATEGORY_COLORS.Company);
   const badgeLabel = (goal.Status === "At Risk" || goal.Status === "Behind") ? goal.Status : goal.Category;
   return `
@@ -698,7 +699,7 @@ function goalCardHtml(goal) {
         <span class="badge" style="background:${status.bg};color:${status.fg}">${badgeLabel}</span>
         <p class="title">${goal.Title || ""}</p>
         <p class="due">Due ${fmtDate(goal.DueDate)}</p>
-        <button class="goal-update-btn" onclick="openGoalUpdateModal('${goal.id}')">Update progress</button>
+        ${readOnly ? "" : `<button class="goal-update-btn" onclick="openGoalUpdateModal('${goal.id}')">Update progress</button>`}
       </div>
     </div>`;
 }
@@ -891,17 +892,18 @@ async function renderTeam() {
       ${enriched.map(e => {
         const rc = ratingBadgeColor(e.rating);
         return `
-        <div class="peer-row" style="align-items:flex-start;flex-wrap:wrap">
+        <div class="peer-row" style="align-items:flex-start;flex-wrap:wrap;cursor:pointer" onclick="openPersonDetail('${e.person.EmployeeID}')">
           <span class="avatar-sm" id="team-avatar-${e.person.EmployeeID}" style="width:34px;height:34px;font-size:11px;background:var(--purple-l);color:var(--purple-d)">${initials(e.person)}</span>
           <div class="info">
             <p class="pname">${e.person.GivenName} ${e.person.FamilyName}</p>
             <p class="prole">${e.person.PositionTitle || ""}</p>
             <div class="row-actions">
-              <button class="btn-sm" onclick="openCheckinModal('${e.person.EmployeeID}')">Log check-in</button>
-              <button class="btn-sm" onclick="openFeedbackModal('${e.person.EmployeeID}')">Give feedback</button>
+              <button class="btn-sm" onclick="event.stopPropagation(); openCheckinModal('${e.person.EmployeeID}')">Log check-in</button>
+              <button class="btn-sm" onclick="event.stopPropagation(); openFeedbackModal('${e.person.EmployeeID}')">Give feedback</button>
             </div>
           </div>
           <span class="rating-badge" style="background:${rc.bg};color:${rc.fg}">${e.rating != null ? e.rating.toFixed(1) : "—"}</span>
+          <span style="color:var(--text-muted);font-size:14px;padding-top:2px">&#8250;</span>
         </div>`;
       }).join("")}
     </div>
@@ -919,6 +921,73 @@ async function renderTeam() {
   enriched.forEach(e => {
     applyUserPhotoTo(`team-avatar-${e.person.EmployeeID}`, e.person.EmailAddress);
   });
+}
+
+async function openPersonDetail(employeeId) {
+  const person = teamCache[employeeId];
+  if (!person) return;
+
+  document.querySelector("nav.tab-bar").style.display = "none";
+  ["dashboard", "goals", "feedback", "team", "me"].forEach(t => { document.getElementById(`view-${t}`).style.display = "none"; });
+  const el = document.getElementById("view-person-detail");
+  el.style.display = "block";
+  el.innerHTML = `<div class="loading">Loading...</div>`;
+
+  const [goals, checkIns, reviews] = await Promise.all([
+    getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${employeeId}'`),
+    getListItems(LISTS.checkIns, `fields/EmployeeID eq '${employeeId}'`),
+    getListItems(LISTS.reviews, `fields/EmployeeID eq '${employeeId}'`)
+  ]);
+  checkIns.sort((a, b) => new Date(b.CheckInDate || 0) - new Date(a.CheckInDate || 0));
+  const latestReview = reviews.sort((a, b) => new Date(b.DueDate || 0) - new Date(a.DueDate || 0))[0];
+
+  el.innerHTML = `
+    <button class="review-close" onclick="closePersonDetail()">&larr; Back to team</button>
+    <div class="greeting-row">
+      <div class="avatar-circle" id="detail-avatar">${initials(person)}</div>
+      <div>
+        <p class="name" style="font-size:16px">${person.GivenName} ${person.FamilyName}</p>
+        <p class="sub">${person.PositionTitle || ""}</p>
+      </div>
+    </div>
+
+    <div class="row-actions" style="margin:14px 0 4px">
+      <button class="btn-sm primary" onclick="openCheckinModal('${employeeId}')">Log check-in</button>
+      <button class="btn-sm" onclick="openFeedbackModal('${employeeId}')">Give feedback</button>
+    </div>
+
+    <p class="section-title">Latest review</p>
+    ${latestReview ? `
+      <div class="panel" style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <p style="font-size:20px;font-weight:800;margin:0">${latestReview.OverallRating != null ? latestReview.OverallRating.toFixed(1) : "—"} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">/5</span></p>
+          <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${ratingWord(latestReview.OverallRating)}</p>
+        </div>
+        <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${latestReview.ReviewStatus}</span>
+      </div>
+    ` : `<div class="empty-state">No review on file.</div>`}
+
+    <p class="section-title">Goals (${goals.length})</p>
+    <div class="goal-grid">${goals.length ? goals.map(g => goalCardHtml(g, true)).join("") : `<div class="empty-state">No goals yet.</div>`}</div>
+
+    <p class="section-title">Check-in history</p>
+    <div class="checkin-panel">
+      ${checkIns.length ? checkIns.map(c => `
+        <div class="checkin-row">
+          <p class="who">Check-in on ${fmtDate(c.CheckInDate)}</p>
+          <p class="notes">${c.Notes || ""}</p>
+          <p class="date">Next: ${fmtDate(c.NextCheckInDate)}</p>
+        </div>`).join("") : `<div class="empty-state">No check-ins logged yet.</div>`}
+    </div>
+  `;
+
+  applyUserPhotoTo("detail-avatar", person.EmailAddress);
+}
+
+function closePersonDetail() {
+  document.getElementById("view-person-detail").style.display = "none";
+  document.querySelector("nav.tab-bar").style.display = "";
+  switchTab("team");
 }
 
 function openCheckinModal(employeeId) {
