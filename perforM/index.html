@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Performance Management</title>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+  :root {
+    --navy: #132036;
+    --teal: #1D9E75;
+    --purple: #7F77DD;
+    --purple-l: #EEEDFE; --purple-d: #26215C;
+    --teal-l: #E1F5EE; --teal-d: #04342C;
+    --coral: #D85A30;
+    --coral-l: #FAECE7; --coral-d: #4A1B0C;
+    --pink: #D4537E;
+    --pink-l: #FBEAF0; --pink-d: #4B1528;
+    --green-l: #EAF3DE; --green-d: #27500A;
+    --red-l: #FCEBEB; --red-d: #791F1F;
+    --amber-l: #FAEEDA; --amber-d: #633806;
+    --border: #E2E0D8;
+    --card-bg: #FAFAF8;
+    --text-primary: #1A1A1A;
+    --text-muted: #6B7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Arial, Helvetica, sans-serif;
+    background: #FFFFFF; color: var(--text-primary);
+  }
+  header.app-header {
+    background: var(--navy); color: #fff;
+    padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+  }
+  header.app-header h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  #signout-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #fff;
+    border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; display: none;
+  }
+
+  #signin-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 70vh; text-align: center; padding: 20px;
+  }
+  #signin-screen button {
+    background: var(--navy); color: #fff; border: none; border-radius: 8px;
+    padding: 12px 28px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px;
+  }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; display: none; }
+
+  .toggle-pills { display: flex; background: var(--card-bg); border-radius: 8px; padding: 3px; gap: 2px; border: 1px solid var(--border); width: fit-content; }
+  .toggle-pills button {
+    border: none; background: transparent; padding: 6px 16px; font-size: 13px; border-radius: 6px;
+    cursor: pointer; color: var(--text-muted); font-family: inherit;
+  }
+  .toggle-pills button.active { background: #fff; box-shadow: 0 0 0 1px var(--border); font-weight: 600; color: var(--text-primary); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; margin: 0; }
+
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 24px 0 10px; }
+
+  .goal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .goal-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; display: flex; gap: 14px; background: #fff; }
+  .ring { flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .ring .hole { width: 38px; height: 38px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 20px; margin-bottom: 6px; font-weight: 600; }
+  .goal-card .title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  .goal-card .due { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+  .checkin-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .checkin-row { padding: 12px 18px; border-top: 1px solid var(--border); }
+  .checkin-row:first-child { border-top: none; }
+  .checkin-row .who { font-size: 13px; font-weight: 600; margin: 0; }
+  .checkin-row .notes { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+  .checkin-row .date { font-size: 11px; color: var(--text-muted); margin: 4px 0 0; }
+
+  table.roster { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.roster th { text-align: left; font-size: 12px; color: var(--text-muted); background: var(--card-bg); padding: 10px 14px; font-weight: 600; }
+  table.roster td { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-right: 8px; vertical-align: middle; }
+
+  .loading, .empty-state, .error-state { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
+  .error-state { color: var(--red-d); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Performance Management</h1>
+  <button id="signout-btn">Sign out</button>
+</header>
+
+<div id="signin-screen">
+  <p>Sign in with your Concept Group Microsoft 365 account to continue.</p>
+  <button id="signin-btn">Sign in</button>
+</div>
+
+<main id="app-main">
+  <div class="toggle-pills">
+    <button id="tab-my" class="active">My view</button>
+    <button id="tab-team">Team view</button>
+  </div>
+
+  <section id="view-my"></section>
+  <section id="view-team" style="display:none"></section>
+</main>
+
+<script>
+/* ============================================================================
+   CONFIG — update these before deploying
+   ============================================================================ */
+const CONFIG = {
+  clientId: "d5aef866-584f-4226-ab11-c941888fb519", // existing Azure AD app (shared with PSP HUB / Training Hub)
+                                                       // NOTE: add this app's GitHub Pages URL as a redirect URI
+                                                       // in Azure AD > App registrations before first use.
+  tenantId: "conceptcompg.onmicrosoft.com",           // or the tenant GUID
+  redirectUri: window.location.origin + window.location.pathname,
+  siteHostname: "conceptcompg.sharepoint.com",
+  sitePath: "/sites/perforM",
+  scopes: ["Sites.ReadWrite.All", "User.Read"]
+};
+
+const LISTS = {
+  employees: "PMS_Employees",
+  establishment: "PMS_Establishment",
+  goals: "PMS_Goals",
+  goalUpdates: "PMS_GoalUpdates",
+  checkIns: "PMS_CheckIns",
+  reviews: "PMS_Reviews",
+  feedback: "PMS_Feedback",
+  developmentPlan: "PMS_DevelopmentPlan"
+};
+
+const CATEGORY_COLORS = {
+  Finance:  { bg: "var(--purple-l)", fg: "var(--purple-d)", ring: "var(--purple)" },
+  People:   { bg: "var(--teal-l)",   fg: "var(--teal-d)",   ring: "var(--teal)" },
+  Customer: { bg: "var(--coral-l)",  fg: "var(--coral-d)",  ring: "var(--coral)" },
+  Company:  { bg: "var(--purple-l)", fg: "var(--purple-d)", ring: "var(--purple)" }
+};
+const AT_RISK = { bg: "var(--red-l)", fg: "var(--red-d)", ring: "var(--pink)" };
+
+/* ============================================================================
+   AUTH (MSAL PKCE)
+   ============================================================================ */
+const msalInstance = new msal.PublicClientApplication({
+  auth: {
+    clientId: CONFIG.clientId,
+    authority: `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+    redirectUri: CONFIG.redirectUri
+  },
+  cache: { cacheLocation: "sessionStorage" }
+});
+
+let currentAccount = null;
+
+async function initAuth() {
+  await msalInstance.initialize();
+  const result = await msalInstance.handleRedirectPromise();
+  if (result && result.account) {
+    currentAccount = result.account;
+  } else {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) currentAccount = accounts[0];
+  }
+
+  if (currentAccount) {
+    showApp();
+  } else {
+    document.getElementById("signin-screen").style.display = "flex";
+  }
+}
+
+document.getElementById("signin-btn").addEventListener("click", () => {
+  msalInstance.loginRedirect({ scopes: CONFIG.scopes });
+});
+document.getElementById("signout-btn").addEventListener("click", () => {
+  msalInstance.logoutRedirect();
+});
+
+async function getAccessToken() {
+  const request = { scopes: CONFIG.scopes, account: currentAccount };
+  try {
+    const result = await msalInstance.acquireTokenSilent(request);
+    return result.accessToken;
+  } catch (e) {
+    const result = await msalInstance.acquireTokenRedirect(request);
+    return result.accessToken; // page will redirect; this line rarely returns
+  }
+}
+
+/* ============================================================================
+   GRAPH API HELPERS
+   ============================================================================ */
+let siteIdCache = null;
+let listIdCache = {}; // displayName -> id
+
+async function graphFetch(path, options = {}) {
+  const token = await getAccessToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    ...options,
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Prefer": "HonorNonIndexedQueriesWarningMayFailRandomly",
+      ...(options.headers || {})
+    }
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Graph request failed (${res.status}): ${body}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+async function getSiteId() {
+  if (siteIdCache) return siteIdCache;
+  const data = await graphFetch(`/sites/${CONFIG.siteHostname}:${CONFIG.sitePath}`);
+  siteIdCache = data.id;
+  return siteIdCache;
+}
+
+async function getListId(displayName) {
+  if (listIdCache[displayName]) return listIdCache[displayName];
+  const siteId = await getSiteId();
+  const data = await graphFetch(`/sites/${siteId}/lists?$filter=displayName eq '${displayName}'`);
+  if (!data.value || data.value.length === 0) throw new Error(`List not found: ${displayName}`);
+  listIdCache[displayName] = data.value[0].id;
+  return listIdCache[displayName];
+}
+
+async function getListItems(displayName, filter) {
+  const siteId = await getSiteId();
+  const listId = await getListId(displayName);
+  let path = `/sites/${siteId}/lists/${listId}/items?expand=fields`;
+  if (filter) path += `&$filter=${encodeURIComponent(filter)}`;
+  const data = await graphFetch(path);
+  return (data.value || []).map(item => ({ id: item.id, ...item.fields }));
+}
+
+async function createListItem(displayName, fields) {
+  const siteId = await getSiteId();
+  const listId = await getListId(displayName);
+  return graphFetch(`/sites/${siteId}/lists/${listId}/items`, {
+    method: "POST",
+    body: JSON.stringify({ fields })
+  });
+}
+
+/* ============================================================================
+   ORG RESOLUTION — Employee ID, position, peers, direct reports
+   ============================================================================ */
+let me = null; // { EmployeeID, GivenName, FamilyName, EmailAddress, ... }
+let myPosition = null; // Establishment row where EmployeeID = me.EmployeeID
+
+async function resolveCurrentEmployee() {
+  const email = currentAccount.username; // signed-in UPN/email
+  const matches = await getListItems(LISTS.employees, `fields/EmailAddress eq '${email}'`);
+  if (matches.length === 0) {
+    throw new Error(
+      `No PMS_Employees record found with EmailAddress = ${email}. ` +
+      `This person's Employee ID needs to be linked before they can use the app.`
+    );
+  }
+  me = matches[0];
+
+  const posMatches = await getListItems(LISTS.establishment, `fields/EmployeeID eq '${me.EmployeeID}'`);
+  myPosition = posMatches[0] || null;
+}
+
+async function getDirectReports() {
+  if (!myPosition) return [];
+  const reports = await getListItems(LISTS.establishment, `fields/ReportsTo eq '${myPosition.JobKey}'`);
+  return attachEmployeeDetails(reports);
+}
+
+async function getPeers() {
+  if (!myPosition || !myPosition.ReportsTo) return [];
+  const peers = await getListItems(LISTS.establishment, `fields/ReportsTo eq '${myPosition.ReportsTo}'`);
+  const filtered = peers.filter(p => p.JobKey !== myPosition.JobKey);
+  return attachEmployeeDetails(filtered);
+}
+
+async function attachEmployeeDetails(positionRows) {
+  const results = [];
+  for (const pos of positionRows) {
+    if (!pos.EmployeeID || pos.EmployeeID === "0") continue;
+    const empMatches = await getListItems(LISTS.employees, `fields/EmployeeID eq '${pos.EmployeeID}'`);
+    if (empMatches.length > 0) {
+      results.push({ ...empMatches[0], PositionTitle: pos.PositionTitle });
+    }
+  }
+  return results;
+}
+
+/* ============================================================================
+   RENDERING — My View
+   ============================================================================ */
+function initials(emp) {
+  const g = (emp.GivenName || "?")[0] || "?";
+  const f = (emp.FamilyName || "?")[0] || "?";
+  return (g + f).toUpperCase();
+}
+
+function ringSvg(pct, color) {
+  return `<div class="ring" style="background: conic-gradient(${color} ${pct * 3.6}deg, #F0EFEA 0deg)">
+            <div class="hole">${pct}%</div>
+          </div>`;
+}
+
+function goalCardHtml(goal) {
+  const status = goal.Status === "At Risk" || goal.Status === "Behind" ? AT_RISK : (CATEGORY_COLORS[goal.Category] || CATEGORY_COLORS.Company);
+  const badgeLabel = goal.Status === "At Risk" || goal.Status === "Behind" ? goal.Status : goal.Category;
+  const dueDate = goal.DueDate ? new Date(goal.DueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+  return `
+    <div class="goal-card">
+      ${ringSvg(goal.ProgressPercent || 0, status.ring)}
+      <div>
+        <span class="badge" style="background:${status.bg};color:${status.fg}">${badgeLabel}</span>
+        <p class="title">${goal.Title || ""}</p>
+        <p class="due">Due ${dueDate}</p>
+      </div>
+    </div>`;
+}
+
+async function renderMyView() {
+  const el = document.getElementById("view-my");
+  el.innerHTML = `<div class="loading">Loading your goals...</div>`;
+
+  const [goals, checkIns] = await Promise.all([
+    getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${me.EmployeeID}'`),
+    getListItems(LISTS.checkIns, `fields/EmployeeID eq '${me.EmployeeID}'`)
+  ]);
+
+  const onTrack = goals.filter(g => g.Status === "On Track" || g.Status === "Complete").length;
+  const nextCheckIn = checkIns
+    .filter(c => c.NextCheckInDate)
+    .sort((a, b) => new Date(a.NextCheckInDate) - new Date(b.NextCheckInDate))[0];
+
+  el.innerHTML = `
+    <p style="font-size:15px;font-weight:600;margin:16px 0 0">Good day, ${me.GivenName}</p>
+    <p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">${myPosition ? myPosition.PositionTitle : ""}</p>
+
+    <div class="stat-row">
+      <div class="stat-card"><p class="label">Active goals</p><p class="value">${goals.length}</p></div>
+      <div class="stat-card"><p class="label">On track</p><p class="value" style="color:var(--teal-d)">${onTrack}</p></div>
+      <div class="stat-card"><p class="label">Next check-in</p><p class="value">${nextCheckIn ? new Date(nextCheckIn.NextCheckInDate).toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "—"}</p></div>
+    </div>
+
+    <p class="section-title">Your goals</p>
+    <div class="goal-grid">
+      ${goals.length ? goals.map(goalCardHtml).join("") : `<div class="empty-state">No goals yet.</div>`}
+    </div>
+
+    <p class="section-title">Recent check-ins</p>
+    <div class="checkin-panel">
+      ${checkIns.length ? checkIns.map(c => `
+        <div class="checkin-row">
+          <p class="who">Check-in on ${new Date(c.CheckInDate).toLocaleDateString()}</p>
+          <p class="notes">${c.Notes || ""}</p>
+          <p class="date">Next: ${c.NextCheckInDate ? new Date(c.NextCheckInDate).toLocaleDateString() : "—"}</p>
+        </div>`).join("") : `<div class="empty-state">No check-ins logged yet.</div>`}
+    </div>
+  `;
+}
+
+/* ============================================================================
+   RENDERING — Team View
+   ============================================================================ */
+async function renderTeamView() {
+  const el = document.getElementById("view-team");
+  el.innerHTML = `<div class="loading">Loading your team...</div>`;
+
+  const reports = await getDirectReports();
+  const peers = await getPeers();
+  const list = reports.length > 0 ? reports : peers;
+  const label = reports.length > 0 ? "direct reports" : "peers";
+
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state">No team members found in the org hierarchy.</div>`;
+    return;
+  }
+
+  const rows = await Promise.all(list.map(async (person) => {
+    const goals = await getListItems(LISTS.goals, `fields/OwnerEmployeeID eq '${person.EmployeeID}'`);
+    const avgProgress = goals.length
+      ? Math.round(goals.reduce((sum, g) => sum + (g.ProgressPercent || 0), 0) / goals.length)
+      : 0;
+    const atRisk = goals.some(g => g.Status === "At Risk" || g.Status === "Behind");
+    return { person, avgProgress, atRisk, goalCount: goals.length };
+  }));
+
+  el.innerHTML = `
+    <p class="section-title">Your ${label} (${list.length})</p>
+    <table class="roster">
+      <thead><tr><th>Employee</th><th>Goal progress</th><th>Goals</th><th>Status</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>
+              <span class="avatar" style="background:var(--purple-l);color:var(--purple-d)">${initials(r.person)}</span>
+              ${r.person.GivenName} ${r.person.FamilyName}
+              <div style="font-size:11px;color:var(--text-muted);margin-left:38px">${r.person.PositionTitle || ""}</div>
+            </td>
+            <td>${r.avgProgress}%</td>
+            <td>${r.goalCount}</td>
+            <td>
+              <span class="badge" style="background:${r.atRisk ? 'var(--red-l)' : 'var(--green-l)'};color:${r.atRisk ? 'var(--red-d)' : 'var(--green-d)'}">
+                ${r.atRisk ? 'At risk' : 'On track'}
+              </span>
+            </td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+/* ============================================================================
+   APP SHELL
+   ============================================================================ */
+async function showApp() {
+  document.getElementById("signin-screen").style.display = "none";
+  document.getElementById("signout-btn").style.display = "inline-block";
+  document.getElementById("app-main").style.display = "block";
+
+  try {
+    await resolveCurrentEmployee();
+  } catch (e) {
+    document.getElementById("app-main").innerHTML = `<div class="error-state">${e.message}</div>`;
+    return;
+  }
+
+  await renderMyView();
+
+  document.getElementById("tab-my").addEventListener("click", () => switchTab("my"));
+  document.getElementById("tab-team").addEventListener("click", () => switchTab("team"));
+}
+
+async function switchTab(tab) {
+  document.getElementById("tab-my").classList.toggle("active", tab === "my");
+  document.getElementById("tab-team").classList.toggle("active", tab === "team");
+  document.getElementById("view-my").style.display = tab === "my" ? "block" : "none";
+  document.getElementById("view-team").style.display = tab === "team" ? "block" : "none";
+  if (tab === "team" && document.getElementById("view-team").innerHTML === "") {
+    await renderTeamView();
+  }
+}
+
+initAuth();
+</script>
+</body>
+</html>
