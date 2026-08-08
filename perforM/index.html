@@ -592,7 +592,7 @@ async function renderDashboard() {
           <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">${activeReview.ReviewStatus}</span>
           <p class="due-line">Due on ${fmtDate(activeReview.DueDate)}</p>
           <div class="progress-track"><div class="progress-fill" style="width:${activeReview.CompletionPercent || 0}%"></div></div>
-          <button type="button" class="continue-btn" onclick="openReviewWizard('${activeReview.CycleID}')">Continue Review</button>
+          <button type="button" class="continue-btn" onclick="openReviewWizard('${activeReview.CycleID}')">${(activeReview.ReviewStatus === "Not Started" || !activeReview.CompletionPercent) ? "Start Review" : "Continue Review"}</button>
         ` : `<div class="empty-state" style="padding:10px 0">No active review.</div>`}
       </div>
 
@@ -996,7 +996,7 @@ async function openReviewWizard(cycleId) {
   const reviewRows = await getListItems(LISTS.reviews, `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${me.EmployeeID}'`);
   const reviewItem = reviewRows[0] || null;
 
-  const criteria = await getListItems(LISTS.reviewCriteria);
+  const criteria = await getListItems(LISTS.reviewCriteria, `fields/RaterType ne 'Manager'`);
   const byStep = {};
   criteria.forEach(c => { (byStep[c.StepNumber] = byStep[c.StepNumber] || []).push(c); });
   Object.values(byStep).forEach(arr => arr.sort((a, b) => (a.DisplayOrder || 0) - (b.DisplayOrder || 0)));
