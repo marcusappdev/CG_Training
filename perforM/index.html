@@ -1815,17 +1815,7 @@ async function openLearningScreen() {
   el.innerHTML = `
     <button class="review-close" onclick="closeDevScreen()">&larr; Back</button>
 
-    <p class="section-title" style="margin-top:8px">Internal Training</p>
-    ${courses === null ? `<div class="empty-state">Couldn't load internal courses right now.</div>` :
-      courses.length ? courses.map(c => `
-        <div class="course-card">
-          <p class="course-title">${cleanCourseTitle(c.Title)}</p>
-          <p class="course-meta">${fmtDate(c.StartDate)} &ndash; ${fmtDate(c.EndDate)} &middot; ${c.Venue || "Venue TBC"}</p>
-          <p class="course-meta">Trainer: ${c.Trainer || "TBC"} &middot; Capacity: ${c.Capacity != null ? c.Capacity : "—"}</p>
-          <a class="express-btn" href="${courseInterestMailto(c)}">Express interest</a>
-        </div>`).join("") : `<div class="empty-state">No upcoming internal courses right now.</div>`}
-
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
       <p class="section-title" style="margin:0">Your learning</p>
       <button class="btn-sm primary" onclick="openDevItemModal('Learning')">+ Add</button>
     </div>
@@ -1841,6 +1831,16 @@ async function openLearningScreen() {
         <span class="badge" style="background:${sc.bg};color:${sc.fg}">${i.PlanStatus || "Not Started"}</span>
       </div>`;
     }).join("") : `<div class="empty-state">No learning items yet.</div>`}
+
+    <p class="section-title" style="margin:20px 0 10px">Internal Training</p>
+    ${courses === null ? `<div class="empty-state">Couldn't load internal courses right now.</div>` :
+      courses.length ? courses.map(c => `
+        <div class="course-card">
+          <p class="course-title">${cleanCourseTitle(c.Title)}</p>
+          <p class="course-meta">${fmtDate(c.StartDate)} &ndash; ${fmtDate(c.EndDate)} &middot; ${c.Venue || "Venue TBC"}</p>
+          <p class="course-meta">Trainer: ${c.Trainer || "TBC"} &middot; Capacity: ${c.Capacity != null ? c.Capacity : "—"}</p>
+          <a class="express-btn" href="${courseInterestMailto(c)}">Express interest</a>
+        </div>`).join("") : `<div class="empty-state">No upcoming internal courses right now.</div>`}
   `;
 }
 
