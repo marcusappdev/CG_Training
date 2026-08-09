@@ -221,6 +221,11 @@
   .learning-row .l-title { font-size: 13px; font-weight: 700; margin: 0; }
   .learning-row .l-date { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
 
+  .course-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: var(--blue-light); }
+  .course-card .course-title { font-size: 13px; font-weight: 700; margin: 0 0 4px; }
+  .course-card .course-meta { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
+  .course-card .express-btn { display: inline-block; margin-top: 9px; background: var(--blue); color: #fff; text-decoration: none; font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 7px; }
+
   .achievement-row { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
   .achievement-row .a-icon { width: 38px; height: 38px; border-radius: 50%; background: var(--gold); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
   .achievement-row .a-info { flex: 1; min-width: 0; }
@@ -332,6 +337,13 @@ const LISTS = {
   evidence: "PMS_Evidence"
 };
 
+const TRAINING_SITE = {
+  hostname: "conceptcompg.sharepoint.com",
+  sitePath: "/sites/training.admin",
+  courseRunsList: "CG_CourseRuns",
+  interestEmail: "training@concept.com.pg"
+};
+
 const CATEGORY_COLORS = {
   Finance:  { bg: "var(--purple-l)", fg: "var(--purple-d)", ring: "var(--purple)" },
   People:   { bg: "var(--teal-l)",   fg: "var(--teal-d)",   ring: "var(--teal)" },
@@ -432,6 +444,64 @@ async function getListItems(displayName, filter) {
   if (filter) path += `&$filter=${encodeURIComponent(filter)}`;
   const data = await graphFetch(path);
   return (data.value || []).map(item => ({ id: item.id, ...item.fields }));
+}
+
+/* ============================================================================
+   CROSS-SITE READ — CG Training Hub (training.admin site)
+   Read-only: perforM never writes back to this site.
+   ============================================================================ */
+let trainingSiteIdCache = null;
+async function getTrainingSiteId() {
+  if (trainingSiteIdCache) return trainingSiteIdCache;
+  const data = await graphFetch(`/sites/${TRAINING_SITE.hostname}:${TRAINING_SITE.sitePath}`);
+  trainingSiteIdCache = data.id;
+  return trainingSiteIdCache;
+}
+
+const trainingListIdCache = {};
+async function getTrainingListId(displayName) {
+  if (trainingListIdCache[displayName]) return trainingListIdCache[displayName];
+  const siteId = await getTrainingSiteId();
+  const data = await graphFetch(`/sites/${siteId}/lists?$filter=displayName eq '${displayName}'`);
+  if (!data.value || data.value.length === 0) throw new Error(`List not found: ${displayName}`);
+  trainingListIdCache[displayName] = data.value[0].id;
+  return trainingListIdCache[displayName];
+}
+
+async function getTrainingListItems(displayName, filter) {
+  const siteId = await getTrainingSiteId();
+  const listId = await getTrainingListId(displayName);
+  let path = `/sites/${siteId}/lists/${listId}/items?expand=fields`;
+  if (filter) path += `&$filter=${encodeURIComponent(filter)}`;
+  const data = await graphFetch(path);
+  return (data.value || []).map(item => ({ id: item.id, ...item.fields }));
+}
+
+async function getUpcomingInternalCourses() {
+  const todayIso = new Date().toISOString().slice(0, 10) + "T00:00:00Z";
+  const filter = `fields/StartDate ge '${todayIso}' and (fields/Status eq 'Scheduled' or fields/Status eq 'Active')`;
+  const items = await getTrainingListItems(TRAINING_SITE.courseRunsList, filter);
+  items.sort((a, b) => new Date(a.StartDate || 0) - new Date(b.StartDate || 0));
+  return items;
+}
+
+function cleanCourseTitle(title) {
+  return (title || "").replace(/\s+\d{4}-\d{2}-\d{2}$/, "");
+}
+
+function courseInterestMailto(course) {
+  const title = cleanCourseTitle(course.Title);
+  const subject = encodeURIComponent(`Internal Request: Expression of Interest — ${title}`);
+  const body = encodeURIComponent(
+    `Hi,\n\nI'd like to express interest in the following internal training course:\n\n` +
+    `Course: ${title}\n` +
+    `Dates: ${fmtDate(course.StartDate)} - ${fmtDate(course.EndDate)}\n` +
+    `Trainer: ${course.Trainer || "TBC"}\n` +
+    `Venue: ${course.Venue || "TBC"}\n\n` +
+    `Requested by: ${me.GivenName} ${me.FamilyName} (${me.EmployeeID})\n\n` +
+    `Thanks.`
+  );
+  return `mailto:${TRAINING_SITE.interestEmail}?subject=${subject}&body=${body}`;
 }
 
 async function createListItem(displayName, fields) {
@@ -1734,13 +1804,29 @@ async function openLearningScreen() {
   showDevScreenShell();
   const el = document.getElementById("view-dev-screen");
   el.innerHTML = `<button class="review-close" onclick="closeDevScreen()">&larr; Back</button><div class="loading">Loading learning...</div>`;
-  const items = await getListItems(LISTS.developmentPlan, `fields/EmployeeID eq '${me.EmployeeID}' and fields/ActivityType eq 'Learning'`);
+
+  const [items, courses] = await Promise.all([
+    getListItems(LISTS.developmentPlan, `fields/EmployeeID eq '${me.EmployeeID}' and fields/ActivityType eq 'Learning'`),
+    getUpcomingInternalCourses().catch(() => null)
+  ]);
   items.forEach(i => { devItemsCache[i.id] = i; });
   const statusColor = (s) => s === "Completed" ? { bg: "var(--teal-l)", fg: "var(--teal-d)" } : s === "In Progress" ? { bg: "var(--purple-l)", fg: "var(--purple-d)" } : { bg: "var(--gray-l)", fg: "var(--gray-d)" };
+
   el.innerHTML = `
     <button class="review-close" onclick="closeDevScreen()">&larr; Back</button>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <p class="section-title" style="margin:0">Learning</p>
+
+    <p class="section-title" style="margin-top:8px">Internal Training</p>
+    ${courses === null ? `<div class="empty-state">Couldn't load internal courses right now.</div>` :
+      courses.length ? courses.map(c => `
+        <div class="course-card">
+          <p class="course-title">${cleanCourseTitle(c.Title)}</p>
+          <p class="course-meta">${fmtDate(c.StartDate)} &ndash; ${fmtDate(c.EndDate)} &middot; ${c.Venue || "Venue TBC"}</p>
+          <p class="course-meta">Trainer: ${c.Trainer || "TBC"} &middot; Capacity: ${c.Capacity != null ? c.Capacity : "—"}</p>
+          <a class="express-btn" href="${courseInterestMailto(c)}">Express interest</a>
+        </div>`).join("") : `<div class="empty-state">No upcoming internal courses right now.</div>`}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">
+      <p class="section-title" style="margin:0">Your learning</p>
       <button class="btn-sm primary" onclick="openDevItemModal('Learning')">+ Add</button>
     </div>
     ${items.length ? items.map(i => {
