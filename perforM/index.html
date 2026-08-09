@@ -1242,7 +1242,7 @@ async function renderTeam() {
             <p class="prole">${e.person.PositionTitle || ""}</p>
             <div class="row-actions">
               <button class="btn-sm" onclick="event.stopPropagation(); openCheckinModal('${e.person.EmployeeID}')">Log check-in</button>
-              <button class="btn-sm" onclick="event.stopPropagation(); openFeedbackModal('${e.person.EmployeeID}')">Give feedback</button>
+              <button class="btn-sm" onclick="event.stopPropagation(); openFeedbackModal('${e.person.EmployeeID}', '${reports.length > 0 ? "Manager" : "Peer"}')">Give feedback</button>
             </div>
           </div>
           <span class="rating-badge" style="background:${rc.bg};color:${rc.fg}">${e.rating != null ? e.rating.toFixed(1) : "—"}</span>
@@ -1297,7 +1297,7 @@ async function openPersonDetail(employeeId, isDirectReport) {
 
     <div class="row-actions" style="margin:14px 0 4px">
       <button class="btn-sm primary" onclick="openCheckinModal('${employeeId}')">Log check-in</button>
-      <button class="btn-sm" onclick="openFeedbackModal('${employeeId}')">Give feedback</button>
+      <button class="btn-sm" onclick="openFeedbackModal('${employeeId}', '${isDirectReport ? "Manager" : "Peer"}')">Give feedback</button>
       <button class="btn-sm" onclick="openAddGoalModal('${employeeId}', '${escAttr(person.GivenName + " " + person.FamilyName)}')">Assign a goal</button>
     </div>
 
@@ -1405,17 +1405,16 @@ async function submitCheckin(employeeId) {
   }
 }
 
-function openFeedbackModal(employeeId) {
+function openFeedbackModal(employeeId, relationship) {
   const person = teamCache[employeeId];
   if (!person) return;
+  const options = ["Manager", "Peer", "Direct report"];
   openModal(`
     <h3>Give feedback</h3>
     <p class="modal-sub">${person.GivenName} ${person.FamilyName}</p>
     <label>Relationship</label>
     <select id="fb-rel">
-      <option value="Manager">Manager</option>
-      <option value="Peer">Peer</option>
-      <option value="Direct report">Direct report</option>
+      ${options.map(o => `<option value="${o}" ${o === relationship ? "selected" : ""}>${o}</option>`).join("")}
     </select>
     <label>Message</label>
     <textarea id="fb-msg" placeholder="Share something specific..."></textarea>
