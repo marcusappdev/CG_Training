@@ -213,6 +213,7 @@
   .modal-actions .btn-save:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
   .delete-link { display: block; background: none; border: none; color: var(--pink-d); font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; margin: 16px 0 0; font-family: inherit; }
   .delete-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 2px 4px; font-family: inherit; flex-shrink: 0; }
+  .locked-field { font-size: 14px; font-weight: 600; margin: 0; padding: 10px 12px; background: var(--page-bg); border-radius: 10px; color: var(--text-primary); }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12.5px; z-index: 60; }
 
   .review-close { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin: 4px 0 14px; padding: 0; font-family: inherit; }
@@ -1408,14 +1409,11 @@ async function submitCheckin(employeeId) {
 function openFeedbackModal(employeeId, relationship) {
   const person = teamCache[employeeId];
   if (!person) return;
-  const options = ["Manager", "Peer", "Direct report"];
   openModal(`
     <h3>Give feedback</h3>
     <p class="modal-sub">${person.GivenName} ${person.FamilyName}</p>
     <label>Relationship</label>
-    <select id="fb-rel">
-      ${options.map(o => `<option value="${o}" ${o === relationship ? "selected" : ""}>${o}</option>`).join("")}
-    </select>
+    <p class="locked-field">${relationship}</p>
     <label>Message</label>
     <textarea id="fb-msg" placeholder="Share something specific..."></textarea>
     <label>Rating (optional)</label>
@@ -1425,14 +1423,13 @@ function openFeedbackModal(employeeId, relationship) {
     </select>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" id="fb-save-btn" onclick="submitFeedback('${employeeId}')">Send</button>
+      <button class="btn-save" id="fb-save-btn" onclick="submitFeedback('${employeeId}', '${relationship}')">Send</button>
     </div>
   `);
 }
 
-async function submitFeedback(employeeId) {
+async function submitFeedback(employeeId, relationship) {
   const btn = document.getElementById("fb-save-btn");
-  const rel = document.getElementById("fb-rel").value;
   const msg = document.getElementById("fb-msg").value;
   const ratingVal = document.getElementById("fb-rating").value;
   if (!msg.trim()) { showToast("Add a message before sending"); return; }
@@ -1443,7 +1440,7 @@ async function submitFeedback(employeeId) {
       Title: "Feedback",
       FromEmployeeID: me.EmployeeID,
       ToEmployeeID: employeeId,
-      RelationshipType: rel,
+      RelationshipType: relationship,
       Message: msg,
       Rating: ratingVal ? parseInt(ratingVal, 10) : null,
       IsRead: false,
