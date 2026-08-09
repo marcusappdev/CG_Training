@@ -159,11 +159,17 @@
   .feedback-row .date { font-size: 10px; color: var(--text-muted); margin: 5px 0 0; }
   .dot-unread { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); display: inline-block; margin-left: 6px; }
 
-  .me-panel { text-align: center; padding: 30px 16px; }
-  .me-panel .avatar-circle { width: 64px; height: 64px; font-size: 20px; margin: 0 auto 10px; }
-  .me-menu { text-align: left; margin-top: 20px; }
-  .me-menu a { display: block; padding: 12px 4px; border-bottom: 1px solid var(--border); color: var(--text-primary); text-decoration: none; font-size: 13px; }
-  #signout-btn { width: 100%; margin-top: 20px; background: var(--pink-l); color: var(--pink-d); border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .me-hero { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); border-radius: 16px; padding: 26px 20px 22px; text-align: center; margin-top: 4px; }
+  .me-hero-avatar { width: 76px; height: 76px; margin: 0 auto 12px; font-size: 24px; background: rgba(255,255,255,0.25); color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.4); }
+  .me-hero-name { color: #fff; font-size: 17px; font-weight: 800; margin: 0; }
+  .me-hero-role { color: rgba(255,255,255,0.85); font-size: 12px; margin: 3px 0 0; }
+  .me-menu-list { margin-top: 16px; }
+  .me-menu-row { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .me-menu-row:last-child { border-bottom: none; }
+  .me-menu-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .me-menu-label { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  .me-menu-chevron { color: var(--text-muted); font-size: 15px; }
+  #signout-btn { width: 100%; margin-top: 24px; background: var(--gray-l); color: var(--pink-d); border: none; border-radius: 10px; padding: 12px; font-size: 13.5px; font-weight: 700; cursor: pointer; }
 
   nav.tab-bar {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
@@ -1650,22 +1656,34 @@ async function submitFeedback(employeeId, relationship) {
    ============================================================================ */
 function renderMe() {
   const el = document.getElementById("view-me");
+  const menuItems = [
+    { label: "Career Goals", icon: "&#127919;", bg: "var(--purple-l)", fg: "var(--purple-d)", fn: "openCareerGoalsScreen()" },
+    { label: "Development Plan", icon: "&#128200;", bg: "var(--teal-l)", fg: "var(--teal-d)", fn: "openDevelopmentPlanScreen()" },
+    { label: "Learning", icon: "&#128218;", bg: "var(--gold-l)", fg: "var(--gold-d)", fn: "openLearningScreen()" },
+    { label: "Achievements", icon: "&#127942;", bg: "var(--coral-l)", fg: "var(--coral-d)", fn: "openAchievementsScreen()" },
+    { label: "Documents", icon: "&#128196;", bg: "var(--blue-light)", fg: "var(--blue-dark)", fn: "openDocumentsScreen()" },
+    { label: "Settings", icon: "&#9881;&#65039;", bg: "var(--gray-l)", fg: "var(--gray-d)", fn: "openPlaceholderScreen('Settings')" },
+    { label: "Help &amp; Support", icon: "&#128172;", bg: "var(--pink-l)", fg: "var(--pink-d)", fn: "openPlaceholderScreen('Help &amp; Support')" }
+  ];
+
   el.innerHTML = `
-    <div class="me-panel">
-      <div class="avatar-circle" id="me-avatar">${initials(me)}</div>
-      <p style="font-size:16px;font-weight:700;margin:0">${me.GivenName} ${me.FamilyName}</p>
-      <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">${myPosition ? myPosition.PositionTitle : ""}</p>
-      <div class="me-menu">
-        <a href="#" onclick="event.preventDefault(); openCareerGoalsScreen()">Career Goals</a>
-        <a href="#" onclick="event.preventDefault(); openDevelopmentPlanScreen()">Development Plan</a>
-        <a href="#" onclick="event.preventDefault(); openLearningScreen()">Learning</a>
-        <a href="#" onclick="event.preventDefault(); openAchievementsScreen()">Achievements</a>
-        <a href="#" onclick="event.preventDefault(); openDocumentsScreen()">Documents</a>
-        <a href="#" onclick="event.preventDefault(); openPlaceholderScreen('Settings')">Settings</a>
-        <a href="#" onclick="event.preventDefault(); openPlaceholderScreen('Help &amp; Support')">Help &amp; Support</a>
-      </div>
-      <button id="signout-btn">Sign out</button>
+    <div class="me-hero">
+      <div class="avatar-circle me-hero-avatar" id="me-avatar">${initials(me)}</div>
+      <p class="me-hero-name">${me.GivenName} ${me.FamilyName}</p>
+      <p class="me-hero-role">${myPosition ? myPosition.PositionTitle : ""}</p>
     </div>
+
+    <div class="me-menu-list">
+      ${menuItems.map(item => `
+        <div class="me-menu-row" onclick="${item.fn}">
+          <div class="me-menu-icon" style="background:${item.bg};color:${item.fg}">${item.icon}</div>
+          <span class="me-menu-label">${item.label}</span>
+          <span class="me-menu-chevron">&#8250;</span>
+        </div>
+      `).join("")}
+    </div>
+
+    <button id="signout-btn">Sign out</button>
   `;
   document.getElementById("signout-btn").addEventListener("click", () => {
     msalInstance.logoutRedirect();
