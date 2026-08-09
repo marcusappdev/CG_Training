@@ -211,6 +211,8 @@
   .modal-actions .btn-cancel { background: var(--gray-l); color: var(--text-primary); }
   .modal-actions .btn-save { background: var(--blue); color: #fff; box-shadow: 0 6px 16px rgba(58,63,240,0.3); }
   .modal-actions .btn-save:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+  .delete-link { display: block; background: none; border: none; color: var(--pink-d); font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; margin: 16px 0 0; font-family: inherit; }
+  .delete-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 2px 4px; font-family: inherit; flex-shrink: 0; }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12.5px; z-index: 60; }
 
   .review-close { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin: 4px 0 14px; padding: 0; font-family: inherit; }
@@ -422,6 +424,14 @@ async function updateListItemFields(displayName, itemId, fields) {
   return graphFetch(`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`, {
     method: "PATCH",
     body: JSON.stringify(fields)
+  });
+}
+
+async function deleteListItem(displayName, itemId) {
+  const siteId = await getSiteId();
+  const listId = await getListId(displayName);
+  return graphFetch(`/sites/${siteId}/lists/${listId}/items/${itemId}`, {
+    method: "DELETE"
   });
 }
 
@@ -797,6 +807,7 @@ function openGoalUpdateModal(goalId) {
     </select>
     <label>What changed? (optional)</label>
     <textarea id="comment-input" placeholder="Add a short update..."></textarea>
+    <button type="button" class="delete-link" onclick="deleteGoal('${goalId}')">Delete this goal</button>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" id="goal-save-btn" onclick="submitGoalUpdate('${goalId}')">Save</button>
@@ -835,6 +846,20 @@ async function submitGoalUpdate(goalId) {
     btn.disabled = false;
     btn.textContent = "Save";
     showToast("Couldn't save — try again");
+  }
+}
+
+async function deleteGoal(goalId) {
+  const goal = goalsCache[goalId];
+  if (!confirm(`Delete "${goal ? goal.Title : "this goal"}"? This can't be undone.`)) return;
+  try {
+    await deleteListItem(LISTS.goals, goalId);
+    closeModal();
+    showToast("Goal deleted");
+    renderedTabs.delete("dashboard");
+    await renderGoals();
+  } catch (e) {
+    showToast("Couldn't delete — try again");
   }
 }
 
@@ -970,6 +995,7 @@ async function renderFeedback() {
           <div class="peer-row">
             <div class="info"><p class="pname">${f.fromName}</p><p class="prole">${f.RelationshipType || ""}</p></div>
             <span class="status-chip" style="background:var(--amber-l);color:var(--amber-d)">Pending</span>
+            <button class="btn-sm" style="margin-left:8px" onclick="cancelFeedbackRequest('${f.id}')">Cancel</button>
           </div>`).join("")}
       </div>
     ` : ""}
@@ -991,6 +1017,17 @@ async function renderFeedback() {
     Promise.all(unreadIds.map(id => updateListItemFields(LISTS.feedback, id, { IsRead: true })))
       .then(() => { renderedTabs.delete("dashboard"); })
       .catch(() => {});
+  }
+}
+
+async function cancelFeedbackRequest(feedbackId) {
+  if (!confirm("Cancel this feedback request?")) return;
+  try {
+    await deleteListItem(LISTS.feedback, feedbackId);
+    showToast("Request cancelled");
+    await renderFeedback();
+  } catch (e) {
+    showToast("Couldn't cancel — try again");
   }
 }
 
@@ -1295,7 +1332,10 @@ async function openPersonDetail(employeeId, isDirectReport) {
     <div class="checkin-panel">
       ${checkIns.length ? checkIns.map(c => `
         <div class="checkin-row">
-          <p class="who">Check-in on ${fmtDate(c.CheckInDate)}</p>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <p class="who">Check-in on ${fmtDate(c.CheckInDate)}</p>
+            <button class="delete-icon-btn" onclick="deleteCheckin('${c.id}', '${employeeId}')" title="Delete this check-in">&#10005;</button>
+          </div>
           <p class="notes">${c.Notes || ""}</p>
           <p class="date">Next: ${fmtDate(c.NextCheckInDate)}</p>
         </div>`).join("") : `<div class="empty-state">No check-ins logged yet.</div>`}
@@ -1303,6 +1343,17 @@ async function openPersonDetail(employeeId, isDirectReport) {
   `;
 
   applyUserPhotoTo("detail-avatar", person.EmailAddress);
+}
+
+async function deleteCheckin(checkinId, employeeId) {
+  if (!confirm("Delete this check-in? This can't be undone.")) return;
+  try {
+    await deleteListItem(LISTS.checkIns, checkinId);
+    showToast("Check-in deleted");
+    await openPersonDetail(employeeId, personDetailContext ? personDetailContext.isDirectReport : true);
+  } catch (e) {
+    showToast("Couldn't delete — try again");
+  }
 }
 
 function closePersonDetail() {
