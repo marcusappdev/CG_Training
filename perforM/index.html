@@ -1451,6 +1451,18 @@ async function openReviewWizard(cycleId) {
   Object.values(byStep).forEach(arr => arr.sort((a, b) => (a.DisplayOrder || 0) - (b.DisplayOrder || 0)));
   const stepNumbers = Object.keys(byStep).map(Number).sort((a, b) => a - b);
 
+  if (stepNumbers.length === 0) {
+    document.querySelector("nav.tab-bar").style.display = "none";
+    ["dashboard", "goals", "feedback", "team", "me"].forEach(t => { document.getElementById(`view-${t}`).style.display = "none"; });
+    const el = document.getElementById("view-review");
+    el.style.display = "block";
+    el.innerHTML = `
+      <button class="review-close" onclick="closeReviewWizard()">&larr; Close</button>
+      <div class="empty-state">No review criteria are set up for this cycle yet. Check PMS_ReviewCriteria.</div>
+    `;
+    return;
+  }
+
   const existingResponses = await getListItems(
     LISTS.reviewResponses,
     `fields/CycleID eq '${cycleId}' and fields/EmployeeID eq '${me.EmployeeID}' and fields/RaterType eq 'Self'`
@@ -1641,6 +1653,18 @@ async function openManagerReviewWizard(cycleId, employeeId) {
   criteria.forEach(c => { (byStep[c.StepNumber] = byStep[c.StepNumber] || []).push(c); });
   Object.values(byStep).forEach(arr => arr.sort((a, b) => (a.DisplayOrder || 0) - (b.DisplayOrder || 0)));
   const stepNumbers = Object.keys(byStep).map(Number).sort((a, b) => a - b);
+
+  if (stepNumbers.length === 0) {
+    document.querySelector("nav.tab-bar").style.display = "none";
+    document.getElementById("view-person-detail").style.display = "none";
+    const el = document.getElementById("view-review");
+    el.style.display = "block";
+    el.innerHTML = `
+      <button class="review-close" onclick="closeManagerReviewWizard()">&larr; Close</button>
+      <div class="empty-state">No manager review criteria are set up for this cycle yet. Check PMS_ReviewCriteria.</div>
+    `;
+    return;
+  }
 
   const selfResponses = await getListItems(
     LISTS.reviewResponses,
