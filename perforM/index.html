@@ -1832,7 +1832,7 @@ async function openLearningScreen() {
       </div>`;
     }).join("") : `<div class="empty-state">No learning items yet.</div>`}
 
-    <p class="section-title" style="margin:20px 0 10px">Internal Training</p>
+    <p class="section-title" style="margin:20px 0 10px">Upcoming Training Calendar</p>
     ${courses === null ? `<div class="empty-state">Couldn't load internal courses right now.</div>` :
       courses.length ? courses.map(c => `
         <div class="course-card">
