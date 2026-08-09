@@ -1641,6 +1641,7 @@ async function reviewGoNext() {
       if (reviewState.reviewItemId) {
         await updateListItemFields(LISTS.reviews, reviewState.reviewItemId, {
           CurrentStep: nextStepNum,
+          ReviewStatus: "In Progress",
           CompletionPercent: Math.round(((reviewState.stepIndex + 1) / totalSteps) * 100)
         });
       }
