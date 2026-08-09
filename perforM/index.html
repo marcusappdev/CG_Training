@@ -226,6 +226,11 @@
   .achievement-row .a-info { flex: 1; min-width: 0; }
   .achievement-row .a-title { font-size: 13px; font-weight: 700; margin: 0; }
   .achievement-row .a-date { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
+
+  .evidence-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .evidence-row:last-child { border-bottom: none; }
+  .evidence-row a { color: var(--blue); text-decoration: none; font-weight: 600; font-size: 12.5px; }
+  .upload-link { display: inline-block; background: var(--page-bg); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--blue); cursor: pointer; margin-top: 8px; }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text-primary); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12.5px; z-index: 60; }
 
   .review-close { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin: 4px 0 14px; padding: 0; font-family: inherit; }
@@ -318,7 +323,8 @@ const LISTS = {
   reviewCriteria: "PMS_ReviewCriteria",
   reviewResponses: "PMS_ReviewResponses",
   feedback: "PMS_Feedback",
-  developmentPlan: "PMS_DevelopmentPlan"
+  developmentPlan: "PMS_DevelopmentPlan",
+  evidence: "PMS_Evidence"
 };
 
 const CATEGORY_COLORS = {
@@ -447,6 +453,84 @@ async function deleteListItem(displayName, itemId) {
   return graphFetch(`/sites/${siteId}/lists/${listId}/items/${itemId}`, {
     method: "DELETE"
   });
+}
+
+/* ============================================================================
+   DRIVE API — PMS_Documents library (file upload/list/delete)
+   ============================================================================ */
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB — simple PUT upload limit, larger files need a resumable session (not implemented)
+
+let driveIdCache = null;
+async function getDocumentsDriveId() {
+  if (driveIdCache) return driveIdCache;
+  const siteId = await getSiteId();
+  const data = await graphFetch(`/sites/${siteId}/drives`);
+  const drive = (data.value || []).find(d => d.name === "PMS_Documents");
+  if (!drive) throw new Error("PMS_Documents library not found. Has it been created in SharePoint yet?");
+  driveIdCache = drive.id;
+  return driveIdCache;
+}
+
+async function ensureUserFolder(employeeId) {
+  const driveId = await getDocumentsDriveId();
+  const token = await getAccessToken();
+  const checkRes = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${employeeId}`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  if (checkRes.ok) return;
+  await graphFetch(`/drives/${driveId}/root/children`, {
+    method: "POST",
+    body: JSON.stringify({ name: employeeId, folder: {}, "@microsoft.graph.conflictBehavior": "replace" })
+  });
+}
+
+async function listUserFolderFiles(employeeId) {
+  const driveId = await getDocumentsDriveId();
+  try {
+    const data = await graphFetch(`/drives/${driveId}/root:/${employeeId}:/children`);
+    return data.value || [];
+  } catch (e) {
+    return []; // folder doesn't exist yet — nothing uploaded
+  }
+}
+
+async function uploadFileToUserFolder(employeeId, file) {
+  const driveId = await getDocumentsDriveId();
+  await ensureUserFolder(employeeId);
+  const token = await getAccessToken();
+  const safeName = file.name.replace(/[#%*:<>?/\\{|}]/g, "_");
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${employeeId}/${encodeURIComponent(safeName)}:/content`,
+    {
+      method: "PUT",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": file.type || "application/octet-stream" },
+      body: file
+    }
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+async function deleteDriveItem(itemId) {
+  const driveId = await getDocumentsDriveId();
+  const token = await getAccessToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Delete failed (${res.status})`);
+  }
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return "";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+  return (bytes / 1024 / 1024).toFixed(1) + " MB";
 }
 
 /* ============================================================================
@@ -796,13 +880,14 @@ async function renderGoals() {
   `;
 }
 
-function openGoalUpdateModal(goalId) {
+async function openGoalUpdateModal(goalId) {
   const goal = goalsCache[goalId];
   if (!goal) return;
   const pct = goal.ProgressPercent || 0;
   const statuses = ["On Track", "At Risk", "Behind", "Complete"];
   const categories = ["Finance", "People", "Customer", "Company"];
   const dueVal = goal.DueDate ? new Date(goal.DueDate).toISOString().slice(0, 10) : "";
+  const evidence = await getListItems(LISTS.evidence, `fields/RecordType eq 'Goal' and fields/RecordID eq '${goalId}'`);
   openModal(`
     <h3>Edit goal</h3>
     <label>Title</label>
@@ -822,6 +907,17 @@ function openGoalUpdateModal(goalId) {
     </select>
     <label>What changed? (optional)</label>
     <textarea id="comment-input" placeholder="Add a short update..."></textarea>
+    <label>Evidence</label>
+    <div>
+      ${evidence.length ? evidence.map(ev => `
+        <div class="evidence-row">
+          <a href="${ev.FileUrl}" target="_blank" rel="noopener">${ev.FileName}</a>
+          <button class="delete-icon-btn" onclick="removeEvidence('${ev.id}', 'Goal', '${goalId}')" title="Remove">&#10005;</button>
+        </div>`).join("") : `<p style="font-size:11.5px;color:var(--text-muted);margin:2px 0">No evidence attached yet.</p>`}
+    </div>
+    <label class="upload-link">+ Attach evidence
+      <input type="file" style="display:none" onchange="handleEvidenceUpload(this, 'Goal', '${goalId}')">
+    </label>
     <button type="button" class="delete-link" onclick="deleteGoal('${goalId}')">Delete this goal</button>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -1484,7 +1580,7 @@ function renderMe() {
         <a href="#" onclick="event.preventDefault(); openDevelopmentPlanScreen()">Development Plan</a>
         <a href="#" onclick="event.preventDefault(); openLearningScreen()">Learning</a>
         <a href="#" onclick="event.preventDefault(); openAchievementsScreen()">Achievements</a>
-        <a href="#" onclick="event.preventDefault(); openPlaceholderScreen('Documents')">Documents</a>
+        <a href="#" onclick="event.preventDefault(); openDocumentsScreen()">Documents</a>
         <a href="#" onclick="event.preventDefault(); openPlaceholderScreen('Settings')">Settings</a>
         <a href="#" onclick="event.preventDefault(); openPlaceholderScreen('Help &amp; Support')">Help &amp; Support</a>
       </div>
@@ -1519,6 +1615,61 @@ function openPlaceholderScreen(title) {
     <p class="section-title" style="margin-top:8px">${title}</p>
     <div class="empty-state">This section is coming soon.</div>
   `;
+}
+
+async function openDocumentsScreen() {
+  showDevScreenShell();
+  const el = document.getElementById("view-dev-screen");
+  el.innerHTML = `<button class="review-close" onclick="closeDevScreen()">&larr; Back</button><div class="loading">Loading documents...</div>`;
+  let files = [];
+  try {
+    files = await listUserFolderFiles(me.EmployeeID);
+  } catch (e) { /* library not set up yet — show empty state */ }
+  files.sort((a, b) => new Date(b.lastModifiedDateTime || 0) - new Date(a.lastModifiedDateTime || 0));
+
+  el.innerHTML = `
+    <button class="review-close" onclick="closeDevScreen()">&larr; Back</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <p class="section-title" style="margin:0">Documents</p>
+      <label class="btn-sm primary" style="cursor:pointer;margin:0">+ Upload
+        <input type="file" style="display:none" onchange="handleDocumentUpload(this)">
+      </label>
+    </div>
+    ${files.length ? files.map(f => `
+      <div class="learning-row" style="cursor:default">
+        <div class="l-icon">&#128196;</div>
+        <div class="l-info">
+          <p class="l-title"><a href="${f.webUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${f.name}</a></p>
+          <p class="l-date">${fmtDate(f.lastModifiedDateTime)} &middot; ${formatFileSize(f.size)}</p>
+        </div>
+        <button class="delete-icon-btn" onclick="deleteDocument('${f.id}')" title="Delete">&#10005;</button>
+      </div>`).join("") : `<div class="empty-state">No documents uploaded yet.</div>`}
+  `;
+}
+
+async function handleDocumentUpload(inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  if (file.size > MAX_UPLOAD_BYTES) { showToast("File too large — max 4MB"); inputEl.value = ""; return; }
+  showToast("Uploading...");
+  try {
+    await uploadFileToUserFolder(me.EmployeeID, file);
+    showToast("Uploaded");
+    await openDocumentsScreen();
+  } catch (e) {
+    showToast("Upload failed — try again");
+  }
+}
+
+async function deleteDocument(itemId) {
+  if (!confirm("Delete this document? This can't be undone.")) return;
+  try {
+    await deleteDriveItem(itemId);
+    showToast("Deleted");
+    await openDocumentsScreen();
+  } catch (e) {
+    showToast("Couldn't delete — try again");
+  }
 }
 
 async function openCareerGoalsScreen() {
@@ -1621,7 +1772,7 @@ async function openAchievementsScreen() {
   `;
 }
 
-function openDevItemModal(activityType, itemId) {
+async function openDevItemModal(activityType, itemId) {
   const item = itemId ? devItemsCache[itemId] : null;
   const isAchievement = activityType === "Achievement";
   const statuses = ["Not Started", "In Progress", "Completed"];
@@ -1633,6 +1784,7 @@ function openDevItemModal(activityType, itemId) {
   };
   const targetVal = item && item.TargetDate ? new Date(item.TargetDate).toISOString().slice(0, 10) : "";
   const achievedVal = item && item.DateAchieved ? new Date(item.DateAchieved).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const evidence = (isAchievement && item) ? await getListItems(LISTS.evidence, `fields/RecordType eq 'Achievement' and fields/RecordID eq '${itemId}'`) : [];
 
   openModal(`
     <h3>${item ? "Edit" : "Add"} ${activityType}</h3>
@@ -1654,6 +1806,19 @@ function openDevItemModal(activityType, itemId) {
       <input type="range" id="di-progress" min="0" max="100" step="5" value="${item ? (item.ProgressPercent || 0) : 0}"
         oninput="document.getElementById('di-prog-val').textContent = this.value + '%'">
     `}
+    ${(isAchievement && item) ? `
+      <label>Evidence</label>
+      <div>
+        ${evidence.length ? evidence.map(ev => `
+          <div class="evidence-row">
+            <a href="${ev.FileUrl}" target="_blank" rel="noopener">${ev.FileName}</a>
+            <button class="delete-icon-btn" onclick="removeEvidence('${ev.id}', 'Achievement', '${itemId}')" title="Remove">&#10005;</button>
+          </div>`).join("") : `<p style="font-size:11.5px;color:var(--text-muted);margin:2px 0">No evidence attached yet.</p>`}
+      </div>
+      <label class="upload-link">+ Attach evidence
+        <input type="file" style="display:none" onchange="handleEvidenceUpload(this, 'Achievement', '${itemId}')">
+      </label>
+    ` : ""}
     ${item ? `<button type="button" class="delete-link" onclick="deleteDevItem('${item.id}')">Delete this item</button>` : ""}
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -1721,6 +1886,45 @@ async function reopenDevScreen(activityType) {
   else if (activityType === "Development Plan") await openDevelopmentPlanScreen();
   else if (activityType === "Learning") await openLearningScreen();
   else if (activityType === "Achievement") await openAchievementsScreen();
+}
+
+/* ============================================================================
+   EVIDENCE ATTACHMENTS — shared by Goals and Achievements
+   ============================================================================ */
+async function handleEvidenceUpload(inputEl, recordType, recordId) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  if (file.size > MAX_UPLOAD_BYTES) { showToast("File too large — max 4MB"); return; }
+  showToast("Uploading...");
+  try {
+    const driveItem = await uploadFileToUserFolder(me.EmployeeID, file);
+    await createListItem(LISTS.evidence, {
+      Title: driveItem.name,
+      EmployeeID: me.EmployeeID,
+      RecordType: recordType,
+      RecordID: recordId,
+      FileName: driveItem.name,
+      FileUrl: driveItem.webUrl,
+      DriveItemId: driveItem.id,
+      UploadedDate: new Date().toISOString()
+    });
+    showToast("Evidence attached");
+    if (recordType === "Goal") await openGoalUpdateModal(recordId);
+    else if (recordType === "Achievement") await openDevItemModal("Achievement", recordId);
+  } catch (e) {
+    showToast("Upload failed — try again");
+  }
+}
+
+async function removeEvidence(evidenceId, recordType, recordId) {
+  try {
+    await deleteListItem(LISTS.evidence, evidenceId);
+    showToast("Evidence removed");
+    if (recordType === "Goal") await openGoalUpdateModal(recordId);
+    else if (recordType === "Achievement") await openDevItemModal("Achievement", recordId);
+  } catch (e) {
+    showToast("Couldn't remove — try again");
+  }
 }
 
 /* ============================================================================
