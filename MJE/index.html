@@ -33,6 +33,29 @@ header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:16
 .signin .full img{width:200px;height:auto;display:block}
 nav{display:flex;gap:4px;margin-left:12px}
 nav[hidden]{display:none}
+.p-vh{background:var(--crit);color:#fff}
+a[data-goto]{color:inherit;text-decoration:underline}
+.flag{font-size:11px;color:var(--warn);white-space:nowrap}
+.chips{gap:6px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:13px}
+.chip span{color:var(--muted);margin-left:4px}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}.chip.on span{color:#c9d1db}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--muted)}
+.seg button.on{background:var(--brand);color:#fff}
+.hm{display:grid;grid-template-columns:18px 1fr;grid-template-rows:auto auto;gap:4px}
+.hm-y{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.5px}
+.hm-x{grid-column:2;text-align:center;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.hm-grid{display:grid;grid-template-columns:92px repeat(5,1fr);gap:4px}
+.hm-h{font-size:11px;color:var(--muted);text-align:center;align-self:end;overflow:hidden;text-overflow:ellipsis}
+.hm-r{font-size:12px;color:var(--muted);align-self:center;text-align:right;padding-right:6px}
+.hm-c{height:42px;border:2px solid transparent;border-radius:6px;font-weight:700;font-size:15px;cursor:pointer;font-variant-numeric:tabular-nums}
+.hm-c.z{opacity:.45;cursor:default}
+.hm-c.sel{border-color:var(--text)}
+.hm-Low{background:var(--ok-bg);color:var(--ok)}.hm-Medium{background:var(--warn-bg);color:var(--warn)}
+.hm-High{background:var(--bad-bg);color:var(--bad)}.hm-VeryHigh{background:var(--crit);color:#fff}
+.hint{font-size:12px;color:var(--warn);margin:-8px 0 12px}
+@media (max-width:720px){.hm-grid{grid-template-columns:64px repeat(5,1fr)}.hm-h{font-size:9px}.hm-r{font-size:11px}.hm-c{height:36px}}
 nav button{background:none;border:0;color:#c9d1db;padding:8px 12px;border-radius:8px;cursor:pointer}
 nav button.on{background:rgba(255,255,255,.12);color:#fff}
 .who{margin-left:auto;font-size:13px;color:#c9d1db;display:flex;gap:10px;align-items:center}
@@ -50,7 +73,7 @@ h2{font-size:18px;margin:0}
 input[type=search],select.f{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
 input[type=search]{width:240px;max-width:100%}
 .grid{display:grid;gap:14px}
-.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
 .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
 .kpi .v{font-size:28px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
@@ -106,6 +129,7 @@ label.fld input[readonly]{background:var(--grey-bg)}
 @media (max-width:720px){
   header{flex-wrap:wrap;padding:10px 16px}
   nav{order:3;width:100%;margin:0;overflow:auto}
+  nav button{padding:7px 9px}
   main{padding:16px}
   .fg .w2{grid-column:1/-1}
   .hb{grid-template-columns:100px 1fr 36px}
@@ -120,6 +144,7 @@ label.fld input[readonly]{background:var(--grey-bg)}
     <button data-v="dash" class="on">Dashboard</button>
     <button data-v="inc">Incidents</button>
     <button data-v="imp">Improvements</button>
+    <button data-v="risk">Risks</button>
   </nav>
   <div class="who" id="who"></div>
 </header>
@@ -143,12 +168,12 @@ const CONFIG = {
   TENANT_ID: "ea9e105c-2df6-47ef-a8e3-b4aa1d788423",
   SP_HOST:   "conceptcompg.sharepoint.com",
   SITE_PATH: "/sites/MJE",
-  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements" },
+  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements", risk: "MJE_Risks", rev: "MJE_RiskReviews" },
   SCOPES: ["Sites.ReadWrite.All", "User.Read"],
   RTW_HOURS_PER_DAY: 9
 };
 const DEMO = CONFIG.CLIENT_ID.startsWith("<<");
-const SEED = {"inc":[],"imp":[]};
+const SEED = {"inc":[],"imp":[],"risk":[],"rev":[]};
 
 /* ---------------- helpers ---------------- */
 const $ = s => document.querySelector(s);
@@ -198,6 +223,11 @@ async function loadList(key){
   while (url){ const j = await graph(url); out.push(...j.value.map(i => ({ id:i.id, ...i.fields }))); url = j["@odata.nextLink"]; }
   return out;
 }
+// Lists added in later phases may not exist yet — don't let that stop the app
+async function loadListSafe(key){
+  try { return await loadList(key); }
+  catch(e){ if (e.status === 404 || /not (be )?found|does not exist/i.test(e.message)) { S.missing.push(key); return []; } throw e; }
+}
 // Create/update with field fallback: strip any column SharePoint doesn't recognise and retry
 async function saveItem(key, id, fields){
   const base = `/sites/${siteId}/lists/${CONFIG.LISTS[key]}/items`;
@@ -217,8 +247,9 @@ async function saveItem(key, id, fields){
 }
 
 /* ---------------- state ---------------- */
-const S = { inc:[], imp:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1] },
-            filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" } } };
+const S = { inc:[], imp:[], risk:[], rev:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1] },
+            filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
+                   risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -267,7 +298,143 @@ const IMP_FORM = [
     ["Remarks","Remarks","textarea",{w:3}],
   ]],
 ];
-const NUMERIC = new Set(INC_FORM.flatMap(s => s[1]).filter(f => f[2]==="number").map(f => f[0]));
+
+/* ================= RISK REGISTERS (Phase 2) ================= */
+const REGISTERS = ["OH&S","Environmental","Quality","Task"];
+const REF_PREFIX = { "OH&S":"H", "Environmental":"EA", "Quality":"Q", "Task":"TR" };
+const LIKE = ["Rare","Unlikely","Possible","Likely","Almost Certain"];
+const CONS = ["Insignificant","Minor","Moderate","Major","Catastrophic"];
+const LV = { "Rare":1, "Unlikely":3, "Possible":5, "Likely":7, "Almost Certain":9 };
+const CV = { "Insignificant":1, "Minor":6, "Moderate":11, "Major":16, "Catastrophic":21 };
+// 5x5 matrix from MJE Risk Register (OPS-307-21): score = likelihood value + consequence value
+const MX = {
+  "Almost Certain":["Low","Medium","High","Very High","Very High"],
+  "Likely":        ["Low","Medium","Medium","High","Very High"],
+  "Possible":      ["Low","Medium","Medium","High","Very High"],
+  "Unlikely":      ["Low","Low","Medium","Medium","High"],
+  "Rare":          ["Low","Low","Medium","Medium","High"] };
+const RATINGS = ["Low","Medium","High","Very High","Positive"];
+const RISK_STATUS = ["Active","Planned","Proposed","Closed"];
+const FREQS = ["Weekly","Fortnightly","Monthly","Quarterly","Annually"];
+const matrix = (l, c) => (LV[l] && CV[c]) ? { score: LV[l] + CV[c], rating: MX[l][CONS.indexOf(c)] } : null;
+const ratingPill = r => { const c = { Low:"p-ok", Medium:"p-warn", High:"p-bad", "Very High":"p-vh", Positive:"p-info" }[r]; return r ? `<span class="pill ${c||"p-grey"}">${esc(r)}</span>` : ""; };
+const addMonths = (s, n) => { const [y,m,d] = s.split("-").map(Number); return ymd(new Date(y, m-1+n, d)); };
+const nextDue = r => { const d = r.ReviewDate || r.LastReviewed; if (!d) return "";
+  return { Weekly:addDays(d,7), Fortnightly:addDays(d,14), Monthly:addMonths(d,1), Quarterly:addMonths(d,3), Annually:addMonths(d,12) }[r.ReviewFrequency] || ""; };
+const revState = r => { const n = nextDue(r); if (!n) return "none"; if (n < TODAY) return "overdue"; if (n <= addDays(TODAY, 14)) return "soon"; return "ok"; };
+const revPill = r => { const s = revState(r); return { none:`<span class="pill p-bad">Not recorded</span>`, overdue:`<span class="pill p-crit">Overdue</span>`, soon:`<span class="pill p-warn">Due soon</span>`, ok:`<span class="pill p-ok">On track</span>` }[s]; };
+const openRisk = r => r.RiskType !== "Opportunity" && r.RiskStatus !== "Closed";
+
+const RISK_FORM = [
+  ["Risk", [
+    ["Title","Ref","text",{ro:1}], ["RegisterType","Register","select",{opts:REGISTERS,req:1}], ["RiskType","Risk or opportunity","select",{opts:["Risk","Opportunity"],req:1}],
+    ["ActivityArea","Activity / process / aspect","text",{req:1}], ["Task","Task (task register)","text"], ["Impact","Impact / who is at risk","text"],
+    ["Hazard","Hazard / risk / environmental impact","textarea",{w:3,req:1}],
+  ]],
+  ["Assessment (before controls)", [
+    ["Likelihood","Likelihood","select",{opts:LIKE}], ["Consequence","Consequence","select",{opts:CONS}],
+    ["RiskScore","Score","number",{ro:1}], ["Rating","Rating","select",{opts:RATINGS,req:1}],
+  ]],
+  ["Controls", [
+    ["Controls","Controls / mitigation (hierarchy applied)","textarea",{w:3}], ["Monitoring","Monitoring","textarea",{w:3}],
+  ]],
+  ["Residual risk (after controls)", [
+    ["ResidualLikelihood","Residual likelihood","select",{opts:LIKE}], ["ResidualConsequence","Residual consequence","select",{opts:CONS}],
+    ["ResidualScore","Residual score","number",{ro:1}], ["ResidualRating","Residual rating","select",{opts:RATINGS}],
+  ]],
+  ["Ownership & review", [
+    ["Responsible","Responsible","text"], ["RiskStatus","Status","select",{opts:RISK_STATUS}],
+    ["ReviewFrequency","Review frequency","select",{opts:FREQS}], ["LastReviewed","Last reviewed","date"],
+    ["Remarks","Remarks","textarea",{w:3}],
+  ]],
+];
+const REV_FORM = [
+  ["Review / sign-off", [
+    ["Title","Title / aspect","text",{req:1}], ["RegisterType","Register","select",{opts:REGISTERS,req:1}], ["RiskRefs","Risk refs covered","text"],
+    ["ReviewFrequency","Review frequency","select",{opts:FREQS,req:1}], ["Responsible","Responsible","text"], ["ApprovedBy","Approved by","text"],
+    ["ReviewAction","Action / control","textarea",{w:3,req:1}],
+    ["ReviewDate","Last review date","date"], ["Signed","Signed off","select",{opts:["Yes","No"]}],
+  ]],
+];
+
+function heatmap(rows, residual){
+  const lk = residual ? "ResidualLikelihood" : "Likelihood", ck = residual ? "ResidualConsequence" : "Consequence";
+  const cnt = {}; let plotted = 0;
+  rows.forEach(r => { if (LV[r[lk]] && CV[r[ck]]) { const k = r[lk] + "|" + r[ck]; cnt[k] = (cnt[k]||0) + 1; plotted++; } });
+  const sel = S.filt.risk.cell;
+  let h = `<div class="hm"><div class="hm-y">Likelihood</div><div class="hm-grid"><span></span>`;
+  h += CONS.map(c => `<span class="hm-h">${c}</span>`).join("");
+  [...LIKE].reverse().forEach(l => {
+    h += `<span class="hm-r">${l}</span>`;
+    CONS.forEach((c, ci) => { const k = l + "|" + c, n = cnt[k] || 0, rt = MX[l][ci];
+      h += `<button class="hm-c hm-${rt.replace(" ","")} ${n?"":"z"} ${sel===k?"sel":""}" data-cell="${k}" title="${l} × ${c}: ${rt} (score ${LV[l]+CV[c]}) — ${n} risk${n===1?"":"s"}">${n || ""}</button>`; });
+  });
+  h += `</div><div class="hm-x">Consequence</div></div>`;
+  const missing = rows.length - plotted;
+  if (missing) h += `<p class="count">${missing} item${missing===1?"":"s"} not plotted (no ${residual?"residual ":""}likelihood/consequence recorded${residual?"":", e.g. Environmental ratings or opportunities"}).</p>`;
+  return h;
+}
+
+function viewRisk(){
+  if (S.missing.includes("risk")) return `<div class="banner err">The risk lists haven't been set up on SharePoint yet. Run the Phase 2 provisioning script (Provision-MJE-Risks-Phase2.ps1), then refresh this page.</div>`;
+  const f = S.filt.risk, q = f.q.toLowerCase(), lk = f.residual ? "ResidualLikelihood" : "Likelihood", ck = f.residual ? "ResidualConsequence" : "Consequence";
+  const base = S.risk.filter(r => !f.reg || r.RegisterType === f.reg);
+  const rows = sortRows(base.filter(r =>
+    (!f.rating || (f.residual ? r.ResidualRating : r.Rating) === f.rating) && (!f.status || r.RiskStatus === f.status) &&
+    (!f.cell || (r[lk] + "|" + r[ck]) === f.cell) &&
+    (!q || [r.Title,r.ActivityArea,r.Task,r.Hazard,r.Impact,r.Controls,r.Responsible].join(" ").toLowerCase().includes(q))), "risk");
+  const chips = [["", "All", S.risk.length], ...REGISTERS.map(g => [g, g, S.risk.filter(r => r.RegisterType === g).length])]
+    .map(([v, l, n]) => `<button class="chip ${f.reg===v?"on":""}" data-reg="${esc(v)}">${esc(l)} <span>${n}</span></button>`).join("");
+  const rc = RATINGS.map(rt => ({ label: rt, parts:[base.filter(r => (f.residual ? r.ResidualRating : r.Rating) === rt).length], total: 0 }));
+  rc.forEach(r => r.total = r.parts[0]);
+  const rcMax = Math.max(1, ...rc.map(r => r.total));
+  const rcCol = { Low:"var(--ok)", Medium:"var(--warn)", High:"var(--bad)", "Very High":"var(--crit)", Positive:"var(--info)" };
+  const revs = sortRows(S.rev.filter(r => !f.reg || r.RegisterType === f.reg), "rev");
+  const [cl, cc] = (f.cell || "|").split("|");
+  return `
+  <div class="bar"><h2>Risk Registers</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:risk">Export CSV</button><button class="btn primary" data-act="new:risk">+ New risk</button></div>
+  <div class="bar chips">${chips}</div>
+  <div class="grid two" style="margin-bottom:14px">
+    <div class="card"><div class="bar" style="margin-bottom:8px"><h3 style="margin:0">Risk matrix</h3><span class="grow"></span>
+      <span class="seg"><button class="${f.residual?"":"on"}" data-res="0">Before controls</button><button class="${f.residual?"on":""}" data-res="1">Residual</button></span></div>
+      ${heatmap(base, f.residual)}</div>
+    <div class="card"><h3>${f.residual ? "Residual rating" : "Rating"} — ${esc(f.reg || "all registers")}</h3>
+      ${rc.map(r => `<div class="hb"><span>${r.label}</span><span class="t"><i style="width:${r.total/rcMax*100}%;background:${rcCol[r.label]}"></i></span><span class="n">${r.total}</span></div>`).join("")}
+      <p class="count" style="margin-top:12px">Scores use MJE's 5×5 matrix: likelihood (Rare 1 … Almost Certain 9) + consequence (Insignificant 1 … Catastrophic 21).</p></div>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search activity, hazard, controls…" value="${esc(f.q)}">
+    <select class="f" data-f="risk:rating">${opt(RATINGS, f.rating, f.residual ? "All residual ratings" : "All ratings")}</select>
+    <select class="f" data-f="risk:status">${opt(RISK_STATUS, f.status, "All statuses")}</select>
+    ${f.cell ? `<button class="chip on" data-cell="${esc(f.cell)}">${esc(cl)} × ${esc(cc)} ✕</button>` : ""}
+    <span class="count">${rows.length} of ${base.length}</span>
+  </div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("risk","Title","Ref")}${th("risk","RegisterType","Register")}${th("risk","ActivityArea","Activity / task")}<th>Hazard / risk</th>${th("risk","RiskScore","Score")}${th("risk","Rating","Rating")}${th("risk","ResidualScore","Residual")}${th("risk","Responsible","Responsible")}${th("risk","RiskStatus","Status")}
+  </tr></thead><tbody>
+  ${rows.map(r => { const m = matrix(r.Likelihood, r.Consequence), off = m && r.Rating && r.Rating !== m.rating && r.Rating !== "Positive";
+    return `<tr data-open="risk:${r.id}"><td class="mono"><b>${esc(r.Title)}</b></td><td>${esc(r.RegisterType)}</td>
+    <td class="clip"><div>${esc(r.ActivityArea)}${r.Task ? ` — ${esc(r.Task)}` : ""}</div></td><td class="clip"><div>${esc(r.Hazard)}</div></td>
+    <td class="mono">${r.RiskScore ?? ""}</td><td>${ratingPill(r.Rating)}${off ? ` <span class="flag" title="Matrix gives ${m.rating} for ${r.Likelihood} × ${r.Consequence}">≠ matrix</span>` : ""}</td>
+    <td>${ratingPill(r.ResidualRating)}</td><td>${esc(r.Responsible)}</td><td>${statPill(r.RiskStatus)}</td></tr>`; }).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No risks match</div>`}</div>
+
+  <div class="bar" style="margin-top:26px"><h2>Review & sign-off schedule</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:rev">Export CSV</button><button class="btn primary" data-act="new:rev">+ New review item</button></div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("rev","Title","Title / aspect")}${th("rev","RegisterType","Register")}<th>Covers</th>${th("rev","ReviewFrequency","Frequency")}<th>Action / control</th>${th("rev","Responsible","Responsible")}${th("rev","ReviewDate","Last review")}<th>Next due</th><th>Signed</th>
+  </tr></thead><tbody>
+  ${revs.map(r => `<tr data-open="rev:${r.id}"><td><b>${esc(r.Title)}</b></td><td>${esc(r.RegisterType)}</td><td class="mono">${esc(r.RiskRefs)}</td><td>${esc(r.ReviewFrequency)}</td>
+    <td class="clip"><div>${esc(r.ReviewAction)}</div></td><td>${esc(r.Responsible)}</td><td class="mono">${fmtDate(r.ReviewDate)}</td>
+    <td class="mono">${nextDue(r) ? fmtDate(nextDue(r)) + " " : ""}${revPill(r)}</td><td>${esc(r.Signed)}</td></tr>`).join("")}
+  </tbody></table>${revs.length ? "" : `<div class="empty">No review items</div>`}</div>`;
+}
+
+const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM };
+const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item" };
+const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule" };
+const NUMERIC = new Set(Object.values(FORMS).flat().flatMap(s => s[1]).filter(f => f[2]==="number").map(f => f[0]));
 
 /* ---------------- derived ---------------- */
 const isOverdue = i => i.ImprovementStatus !== "Closed" && (i.Recurrence || "One-off") === "One-off" && i.TargetDate && i.TargetDate < TODAY;
@@ -292,7 +459,7 @@ const priPill = p => { const c = {H:"p-crit",M:"p-warn",L:"p-grey"}[p]; return p
 function render(){
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === S.view));
   const banner = DEMO ? `<div class="banner">Demo mode — showing the existing registers as sample data. Changes are kept only until you refresh. Add the app registration details to CONFIG to connect to SharePoint.</div>` : "";
-  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp }[S.view])();
+  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk }[S.view])();
   bindView();
 }
 
@@ -314,6 +481,13 @@ function viewDash(){
   const catMax = Math.max(1, ...cats.map(c => c.total));
   const sev = INC_SEV.map(s => { const n = incY.filter(i => i.Severity === s).length; return { label:s, parts:[n], total:n }; }).filter(r => r.total);
   const sevMax = Math.max(1, ...sev.map(s => s.total));
+  const riskOn = !S.missing.includes("risk");
+  const hiRisks = S.risk.filter(r => openRisk(r) && (r.Rating === "High" || r.Rating === "Very High"))
+    .sort((a,b) => (b.RiskScore||0) - (a.RiskScore||0) || String(a.Title).localeCompare(String(b.Title), undefined, {numeric:true}));
+  const vh = hiRisks.filter(r => r.Rating === "Very High").length;
+  const revDue = S.rev.filter(r => ["overdue","none","soon"].includes(revState(r)))
+    .sort((a,b) => (nextDue(a)||"0").localeCompare(nextDue(b)||"0"));
+  const revOver = S.rev.filter(r => ["overdue","none"].includes(revState(r))).length;
 
   return `
   <div class="grid kpis">
@@ -322,6 +496,8 @@ function viewDash(){
     <div class="card kpi"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
     <div class="card kpi"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
     <div class="card kpi ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
+    ${riskOn ? `<div class="card kpi"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
+    <div class="card kpi ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
   </div>
   <div class="grid two">
     <div class="card"><h3>Improvements by category</h3>
@@ -333,6 +509,10 @@ function viewDash(){
       ${overdue.length ? `<ul class="list">${overdue.slice(0,8).map(i => `<li data-open="imp:${i.id}"><span class="id">${esc(i.Title)}</span><span class="x">${esc(i.NatureOfImprovement)}</span><span class="mono" style="color:var(--crit)">${fmtDate(i.TargetDate)}</span></li>`).join("")}</ul>${overdue.length>8?`<p class="count">+${overdue.length-8} more — see Improvements</p>`:""}` : `<div class="empty">Nothing overdue</div>`}</div>
     <div class="card"><h3>Recent incidents</h3>
       ${S.inc.length ? `<ul class="list">${[...S.inc].sort((a,b)=>(b.IncidentDate||"").localeCompare(a.IncidentDate||"")).slice(0,8).map(i => `<li data-open="inc:${i.id}"><span class="id">${esc(i.Title)}</span><span class="x">${esc([[i.FirstName,i.Surname].filter(Boolean).join(" "), i.AgencyOfInjury || i.Severity].filter(Boolean).join(" · ") || "Details not recorded")}</span><span class="mono">${fmtDate(i.IncidentDate)}</span></li>`).join("")}</ul>` : `<div class="empty">No incidents</div>`}</div>
+    ${riskOn ? `<div class="card"><h3>Highest risks (before controls)</h3>
+      ${hiRisks.length ? `<ul class="list">${hiRisks.slice(0,8).map(r => `<li data-open="risk:${r.id}"><span class="id">${esc(r.Title)}</span><span class="x">${esc(r.ActivityArea)}${r.Task ? " — " + esc(r.Task) : ""}</span>${ratingPill(r.Rating)}</li>`).join("")}</ul>${hiRisks.length>8?`<p class="count"><a href="#" data-goto="risk">+${hiRisks.length-8} more — see Risks</a></p>`:""}` : `<div class="empty">No high risks</div>`}</div>
+    <div class="card"><h3>Risk reviews due</h3>
+      ${revDue.length ? `<ul class="list">${revDue.slice(0,8).map(r => `<li data-open="rev:${r.id}"><span class="id">${esc(r.RegisterType)}</span><span class="x">${esc(r.Title)} · ${esc(r.ReviewFrequency||"")}</span>${revPill(r)}</li>`).join("")}</ul>` : `<div class="empty">All reviews on track</div>`}</div>` : ""}
   </div>`;
 }
 
@@ -403,6 +583,10 @@ function bindView(){
   document.querySelectorAll("[data-sort]").forEach(h => h.onclick = () => { const [k,c] = h.dataset.sort.split(":"); const cur = S.sort[k]; S.sort[k] = [c, cur[0]===c ? -cur[1] : 1]; render(); });
   document.querySelectorAll("[data-open]").forEach(r => r.onclick = () => { const [k,id] = r.dataset.open.split(":"); openForm(k, S[k].find(i => String(i.id) === id)); });
   document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => { const [a,k] = b.dataset.act.split(":"); a === "new" ? openForm(k) : exportCsv(k); });
+  document.querySelectorAll("[data-reg]").forEach(b => b.onclick = () => { S.filt.risk.reg = b.dataset.reg; S.filt.risk.cell = ""; render(); });
+  document.querySelectorAll("[data-res]").forEach(b => b.onclick = () => { S.filt.risk.residual = b.dataset.res === "1"; S.filt.risk.cell = ""; S.filt.risk.rating = ""; render(); });
+  document.querySelectorAll("[data-cell]").forEach(b => b.onclick = () => { if (b.classList.contains("z")) return; const c = b.dataset.cell; S.filt.risk.cell = S.filt.risk.cell === c ? "" : c; render(); });
+  document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.view = b.dataset.goto; render(); });
 }
 
 /* ---------------- form ---------------- */
@@ -417,15 +601,49 @@ function fieldHtml([name, label, type, o = {}], v){
   }
   return `<label class="${cls}">${lab}<input type="${type}" ${type==="number"?'step="any" min="0"':""} ${attrs} value="${esc(v ?? "")}"></label>`;
 }
+function newTitle(key, f = {}){
+  if (key === "inc") return nextNumber(S.inc, YEAR + "-");
+  if (key === "imp") return nextNumber(S.imp, `IR-${YEAR}-`);
+  if (key === "risk") return nextNumber(S.risk.filter(r => r.RegisterType === f.RegisterType), REF_PREFIX[f.RegisterType] || "R");
+  return f.Title || "";
+}
+function newDefaults(key){
+  if (key === "inc") return { Title: newTitle("inc"), IncidentDate: TODAY, IncidentStatus: "Open", RTWProgram: "No" };
+  if (key === "imp") return { Title: newTitle("imp"), DateIssued: TODAY, ImprovementStatus: "Open", Recurrence: "One-off", Priority: "M" };
+  const reg = S.filt.risk.reg || "OH&S";
+  if (key === "risk") return { Title: newTitle("risk", { RegisterType: reg }), RegisterType: reg, RiskType: "Risk", RiskStatus: "Active" };
+  return { RegisterType: reg, Signed: "No" };
+}
 function openForm(key, item){
   editing = { key, item };
-  const defs = key === "inc" ? INC_FORM : IMP_FORM;
-  const v = item ? { ...item } : key === "inc"
-    ? { Title: nextNumber(S.inc, YEAR + "-"), IncidentDate: TODAY, IncidentStatus: "Open", RTWProgram: "No" }
-    : { Title: nextNumber(S.imp, `IR-${YEAR}-`), DateIssued: TODAY, ImprovementStatus: "Open", Recurrence: "One-off", Priority: "M" };
-  $("#dlgTitle").textContent = (item ? "" : "New ") + (key === "inc" ? "Incident " : "Improvement ") + v.Title;
-  $("#dlgBody").innerHTML = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`).join("");
-  if (key === "inc"){
+  const defs = FORMS[key];
+  const v = item ? { ...item } : newDefaults(key);
+  const setTitle = t => $("#dlgTitle").textContent = (item ? "" : "New ") + NAMES[key].toLowerCase().replace(/^./, c => c.toUpperCase()) + (t ? " " + t : "");
+  setTitle(v.Title);
+  $("#dlgBody").innerHTML = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`).join("")
+    + (key === "risk" ? `<p class="hint" id="mxHint"></p>` : "")
+    + (key === "rev" ? `<button type="button" class="btn" id="revToday">✓ Record a review today</button>` : "");
+  if (key === "risk"){
+    const upd = (lName, cName, sName, rName, e) => {
+      const m = matrix($(`[name=${lName}]`).value, $(`[name=${cName}]`).value);
+      $(`[name=${sName}]`).value = m ? m.score : "";
+      if (m && (e === lName || e === cName)) $(`[name=${rName}]`).value = m.rating;
+    };
+    const hint = () => { const m = matrix($("[name=Likelihood]").value, $("[name=Consequence]").value), r = $("[name=Rating]").value;
+      $("#mxHint").textContent = m && r && r !== m.rating && r !== "Positive" ? `Note: the matrix gives ${m.rating} (score ${m.score}) for ${$("[name=Likelihood]").value} × ${$("[name=Consequence]").value}; the rating has been set manually to ${r}.` : ""; };
+    $("#dlgBody").oninput = e => {
+      const n = e.target.name;
+      if (n === "Likelihood" || n === "Consequence") upd("Likelihood","Consequence","RiskScore","Rating", n);
+      if (n === "ResidualLikelihood" || n === "ResidualConsequence") upd("ResidualLikelihood","ResidualConsequence","ResidualScore","ResidualRating", n);
+      if (n === "RiskType" && e.target.value === "Opportunity" && !$("[name=Rating]").value) $("[name=Rating]").value = "Positive";
+      if (n === "RegisterType" && !item){ const t = newTitle("risk", { RegisterType: e.target.value }); $("[name=Title]").value = t; setTitle(t); }
+      hint();
+    };
+    upd("Likelihood","Consequence","RiskScore","Rating"); upd("ResidualLikelihood","ResidualConsequence","ResidualScore","ResidualRating"); hint();
+  } else if (key === "rev"){
+    $("#dlgBody").oninput = null;
+    $("#revToday").onclick = () => { $("[name=ReviewDate]").value = TODAY; $("[name=Signed]").value = "Yes"; toast("Review date set to today — click Save to record it"); };
+  } else if (key === "inc"){
     const recalc = () => { const f = calcIncident(readForm()); $("[name=RTWHours]").value = f.RTWHours || ""; $("[name=TotalEstCost]").value = f.TotalEstCost || ""; };
     $("#dlgBody").oninput = e => { if (NUMERIC.has(e.target.name)) recalc(); };
     recalc();
@@ -455,14 +673,14 @@ async function submitForm(e){
     if (NUMERIC.has(k) || (typeof val === "number")) { const n = val === "" ? null : +val; if (n !== null || item) out[k] = n; }
     else if (val !== "" || item) out[k] = val === "" ? null : val;
   }
-  if (item) delete out.Title;
+  if (item && key !== "rev") delete out.Title;
   $("#dlgSave").disabled = true;
   try {
     let saved;
-    if (DEMO) saved = { ...(item || { id: "demo" + Date.now() }), ...out, ...(item ? {} : { Title: f.Title }) };
+    if (DEMO) saved = { ...(item || { id: "demo" + Date.now() }), ...out, ...(item && key !== "rev" ? {} : { Title: f.Title }) };
     else {
       // guard against duplicate number if someone else saved first
-      if (!item){ S[key] = await loadList(key); out.Title = key === "inc" ? nextNumber(S.inc, YEAR + "-") : nextNumber(S.imp, `IR-${YEAR}-`); }
+      if (!item && key !== "rev"){ S[key] = await loadList(key); out.Title = newTitle(key, f); }
       saved = { ...(item || {}), ...(await saveItem(key, item?.id, out)) };
     }
     const idx = S[key].findIndex(i => i.id === saved.id);
@@ -474,12 +692,12 @@ async function submitForm(e){
 
 /* ---------------- CSV export ---------------- */
 function exportCsv(key){
-  const cols = (key === "inc" ? INC_FORM : IMP_FORM).flatMap(s => s[1]);
+  const cols = FORMS[key].flatMap(s => s[1]);
   const cell = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
   const lines = [cols.map(c => cell(c[1])).join(",")].concat(sortRows(S[key], key).map(r => cols.map(c => cell(c[2]==="date" ? fmtDate(r[c[0]]) : r[c[0]])).join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], { type:"text/csv" }));
-  a.download = `MJE_${key === "inc" ? "Incident" : "Improvement"}_Register_${TODAY}.csv`; a.click();
+  a.download = `MJE_${FILE_NAMES[key]}_${TODAY}.csv`; a.click();
 }
 
 /* ---------------- boot ---------------- */
@@ -494,6 +712,8 @@ async function start(){
   document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { S.view = b.dataset.v; render(); });
   if (DEMO){
     S.inc = SEED.inc.map((r,k) => calcIncident({ id:"i"+k, ...r })); S.imp = SEED.imp.map((r,k) => ({ id:"m"+k, ...r }));
+    const toNum = r => { ["RiskScore","ResidualScore"].forEach(n => { if (r[n] !== undefined && r[n] !== "") r[n] = +r[n]; }); return r; };
+    S.risk = (SEED.risk || []).map((r,k) => toNum({ id:"r"+k, ...r })); S.rev = (SEED.rev || []).map((r,k) => ({ id:"v"+k, ...r }));
     $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); return;
   }
   try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
@@ -502,7 +722,7 @@ async function start(){
   $("#so").onclick = signOut;
   try {
     await getSite();
-    [S.inc, S.imp] = await Promise.all([loadList("inc"), loadList("imp")]);
+    [S.inc, S.imp, S.risk, S.rev] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev")]);
     $("#nav").hidden = false; render();
   } catch(e){
     $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists, the lists have been provisioned, and you have access.</div>`;
