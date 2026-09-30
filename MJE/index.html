@@ -115,6 +115,36 @@ dialog::backdrop{background:rgba(10,14,20,.5)}
 .df{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
 fieldset{border:0;padding:0;margin:0 0 16px}
 legend{font-weight:600;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+/* ---- per-register form colours ---- */
+#dlg{--fc:#64748b;--fc-bg:#f5f6f8}
+#dlg.f-inc{--fc:#d63b25;--fc-bg:#fdf1ee}
+#dlg.f-imp{--fc:#2563eb;--fc-bg:#eef3fd}
+#dlg.f-risk{--fc:#7c3aed;--fc-bg:#f4effd}
+#dlg.f-rev{--fc:#0f8a80;--fc-bg:#ebf7f6}
+#dlg.f-eq{--fc:#15803d;--fc-bg:#edf7f0}
+#dlg.f-tt{--fc:#b45309;--fc-bg:#fcf4ea}
+@media (prefers-color-scheme:dark){
+  #dlg{--fc:#94a3b8;--fc-bg:#1c222a}
+  #dlg.f-inc{--fc:#f07a63;--fc-bg:#2a1b18}
+  #dlg.f-imp{--fc:#6f9bf5;--fc-bg:#172238}
+  #dlg.f-risk{--fc:#a98bf5;--fc-bg:#221b35}
+  #dlg.f-rev{--fc:#3cc2b6;--fc-bg:#122927}
+  #dlg.f-eq{--fc:#4ccb7c;--fc-bg:#13281b}
+  #dlg.f-tt{--fc:#eaa24f;--fc-bg:#2b2114}
+}
+#dlg .dh{border-top:6px solid var(--fc);background:var(--fc-bg);padding:12px 20px}
+.dlg-logo{background:#fff;border-radius:8px;padding:4px 8px;display:flex;align-items:center;box-shadow:0 0 0 1px var(--line)}
+.dlg-logo img{height:30px;width:auto;display:block}
+.dt{flex:1;min-width:0}
+.dt h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kind{display:inline-block;background:var(--fc);color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:5px;padding:2px 8px;margin-bottom:3px}
+@media (prefers-color-scheme:dark){.kind{color:#111}}
+#dlg fieldset{background:var(--fc-bg);border-left:4px solid var(--fc);border-radius:10px;padding:12px 14px 14px;margin:0 0 14px}
+#dlg legend{float:left;width:100%;color:var(--fc);margin-bottom:10px}
+#dlg fieldset > :not(legend){clear:both}
+#dlg label.fld input,#dlg label.fld select,#dlg label.fld textarea{background:var(--surface)}
+#dlg label.fld input[readonly]{background:var(--grey-bg)}
+#dlg .df{border-top:3px solid var(--fc)}
 .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
 .fg .w2{grid-column:span 2}.fg .w3{grid-column:1/-1}
 label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -157,7 +187,7 @@ label.fld input[readonly]{background:var(--grey-bg)}
 <main id="main"><div class="empty">Loading…</div></main>
 
 <dialog id="dlg"><form method="dialog" id="frm" novalidate>
-  <div class="dh"><h2 id="dlgTitle"></h2><button type="button" class="btn" id="dlgX" aria-label="Close">✕</button></div>
+  <div class="dh"><span class="dlg-logo"><img id="dlgLogo" alt="MJ Electrical"></span><div class="dt"><span class="kind" id="dlgKind"></span><h2 id="dlgTitle"></h2></div><button type="button" class="btn" id="dlgX" aria-label="Close">✕</button></div>
   <div class="db" id="dlgBody"></div>
   <div class="df"><button type="button" class="btn" id="dlgCancel">Cancel</button><button type="submit" class="btn primary" id="dlgSave">Save</button></div>
 </form></dialog>
@@ -795,6 +825,9 @@ function openForm(key, item, prefill = {}){
   const defs = FORMS[key];
   const v = item ? { ...item } : { ...newDefaults(key), ...prefill };
   const setTitle = t => $("#dlgTitle").textContent = (item ? "" : "New ") + NAMES[key].toLowerCase().replace(/^./, c => c.toUpperCase()) + (t ? " " + t : "");
+  const KIND = { inc:"Safety Incident Register", imp:"Improvement Register", risk:"Risk Register", rev:"Risk Review Schedule", eq:"Plant & Equipment Register", tt:"Test & Tag Register" };
+  $("#dlg").className = "f-" + key;
+  $("#dlgKind").textContent = KIND[key] + (key === "risk" && v.RegisterType ? " · " + v.RegisterType : "");
   setTitle(v.Title);
   const sections = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`);
   if (key === "inc") sections.splice(1, 0, photosHtml());      // photos straight after the incident details
@@ -820,7 +853,7 @@ function openForm(key, item, prefill = {}){
       if (n === "Likelihood" || n === "Consequence") upd("Likelihood","Consequence","RiskScore","Rating", n);
       if (n === "ResidualLikelihood" || n === "ResidualConsequence") upd("ResidualLikelihood","ResidualConsequence","ResidualScore","ResidualRating", n);
       if (n === "RiskType" && e.target.value === "Opportunity" && !$("[name=Rating]").value) $("[name=Rating]").value = "Positive";
-      if (n === "RegisterType" && !item){ const t = newTitle("risk", { RegisterType: e.target.value }); $("[name=Title]").value = t; setTitle(t); }
+      if (n === "RegisterType"){ $("#dlgKind").textContent = "Risk Register · " + e.target.value; if (!item){ const t = newTitle("risk", { RegisterType: e.target.value }); $("[name=Title]").value = t; setTitle(t); } }
       hint();
     };
     upd("Likelihood","Consequence","RiskScore","Rating"); upd("ResidualLikelihood","ResidualConsequence","ResidualScore","ResidualRating"); hint();
@@ -901,6 +934,7 @@ function showSignIn(msg){
   $("#si").onclick = signIn;
 }
 async function start(){
+  $("#dlgLogo").src = $(".logo .chip img").src;
   $("#frm").onsubmit = submitForm;
   $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
   document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { S.view = b.dataset.v; render(); });
