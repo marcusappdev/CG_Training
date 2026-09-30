@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MJE Safety Hub</title>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7;--surface:#fff;--surface2:#f9fafb;--text:#1b1f24;--muted:#5f6b7a;--line:#e3e6ea;
+  --brand:#1f2a37;--accent:#e8890c;--accent-ink:#fff;
+  --ok:#1f8a4c;--warn:#b7791f;--bad:#c2410c;--crit:#b91c1c;--info:#2563eb;
+  --ok-bg:#e7f5ed;--warn-bg:#fdf3e1;--bad-bg:#fdece4;--info-bg:#e8effd;--grey-bg:#eef0f3;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1318;--surface:#171c23;--surface2:#1c222a;--text:#e6e9ee;--muted:#98a2b0;--line:#2a313b;
+  --brand:#0b0f14;--accent:#f09a2a;--accent-ink:#1b1f24;
+  --ok:#4ade80;--warn:#fbbf24;--bad:#fb923c;--crit:#f87171;--info:#60a5fa;
+  --ok-bg:#12291c;--warn-bg:#2d2412;--bad-bg:#2e1b10;--info-bg:#132038;--grey-bg:#222932;
+  --shadow:none;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:16px;padding:10px 20px;position:sticky;top:0;z-index:10}
+.logo{font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+.logo b{background:var(--accent);color:#1b1f24;border-radius:6px;padding:2px 7px;font-size:13px}
+nav{display:flex;gap:4px;margin-left:12px}
+nav button{background:none;border:0;color:#c9d1db;padding:8px 12px;border-radius:8px;cursor:pointer}
+nav button.on{background:rgba(255,255,255,.12);color:#fff}
+.who{margin-left:auto;font-size:13px;color:#c9d1db;display:flex;gap:10px;align-items:center}
+.who button{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer}
+main{max-width:1280px;margin:0 auto;padding:20px}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-size:13px}
+.err{background:var(--bad-bg);color:var(--bad)}
+h2{font-size:18px;margin:0}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.bar .grow{flex:1}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.danger{color:var(--crit)}
+input[type=search],select.f{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+input[type=search]{width:240px;max-width:100%}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+.kpi .v{font-size:28px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .s{color:var(--muted);font-size:12px}
+.kpi.alert .v{color:var(--crit)}
+.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))}
+.card h3{margin:0 0 12px;font-size:14px}
+.hb{display:grid;grid-template-columns:130px 1fr 44px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.hb .t{height:12px;background:var(--grey-bg);border-radius:3px;overflow:hidden;display:flex}
+.hb .t i{display:block;height:100%}
+.hb .n{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--surface2);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface2)}
+td.clip{max-width:380px}
+td.clip div{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mono{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)}.p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-bad{background:var(--bad-bg);color:var(--bad)}.p-info{background:var(--info-bg);color:var(--info)}
+.p-grey{background:var(--grey-bg);color:var(--muted)}.p-crit{background:var(--bad-bg);color:var(--crit)}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.count{color:var(--muted);font-size:13px}
+dialog{border:0;border-radius:14px;padding:0;width:min(860px,96vw);max-height:92vh;background:var(--surface);color:var(--text);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(10,14,20,.5)}
+.dh{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.dh h2{flex:1}
+.db{padding:16px 20px;overflow:auto}
+.df{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+fieldset{border:0;padding:0;margin:0 0 16px}
+legend{font-weight:600;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.fg .w2{grid-column:span 2}.fg .w3{grid-column:1/-1}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+label.fld input,label.fld select,label.fld textarea{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px}
+label.fld textarea{min-height:70px;resize:vertical}
+label.fld input[readonly]{background:var(--grey-bg)}
+.req::after{content:" *";color:var(--crit)}
+.list{margin:0;padding:0;list-style:none}
+.list li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px}
+.list li:last-child{border:0}
+.list .id{font-weight:600;white-space:nowrap}
+.list .x{flex:1;color:var(--text)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff;padding:10px 16px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+.toast.on{opacity:1}
+.signin{max-width:420px;margin:12vh auto;text-align:center}
+.signin p{color:var(--muted)}
+@media (max-width:720px){
+  header{flex-wrap:wrap;padding:10px 16px}
+  nav{order:3;width:100%;margin:0;overflow:auto}
+  main{padding:16px}
+  .fg .w2{grid-column:1/-1}
+  .hb{grid-template-columns:100px 1fr 36px}
+  input[type=search]{width:100%}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><b>MJE</b> Safety Hub</div>
+  <nav id="nav" hidden>
+    <button data-v="dash" class="on">Dashboard</button>
+    <button data-v="inc">Incidents</button>
+    <button data-v="imp">Improvements</button>
+  </nav>
+  <div class="who" id="who"></div>
+</header>
+<main id="main"><div class="empty">Loading…</div></main>
+
+<dialog id="dlg"><form method="dialog" id="frm" novalidate>
+  <div class="dh"><h2 id="dlgTitle"></h2><button type="button" class="btn" id="dlgX" aria-label="Close">✕</button></div>
+  <div class="db" id="dlgBody"></div>
+  <div class="df"><button type="button" class="btn" id="dlgCancel">Cancel</button><button type="submit" class="btn primary" id="dlgSave">Save</button></div>
+</form></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   CONFIG — fill these in after the Entra app registration is created.
+   While CLIENT_ID is left as the placeholder the app runs in DEMO mode
+   (sample data from the existing registers, nothing is saved).
+   ===================================================================== */
+const CONFIG = {
+  CLIENT_ID: "b159957f-f5c2-40a9-8802-7b3dea3e6b45",
+  TENANT_ID: "ea9e105c-2df6-47ef-a8e3-b4aa1d788423",
+  SP_HOST:   "conceptcompg.sharepoint.com",
+  SITE_PATH: "/sites/MJE",
+  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements" },
+  SCOPES: ["Sites.ReadWrite.All", "User.Read"],
+  RTW_HOURS_PER_DAY: 9
+};
+const DEMO = CONFIG.CLIENT_ID.startsWith("<<");
+const SEED = {"inc":[],"imp":[]};
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+// Local-date YYYY-MM-DD (never toISOString — avoids the UTC+10 shift)
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const TODAY = ymd(new Date());
+const YEAR = TODAY.slice(0,4);
+const addDays = (s, n) => { const [y,m,d] = s.split("-").map(Number); return ymd(new Date(y, m-1, d+n)); };
+const fmtDate = s => { if (!s) return ""; const [y,m,d] = s.split("-"); return `${d}/${m}/${y}`; };
+const num = v => (v === "" || v == null || isNaN(+v)) ? 0 : +v;
+const kina = v => "K " + num(v).toLocaleString("en-AU", {minimumFractionDigits:0, maximumFractionDigits:0});
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),2600); }
+
+/* ---------------- auth ---------------- */
+let msalApp, account;
+async function initAuth(){
+  msalApp = new msal.PublicClientApplication({
+    auth:{ clientId:CONFIG.CLIENT_ID, authority:`https://login.microsoftonline.com/${CONFIG.TENANT_ID}`, redirectUri: location.origin + location.pathname },
+    cache:{ cacheLocation:"localStorage" }
+  });
+  await msalApp.initialize();
+  const res = await msalApp.handleRedirectPromise();
+  account = res?.account || msalApp.getAllAccounts()[0];
+  if (account) msalApp.setActiveAccount(account);
+}
+async function token(){
+  try { return (await msalApp.acquireTokenSilent({ scopes:CONFIG.SCOPES, account })).accessToken; }
+  catch(e){ await msalApp.acquireTokenRedirect({ scopes:CONFIG.SCOPES, account }); }
+}
+const signIn  = () => msalApp.loginRedirect({ scopes:CONFIG.SCOPES });
+const signOut = () => msalApp.logoutRedirect({ account });
+
+/* ---------------- Graph data layer ---------------- */
+let siteId;
+async function graph(path, opts = {}){
+  const r = await fetch(path.startsWith("http") ? path : "https://graph.microsoft.com/v1.0" + path, {
+    ...opts, headers:{ Authorization:"Bearer " + await token(), "Content-Type":"application/json", ...(opts.headers||{}) }
+  });
+  if (!r.ok){ let m = r.status + " " + r.statusText; try{ m = (await r.json()).error.message; }catch{} const e = new Error(m); e.status = r.status; throw e; }
+  return r.status === 204 ? null : r.json();
+}
+async function getSite(){ siteId = (await graph(`/sites/${CONFIG.SP_HOST}:${CONFIG.SITE_PATH}`)).id; }
+async function loadList(key){
+  let url = `/sites/${siteId}/lists/${CONFIG.LISTS[key]}/items?expand=fields&$top=999`, out = [];
+  while (url){ const j = await graph(url); out.push(...j.value.map(i => ({ id:i.id, ...i.fields }))); url = j["@odata.nextLink"]; }
+  return out;
+}
+// Create/update with field fallback: strip any column SharePoint doesn't recognise and retry
+async function saveItem(key, id, fields){
+  const base = `/sites/${siteId}/lists/${CONFIG.LISTS[key]}/items`;
+  let f = { ...fields }, stripped = [];
+  for (let attempt = 0; attempt < 8; attempt++){
+    try {
+      const res = id ? await graph(`${base}/${id}/fields`, { method:"PATCH", body:JSON.stringify(f) })
+                     : await graph(base, { method:"POST", body:JSON.stringify({ fields:f }) });
+      if (stripped.length) console.warn("Columns not on list, skipped:", stripped);
+      return id ? { id, ...res } : { id:res.id, ...res.fields };
+    } catch(e){
+      const m = /Field '([^']+)' is not recognized/i.exec(e.message);
+      if (m && m[1] in f){ stripped.push(m[1]); delete f[m[1]]; continue; }
+      throw e;
+    }
+  }
+}
+
+/* ---------------- state ---------------- */
+const S = { inc:[], imp:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1] },
+            filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" } } };
+
+/* ---------------- field definitions ---------------- */
+const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
+const INC_INJURY = ["Physical Injury","Electric Shock","Burn","Cut / Laceration","Illness / Disease","Property Damage Only","No Injury","N/A"];
+const INC_SEV    = ["Near Miss","Minor Incident","Minor Injury","First Aid","Medical Treatment","Lost Time Injury","Serious / Notifiable"];
+const INC_STATUS = ["Open","Under Investigation","Closed"];
+const IMP_CAT = ["Safety","Quality","Environment","HR"];
+const IMP_PRI = ["H","M","L"];
+const IMP_REC = ["One-off","Ongoing","Fortnightly","Monthly","Quarterly","As needed"];
+const IMP_STATUS = ["Open","In Progress","Ongoing","Closed"];
+
+const INC_FORM = [
+  ["Incident", [
+    ["Title","Registration No","text",{ro:1}], ["IncidentDate","Date of incident","date",{req:1}], ["IncidentTime","Time","time"],
+    ["FirstName","First name","text"], ["Surname","Surname","text"], ["Location","Location / site","text"],
+    ["Description","Description","textarea",{w:3,req:1}],
+  ]],
+  ["Injury", [
+    ["AgencyOfInjury","Agency of injury or disease","select",{opts:INC_AGENCY}], ["ActualInjury","Actual injury or disease","select",{opts:INC_INJURY}],
+    ["BodyPart","Part of body injured / affected","text"], ["Severity","Severity","select",{opts:INC_SEV,req:1}],
+  ]],
+  ["Reporting & follow-up", [
+    ["ReportedToDivision","Reported to division","text"], ["ReportedBy","Reported by","text"],
+    ["IncidentStatus","Status","select",{opts:INC_STATUS,req:1}], ["LinkedImprovement","Linked improvement (IR no.)","text"],
+    ["CorrectiveAction","Corrective action taken","textarea",{w:3}],
+  ]],
+  ["Time lost & cost (PGK)", [
+    ["WorkersTimeLostHrs","Workers time lost (hrs)","number"], ["EstDirectCost","Est. direct cost","number"],
+    ["AdminHours","Admin & follow-up hours","number"], ["EstIndirectCost","Est. indirect cost","number"],
+    ["WorkcoverExcess","Workcover excess","number"], ["RTWProgram","Return to work program","select",{opts:["No","Yes"]}],
+    ["RTWDays","Days on RTW","number"], ["RTWHours","RTW hours (9 hr days)","number",{ro:1}],
+    ["ReductionWorkActivityPct","Reduction in work activity %","number"], ["EstCostRTW","Est. cost of RTW","number"],
+    ["TotalEstCost","Total estimated cost","number",{ro:1}],
+  ]],
+];
+const IMP_FORM = [
+  ["Improvement", [
+    ["Title","Serial No","text",{ro:1}], ["Category","Category","select",{opts:IMP_CAT,req:1}], ["Priority","Priority","select",{opts:IMP_PRI,req:1}],
+    ["OriginatedBy","Originated by","text",{req:1}], ["DateIssued","Date issued","date",{req:1}], ["ActionedBy","Actioned by","text"],
+    ["NatureOfImprovement","Nature of improvement","textarea",{w:3,req:1}],
+    ["ProposedAction","Proposed improvement action","textarea",{w:3}],
+  ]],
+  ["Tracking", [
+    ["Recurrence","Recurrence","select",{opts:IMP_REC}], ["TargetDate","Proposed completion date","date"],
+    ["ImprovementStatus","Status","select",{opts:IMP_STATUS,req:1}], ["DateClosed","Date closed","date"],
+    ["Remarks","Remarks","textarea",{w:3}],
+  ]],
+];
+const NUMERIC = new Set(INC_FORM.flatMap(s => s[1]).filter(f => f[2]==="number").map(f => f[0]));
+
+/* ---------------- derived ---------------- */
+const isOverdue = i => i.ImprovementStatus !== "Closed" && (i.Recurrence || "One-off") === "One-off" && i.TargetDate && i.TargetDate < TODAY;
+const isDueSoon = i => i.ImprovementStatus !== "Closed" && (i.Recurrence || "One-off") === "One-off" && i.TargetDate && i.TargetDate >= TODAY && i.TargetDate <= addDays(TODAY, 30);
+function calcIncident(f){
+  f.RTWHours = num(f.RTWDays) * CONFIG.RTW_HOURS_PER_DAY;
+  f.TotalEstCost = num(f.EstDirectCost) + num(f.EstIndirectCost) + num(f.WorkcoverExcess) + num(f.EstCostRTW);
+  return f;
+}
+function nextNumber(list, prefix){
+  const re = new RegExp("^" + prefix.replace(/[-]/g,"\\-") + "(\\d+)$");
+  const max = list.reduce((m, i) => { const r = re.exec(i.Title || ""); return r ? Math.max(m, +r[1]) : m; }, 0);
+  return prefix + pad(max + 1);
+}
+
+/* ---------------- pills ---------------- */
+const sevPill = s => { const c = {"Near Miss":"p-info","Minor Incident":"p-grey","Minor Injury":"p-warn","First Aid":"p-warn","Medical Treatment":"p-bad","Lost Time Injury":"p-crit","Serious / Notifiable":"p-crit"}[s]; return s ? `<span class="pill ${c||"p-grey"}">${esc(s)}</span>` : ""; };
+const statPill = s => { const c = {"Open":"p-warn","Under Investigation":"p-info","In Progress":"p-info","Ongoing":"p-grey","Closed":"p-ok"}[s]; return s ? `<span class="pill ${c||"p-grey"}">${esc(s)}</span>` : ""; };
+const priPill = p => { const c = {H:"p-crit",M:"p-warn",L:"p-grey"}[p]; return p ? `<span class="pill ${c}">${esc(p)}</span>` : ""; };
+
+/* ---------------- views ---------------- */
+function render(){
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === S.view));
+  const banner = DEMO ? `<div class="banner">Demo mode — showing the existing registers as sample data. Changes are kept only until you refresh. Add the app registration details to CONFIG to connect to SharePoint.</div>` : "";
+  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp }[S.view])();
+  bindView();
+}
+
+function hbars(rows, max, colors){
+  return rows.map(r => `<div class="hb"><span>${esc(r.label)}</span><span class="t">${r.parts.map((p,k)=>`<i style="width:${max? (p/max*100):0}%;background:${colors[k]}"></i>`).join("")}</span><span class="n">${r.total}</span></div>`).join("");
+}
+
+function viewDash(){
+  const incY = S.inc.filter(i => (i.IncidentDate||"").startsWith(YEAR));
+  const incOpen = S.inc.filter(i => i.IncidentStatus !== "Closed");
+  const lti = incY.filter(i => i.Severity === "Lost Time Injury").length;
+  const cost = incY.reduce((a,i) => a + num(i.TotalEstCost), 0);
+  const impOpen = S.imp.filter(i => i.ImprovementStatus !== "Closed");
+  const overdue = S.imp.filter(isOverdue).sort((a,b) => a.TargetDate.localeCompare(b.TargetDate));
+  const soon = S.imp.filter(isDueSoon);
+  const closedY = S.imp.filter(i => i.ImprovementStatus === "Closed" && (i.DateClosed||"").startsWith(YEAR)).length;
+
+  const cats = IMP_CAT.map(c => { const all = S.imp.filter(i => i.Category === c); const cl = all.filter(i => i.ImprovementStatus === "Closed").length; return { label:c, parts:[cl, all.length - cl], total:all.length }; });
+  const catMax = Math.max(1, ...cats.map(c => c.total));
+  const sev = INC_SEV.map(s => { const n = incY.filter(i => i.Severity === s).length; return { label:s, parts:[n], total:n }; }).filter(r => r.total);
+  const sevMax = Math.max(1, ...sev.map(s => s.total));
+
+  return `
+  <div class="grid kpis">
+    <div class="card kpi"><div class="l">Incidents ${YEAR}</div><div class="v">${incY.length}</div><div class="s">${incOpen.length} open</div></div>
+    <div class="card kpi ${lti?"alert":""}"><div class="l">Lost time injuries ${YEAR}</div><div class="v">${lti}</div><div class="s">year to date</div></div>
+    <div class="card kpi"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
+    <div class="card kpi"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
+    <div class="card kpi ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
+  </div>
+  <div class="grid two">
+    <div class="card"><h3>Improvements by category</h3>
+      <div class="legend"><span><i style="background:var(--ok)"></i>Closed</span><span><i style="background:var(--accent)"></i>Not closed</span></div>
+      ${hbars(cats, catMax, ["var(--ok)","var(--accent)"])}</div>
+    <div class="card"><h3>Incidents by severity — ${YEAR}</h3>
+      ${sev.length ? hbars(sev, sevMax, ["var(--info)"]) : `<div class="empty">No incidents recorded this year</div>`}</div>
+    <div class="card"><h3>Overdue improvement actions</h3>
+      ${overdue.length ? `<ul class="list">${overdue.slice(0,8).map(i => `<li data-open="imp:${i.id}"><span class="id">${esc(i.Title)}</span><span class="x">${esc(i.NatureOfImprovement)}</span><span class="mono" style="color:var(--crit)">${fmtDate(i.TargetDate)}</span></li>`).join("")}</ul>${overdue.length>8?`<p class="count">+${overdue.length-8} more — see Improvements</p>`:""}` : `<div class="empty">Nothing overdue</div>`}</div>
+    <div class="card"><h3>Recent incidents</h3>
+      ${S.inc.length ? `<ul class="list">${[...S.inc].sort((a,b)=>(b.IncidentDate||"").localeCompare(a.IncidentDate||"")).slice(0,8).map(i => `<li data-open="inc:${i.id}"><span class="id">${esc(i.Title)}</span><span class="x">${esc([[i.FirstName,i.Surname].filter(Boolean).join(" "), i.AgencyOfInjury || i.Severity].filter(Boolean).join(" · ") || "Details not recorded")}</span><span class="mono">${fmtDate(i.IncidentDate)}</span></li>`).join("")}</ul>` : `<div class="empty">No incidents</div>`}</div>
+  </div>`;
+}
+
+function sortRows(rows, key){
+  const [col, dir] = S.sort[key];
+  return [...rows].sort((a,b) => { const x = a[col] ?? "", y = b[col] ?? ""; return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), undefined, {numeric:true})) * dir; });
+}
+const th = (key, col, label) => { const [c,d] = S.sort[key]; return `<th data-sort="${key}:${col}">${label}${c===col ? (d>0?" ▲":" ▼") : ""}</th>`; };
+const opt = (vals, cur, all) => `<option value="">${all}</option>` + vals.map(v => `<option ${v===cur?"selected":""} value="${esc(v)}">${esc(v)}</option>`).join("");
+
+function viewInc(){
+  const f = S.filt.inc;
+  const years = [...new Set(S.inc.map(i => (i.IncidentDate||"").slice(0,4)).filter(Boolean).concat(YEAR))].sort().reverse();
+  const q = f.q.toLowerCase();
+  const rows = sortRows(S.inc.filter(i =>
+    (!f.year || (i.IncidentDate||"").startsWith(f.year)) && (!f.status || i.IncidentStatus === f.status) && (!f.sev || i.Severity === f.sev) &&
+    (!q || [i.Title,i.FirstName,i.Surname,i.Description,i.AgencyOfInjury,i.BodyPart,i.Location].join(" ").toLowerCase().includes(q))), "inc");
+  return `
+  <div class="bar"><h2>Safety Incident Register</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:inc">Export CSV</button><button class="btn primary" data-act="new:inc">+ Report incident</button></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search name, description, injury…" value="${esc(f.q)}">
+    <select class="f" data-f="inc:year">${opt(years, f.year, "All years")}</select>
+    <select class="f" data-f="inc:status">${opt(INC_STATUS, f.status, "All statuses")}</select>
+    <select class="f" data-f="inc:sev">${opt(INC_SEV, f.sev, "All severities")}</select>
+    <span class="count">${rows.length} of ${S.inc.length}</span>
+  </div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("inc","Title","Reg No")}${th("inc","IncidentDate","Date")}${th("inc","Surname","Person")}<th>Description</th>${th("inc","AgencyOfInjury","Agency")}${th("inc","Severity","Severity")}${th("inc","IncidentStatus","Status")}${th("inc","TotalEstCost","Est. cost")}
+  </tr></thead><tbody>
+  ${rows.map(i => `<tr data-open="inc:${i.id}"><td class="mono"><b>${esc(i.Title)}</b></td><td class="mono">${fmtDate(i.IncidentDate)} ${esc(i.IncidentTime||"")}</td>
+    <td>${esc([i.FirstName,i.Surname].filter(Boolean).join(" "))}</td><td class="clip"><div>${esc(i.Description)}</div></td><td>${esc(i.AgencyOfInjury)}</td>
+    <td>${sevPill(i.Severity)}</td><td>${statPill(i.IncidentStatus)}</td><td class="mono">${num(i.TotalEstCost) ? kina(i.TotalEstCost) : ""}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No incidents match</div>`}</div>`;
+}
+
+function viewImp(){
+  const f = S.filt.imp, q = f.q.toLowerCase();
+  const rows = sortRows(S.imp.filter(i =>
+    (f.status === "" || (f.status === "open" ? i.ImprovementStatus !== "Closed" : f.status === "overdue" ? isOverdue(i) : i.ImprovementStatus === f.status)) &&
+    (!f.cat || i.Category === f.cat) && (!f.pri || i.Priority === f.pri) &&
+    (!q || [i.Title,i.NatureOfImprovement,i.ProposedAction,i.ActionedBy,i.Remarks].join(" ").toLowerCase().includes(q))), "imp");
+  const statusOpts = `<option value="">All statuses</option><option value="open" ${f.status==="open"?"selected":""}>Not closed</option><option value="overdue" ${f.status==="overdue"?"selected":""}>Overdue</option>` + IMP_STATUS.map(s => `<option ${s===f.status?"selected":""}>${s}</option>`).join("");
+  return `
+  <div class="bar"><h2>Improvement Register</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:imp">Export CSV</button><button class="btn primary" data-act="new:imp">+ New improvement</button></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search improvement, action, remarks…" value="${esc(f.q)}">
+    <select class="f" data-f="imp:status">${statusOpts}</select>
+    <select class="f" data-f="imp:cat">${opt(IMP_CAT, f.cat, "All categories")}</select>
+    <select class="f" data-f="imp:pri">${opt(IMP_PRI, f.pri, "All priorities")}</select>
+    <span class="count">${rows.length} of ${S.imp.length}</span>
+  </div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("imp","Title","Serial")}${th("imp","Category","Category")}${th("imp","Priority","Pri")}<th>Nature of improvement</th>${th("imp","ActionedBy","Actioned by")}${th("imp","TargetDate","Due")}${th("imp","ImprovementStatus","Status")}
+  </tr></thead><tbody>
+  ${rows.map(i => { const od = isOverdue(i); return `<tr data-open="imp:${i.id}"><td class="mono"><b>${esc(i.Title)}</b></td><td>${esc(i.Category)}</td><td>${priPill(i.Priority)}</td>
+    <td class="clip"><div>${esc(i.NatureOfImprovement)}</div></td><td>${esc(i.ActionedBy)}</td>
+    <td class="mono" ${od?'style="color:var(--crit);font-weight:600"':""}>${i.TargetDate ? fmtDate(i.TargetDate) : esc(i.Recurrence||"")}${od?" · overdue":""}</td>
+    <td>${statPill(i.ImprovementStatus)}</td></tr>`; }).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No improvements match</div>`}</div>`;
+}
+
+function bindView(){
+  const q = $("#q");
+  if (q) q.oninput = () => { S.filt[S.view].q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
+  document.querySelectorAll("[data-f]").forEach(s => s.onchange = () => { const [k,f] = s.dataset.f.split(":"); S.filt[k][f] = s.value; render(); });
+  document.querySelectorAll("[data-sort]").forEach(h => h.onclick = () => { const [k,c] = h.dataset.sort.split(":"); const cur = S.sort[k]; S.sort[k] = [c, cur[0]===c ? -cur[1] : 1]; render(); });
+  document.querySelectorAll("[data-open]").forEach(r => r.onclick = () => { const [k,id] = r.dataset.open.split(":"); openForm(k, S[k].find(i => String(i.id) === id)); });
+  document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => { const [a,k] = b.dataset.act.split(":"); a === "new" ? openForm(k) : exportCsv(k); });
+}
+
+/* ---------------- form ---------------- */
+let editing = null;
+function fieldHtml([name, label, type, o = {}], v){
+  const cls = `fld ${o.w===3?"w3":o.w===2?"w2":""}`, lab = `<span class="${o.req?"req":""}">${label}</span>`;
+  const attrs = `name="${name}" ${o.req?"required":""} ${o.ro?"readonly tabindex=-1":""}`;
+  if (type === "textarea") return `<label class="${cls}">${lab}<textarea ${attrs}>${esc(v)}</textarea></label>`;
+  if (type === "select"){
+    const list = o.opts.includes(v) || !v ? o.opts : [...o.opts, v];     // keep fill-in values
+    return `<label class="${cls}">${lab}<select ${attrs}><option value=""></option>${list.map(x => `<option ${x===v?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`;
+  }
+  return `<label class="${cls}">${lab}<input type="${type}" ${type==="number"?'step="any" min="0"':""} ${attrs} value="${esc(v ?? "")}"></label>`;
+}
+function openForm(key, item){
+  editing = { key, item };
+  const defs = key === "inc" ? INC_FORM : IMP_FORM;
+  const v = item ? { ...item } : key === "inc"
+    ? { Title: nextNumber(S.inc, YEAR + "-"), IncidentDate: TODAY, IncidentStatus: "Open", RTWProgram: "No" }
+    : { Title: nextNumber(S.imp, `IR-${YEAR}-`), DateIssued: TODAY, ImprovementStatus: "Open", Recurrence: "One-off", Priority: "M" };
+  $("#dlgTitle").textContent = (item ? "" : "New ") + (key === "inc" ? "Incident " : "Improvement ") + v.Title;
+  $("#dlgBody").innerHTML = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`).join("");
+  if (key === "inc"){
+    const recalc = () => { const f = calcIncident(readForm()); $("[name=RTWHours]").value = f.RTWHours || ""; $("[name=TotalEstCost]").value = f.TotalEstCost || ""; };
+    $("#dlgBody").oninput = e => { if (NUMERIC.has(e.target.name)) recalc(); };
+    recalc();
+  } else {
+    $("#dlgBody").oninput = e => {
+      if (e.target.name === "ImprovementStatus" && e.target.value === "Closed" && !$("[name=DateClosed]").value) $("[name=DateClosed]").value = TODAY;
+    };
+  }
+  $("#dlg").showModal();
+}
+function readForm(){
+  const o = {};
+  $("#dlgBody").querySelectorAll("[name]").forEach(el => { o[el.name] = el.value.trim(); });
+  return o;
+}
+async function submitForm(e){
+  e.preventDefault();
+  const { key, item } = editing;
+  const missing = [...$("#dlgBody").querySelectorAll("[required]")].filter(el => !el.value.trim());
+  if (missing.length){ missing[0].focus(); toast("Please fill in: " + missing.map(m => m.closest("label").innerText.replace(" *","").trim()).join(", ")); return; }
+  let f = readForm();
+  if (key === "inc") f = calcIncident(f);
+  if (key === "imp" && f.ImprovementStatus === "Closed" && !f.DateClosed) f.DateClosed = TODAY;
+  // types: numbers as numbers, blanks → null on update / omitted on create
+  const out = {};
+  for (const [k, val] of Object.entries(f)){
+    if (NUMERIC.has(k) || (typeof val === "number")) { const n = val === "" ? null : +val; if (n !== null || item) out[k] = n; }
+    else if (val !== "" || item) out[k] = val === "" ? null : val;
+  }
+  if (item) delete out.Title;
+  $("#dlgSave").disabled = true;
+  try {
+    let saved;
+    if (DEMO) saved = { ...(item || { id: "demo" + Date.now() }), ...out, ...(item ? {} : { Title: f.Title }) };
+    else {
+      // guard against duplicate number if someone else saved first
+      if (!item){ S[key] = await loadList(key); out.Title = key === "inc" ? nextNumber(S.inc, YEAR + "-") : nextNumber(S.imp, `IR-${YEAR}-`); }
+      saved = { ...(item || {}), ...(await saveItem(key, item?.id, out)) };
+    }
+    const idx = S[key].findIndex(i => i.id === saved.id);
+    idx >= 0 ? S[key].splice(idx, 1, saved) : S[key].push(saved);
+    $("#dlg").close(); render(); toast(`Saved ${saved.Title}`);
+  } catch(err){ console.error(err); toast("Save failed: " + err.message); }
+  finally { $("#dlgSave").disabled = false; }
+}
+
+/* ---------------- CSV export ---------------- */
+function exportCsv(key){
+  const cols = (key === "inc" ? INC_FORM : IMP_FORM).flatMap(s => s[1]);
+  const cell = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const lines = [cols.map(c => cell(c[1])).join(",")].concat(sortRows(S[key], key).map(r => cols.map(c => cell(c[2]==="date" ? fmtDate(r[c[0]]) : r[c[0]])).join(",")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], { type:"text/csv" }));
+  a.download = `MJE_${key === "inc" ? "Incident" : "Improvement"}_Register_${TODAY}.csv`; a.click();
+}
+
+/* ---------------- boot ---------------- */
+function showSignIn(msg){
+  $("#main").innerHTML = `<div class="card signin"><h2>MJE Safety Hub</h2><p>Safety incident and improvement registers for MJ Electrical.</p>
+    ${msg ? `<div class="banner err">${esc(msg)}</div>` : ""}<button class="btn primary" id="si">Sign in with Microsoft 365</button></div>`;
+  $("#si").onclick = signIn;
+}
+async function start(){
+  $("#frm").onsubmit = submitForm;
+  $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
+  document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { S.view = b.dataset.v; render(); });
+  if (DEMO){
+    S.inc = SEED.inc.map((r,k) => calcIncident({ id:"i"+k, ...r })); S.imp = SEED.imp.map((r,k) => ({ id:"m"+k, ...r }));
+    $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); return;
+  }
+  try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
+  if (!account) return showSignIn();
+  $("#who").innerHTML = `<span>${esc(account.name || account.username)}</span><button id="so">Sign out</button>`;
+  $("#so").onclick = signOut;
+  try {
+    await getSite();
+    [S.inc, S.imp] = await Promise.all([loadList("inc"), loadList("imp")]);
+    $("#nav").hidden = false; render();
+  } catch(e){
+    $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists, the lists have been provisioned, and you have access.</div>`;
+  }
+}
+start();
+</script>
+</body>
+</html>
