@@ -54,6 +54,11 @@ a[data-goto]{color:inherit;text-decoration:underline}
 .hm-c.sel{border-color:var(--text)}
 .hm-Low{background:var(--ok-bg);color:var(--ok)}.hm-Medium{background:var(--warn-bg);color:var(--warn)}
 .hm-High{background:var(--bad-bg);color:var(--bad)}.hm-VeryHigh{background:var(--crit);color:#fff}
+.photos{display:flex;flex-wrap:wrap;gap:8px}
+.ph{position:relative;display:inline-block}
+.ph img{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--grey-bg)}
+.ph.q img{outline:2px dashed var(--accent);outline-offset:-2px}
+.ph button{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:22px;padding:0}
 .hint{font-size:12px;color:var(--warn);margin:-8px 0 12px}
 @media (max-width:720px){.hm-grid{grid-template-columns:64px repeat(5,1fr)}.hm-h{font-size:9px}.hm-r{font-size:11px}.hm-c{height:36px}}
 nav button{background:none;border:0;color:#c9d1db;padding:8px 12px;border-radius:8px;cursor:pointer}
@@ -145,6 +150,7 @@ label.fld input[readonly]{background:var(--grey-bg)}
     <button data-v="inc">Incidents</button>
     <button data-v="imp">Improvements</button>
     <button data-v="risk">Risks</button>
+    <button data-v="assets">Assets</button>
   </nav>
   <div class="who" id="who"></div>
 </header>
@@ -168,12 +174,12 @@ const CONFIG = {
   TENANT_ID: "ea9e105c-2df6-47ef-a8e3-b4aa1d788423",
   SP_HOST:   "conceptcompg.sharepoint.com",
   SITE_PATH: "/sites/MJE",
-  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements", risk: "MJE_Risks", rev: "MJE_RiskReviews" },
+  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements", risk: "MJE_Risks", rev: "MJE_RiskReviews", eq: "MJE_Equipment", tt: "MJE_TestTag", photos: "MJE_IncidentPhotos" },
   SCOPES: ["Sites.ReadWrite.All", "User.Read"],
   RTW_HOURS_PER_DAY: 9
 };
 const DEMO = CONFIG.CLIENT_ID.startsWith("<<");
-const SEED = {"inc":[],"imp":[],"risk":[],"rev":[]};
+const SEED = {"inc":[],"imp":[],"risk":[],"rev":[],"eq":[],"tt":[]};
 
 /* ---------------- helpers ---------------- */
 const $ = s => document.querySelector(s);
@@ -247,9 +253,10 @@ async function saveItem(key, id, fields){
 }
 
 /* ---------------- state ---------------- */
-const S = { inc:[], imp:[], risk:[], rev:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1] },
+const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1], eq:["Title",1], tt:["NextTestDate",1] },
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
-                   risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false } } };
+                   risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
+                   assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -431,9 +438,169 @@ function viewRisk(){
   </tbody></table>${revs.length ? "" : `<div class="empty">No review items</div>`}</div>`;
 }
 
-const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM };
-const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item" };
-const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule" };
+/* ================= ASSETS: EQUIPMENT + TEST & TAG (Phase 3) ================= */
+const EQ_CATS = ["Vehicle","Plant","Tool","Test equipment","Other"];
+const EQ_STATUS = ["In service","Out of service","Disposed"];
+const TT_PERIODS = ["3 Months","6 Months","Yearly","2 Years","5 Years"];
+const TT_MONTHS = { "3 Months":3, "6 Months":6, "Yearly":12, "2 Years":24, "5 Years":60 };
+const EQ_FORM = [
+  ["Equipment", [
+    ["Title","Asset ID","text",{ro:1}], ["Category","Category","select",{opts:EQ_CATS,req:1}], ["EquipStatus","Status","select",{opts:EQ_STATUS}],
+    ["Make","Make / item","text",{req:1}], ["Model","Model","text"], ["EquipType","Type","text"],
+    ["SerialRego","Serial / rego no.","text"], ["Location","Location / assigned to","text"], ["HeldStored","Held / stored","text"],
+  ]],
+  ["Value", [
+    ["PurchaseDate","Date purchased","date"], ["Cost","Cost (PGK)","number"], ["DisposalValue","Disposal value (PGK)","number"],
+    ["PrestartRequired","Prestart checklist required","select",{opts:["Yes","No"]}],
+  ]],
+  ["Notes", [["Remarks","Remarks","textarea",{w:3}]]],
+];
+const TT_FORM = [
+  ["Item", [
+    ["Title","Test no.","text",{ro:1}], ["ItemKey","Item ref","text",{ro:1}], ["PlantID","Plant ID / tag","text"], ["Description","Description","text",{req:1}], ["Location","Location","text"],
+  ]],
+  ["Test", [
+    ["TestDate","Test date","date",{req:1}], ["TestPeriod","Test period","select",{opts:TT_PERIODS,req:1}], ["NextTestDate","Next test date","date"],
+    ["Result","Pass / fail","select",{opts:["Pass","Fail"],req:1}], ["Reading","Reading (e.g. 10 MΩ)","text"], ["CompetentPerson","Competent person","text"],
+    ["ReportedFault","Reported fault","text"], ["Repaired","Repaired","text"], ["Comments","Comments","text"],
+    ["Remarks","Remarks","textarea",{w:3}],
+  ]],
+];
+// each physical item keeps the test no. of its first test as ItemKey; retests copy it
+const ttKey = r => r.ItemKey || r.Title;
+// latest test per item
+function ttLatest(){
+  const m = new Map();
+  S.tt.forEach(r => { const k = ttKey(r), c = m.get(k); if (!c || (r.TestDate||"") > (c.TestDate||"") || ((r.TestDate||"") === (c.TestDate||"") && String(r.Title) > String(c.Title))) m.set(k, r); });
+  return [...m.values()];
+}
+const ttState = r => r.Result === "Fail" ? "fail" : !r.NextTestDate ? "none" : r.NextTestDate < TODAY ? "overdue" : r.NextTestDate <= addDays(TODAY, 30) ? "soon" : "ok";
+const ttPill = r => ({ fail:`<span class="pill p-crit">Failed</span>`, none:`<span class="pill p-grey">No due date</span>`, overdue:`<span class="pill p-crit">Overdue</span>`, soon:`<span class="pill p-warn">Due soon</span>`, ok:`<span class="pill p-ok">Current</span>` })[ttState(r)];
+const money = v => v === undefined || v === null || v === "" ? "" : kina(v);
+
+function viewAssets(){
+  const sub = S.filt.assets.sub;
+  const tabs = `<div class="bar chips"><button class="chip ${sub==="eq"?"on":""}" data-sub="eq">Plant & equipment <span>${S.eq.length}</span></button><button class="chip ${sub==="tt"?"on":""}" data-sub="tt">Test & tag <span>${ttLatest().length} items</span></button></div>`;
+  return (sub === "eq" ? viewEquip(tabs) : viewTestTag(tabs));
+}
+function viewEquip(tabs){
+  if (S.missing.includes("eq")) return tabs + `<div class="banner err">The equipment list hasn't been set up on SharePoint yet. Run the Phase 3 script (Provision-MJE-Phase3.ps1), then refresh.</div>`;
+  const f = S.filt.eq, q = f.q.toLowerCase();
+  const rows = sortRows(S.eq.filter(r => (!f.cat || r.Category === f.cat) && (!f.status || r.EquipStatus === f.status) &&
+    (!q || [r.Title,r.Make,r.Model,r.EquipType,r.SerialRego,r.Location,r.Remarks].join(" ").toLowerCase().includes(q))), "eq");
+  const inService = S.eq.filter(r => r.EquipStatus !== "Disposed");
+  const cost = inService.reduce((a,r) => a + num(r.Cost), 0), disp = inService.reduce((a,r) => a + num(r.DisposalValue), 0);
+  return `
+  <div class="bar"><h2>Plant & Equipment Register</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:eq">Export CSV</button><button class="btn primary" data-act="new:eq">+ New item</button></div>
+  ${tabs}
+  <div class="grid kpis">
+    ${EQ_CATS.filter(c => S.eq.some(r => r.Category === c)).map(c => `<div class="card kpi"><div class="l">${c}</div><div class="v">${S.eq.filter(r => r.Category === c && r.EquipStatus !== "Disposed").length}</div><div class="s">in service</div></div>`).join("")}
+    <div class="card kpi"><div class="l">Purchase cost</div><div class="v">${kina(cost)}</div><div class="s">disposal value ${kina(disp)}</div></div>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search make, model, rego, serial…" value="${esc(f.q)}">
+    <select class="f" data-f="eq:cat">${opt(EQ_CATS, f.cat, "All categories")}</select>
+    <select class="f" data-f="eq:status">${opt(EQ_STATUS, f.status, "All statuses")}</select>
+    <span class="count">${rows.length} of ${S.eq.length}</span>
+  </div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("eq","Title","Asset")}${th("eq","Category","Category")}${th("eq","Make","Make / item")}${th("eq","Model","Model / type")}${th("eq","SerialRego","Serial / rego")}${th("eq","PurchaseDate","Purchased")}${th("eq","Cost","Cost")}${th("eq","DisposalValue","Disposal value")}<th>Prestart</th>${th("eq","EquipStatus","Status")}
+  </tr></thead><tbody>
+  ${rows.map(r => `<tr data-open="eq:${r.id}"><td class="mono"><b>${esc(r.Title)}</b></td><td>${esc(r.Category)}</td><td>${esc(r.Make)}</td>
+    <td>${esc([r.Model, r.EquipType].filter(Boolean).join(" · "))}</td><td class="mono">${esc(r.SerialRego)}</td><td class="mono">${fmtDate(r.PurchaseDate)}</td>
+    <td class="mono">${money(r.Cost)}</td><td class="mono">${money(r.DisposalValue)}</td><td>${esc(r.PrestartRequired)}</td>
+    <td>${r.EquipStatus ? `<span class="pill ${r.EquipStatus==="In service"?"p-ok":r.EquipStatus==="Disposed"?"p-grey":"p-warn"}">${esc(r.EquipStatus)}</span>` : ""}${r.Remarks ? ` <span class="flag" title="${esc(r.Remarks)}">note</span>` : ""}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No equipment matches</div>`}</div>`;
+}
+function viewTestTag(tabs){
+  if (S.missing.includes("tt")) return tabs + `<div class="banner err">The test & tag list hasn't been set up on SharePoint yet. Run the Phase 3 script (Provision-MJE-Phase3.ps1), then refresh.</div>`;
+  const f = S.filt.tt, q = f.q.toLowerCase();
+  const latest = ttLatest();
+  const src = f.all ? S.tt : latest;
+  const rows = sortRows(src.filter(r => (!f.state || ttState(r) === f.state) &&
+    (!q || [r.Title,r.PlantID,r.Description,r.Location,r.Comments,r.Remarks].join(" ").toLowerCase().includes(q))), "tt");
+  const c = s => latest.filter(r => ttState(r) === s).length;
+  const states = [["overdue","Overdue"],["soon","Due in 30 days"],["fail","Failed"],["ok","Current"]];
+  return `
+  <div class="bar"><h2>Test & Tag Register</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:tt">Export CSV</button><button class="btn primary" data-act="new:tt">+ New test</button></div>
+  ${tabs}
+  <div class="grid kpis">
+    <div class="card kpi ${c("overdue")?"alert":""}"><div class="l">Overdue for test</div><div class="v">${c("overdue")}</div><div class="s">of ${latest.length} items</div></div>
+    <div class="card kpi"><div class="l">Due in 30 days</div><div class="v">${c("soon")}</div><div class="s">&nbsp;</div></div>
+    <div class="card kpi ${c("fail")?"alert":""}"><div class="l">Failed last test</div><div class="v">${c("fail")}</div><div class="s">remove from service</div></div>
+    <div class="card kpi"><div class="l">Current</div><div class="v">${c("ok")}</div><div class="s">tag in date</div></div>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search tag, description, location…" value="${esc(f.q)}">
+    <select class="f" data-f="tt:state"><option value="">All</option>${states.map(([v,l]) => `<option value="${v}" ${f.state===v?"selected":""}>${l}</option>`).join("")}</select>
+    <span class="seg"><button class="${f.all?"":"on"}" data-ttall="0">Latest test per item</button><button class="${f.all?"on":""}" data-ttall="1">All test records</button></span>
+    <span class="count">${rows.length} ${f.all ? "records" : "items"}</span>
+  </div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("tt","Title","Test no.")}${th("tt","PlantID","Plant ID / tag")}${th("tt","Description","Description")}${th("tt","Location","Location")}${th("tt","TestPeriod","Period")}${th("tt","TestDate","Tested")}${th("tt","NextTestDate","Next test")}<th>Result</th><th>Status</th>
+  </tr></thead><tbody>
+  ${rows.map(r => `<tr data-open="tt:${r.id}"><td class="mono"><b>${esc(r.Title)}</b></td><td class="mono">${esc(r.PlantID)}</td><td>${esc(r.Description)}${r.Remarks ? ` <span class="flag" title="${esc(r.Remarks)}">check</span>` : ""}</td>
+    <td>${esc(r.Location)}</td><td>${esc(r.TestPeriod)}</td><td class="mono">${fmtDate(r.TestDate)}</td><td class="mono">${fmtDate(r.NextTestDate)}</td>
+    <td>${esc(r.Result)}${r.Reading ? ` <span class="count">${esc(r.Reading)}</span>` : ""}</td><td>${ttPill(r)}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No test records match</div>`}</div>`;
+}
+
+/* ---------- incident photos (stored in the MJE_IncidentPhotos library, one folder per incident) ---------- */
+let photoQueue = [];
+async function photoDrive(){
+  if (S.photoDrive !== undefined) return S.photoDrive;
+  try { S.photoDrive = (await graph(`/sites/${siteId}/lists/${CONFIG.LISTS.photos}/drive`)).id; } catch(e){ S.photoDrive = null; }
+  return S.photoDrive;
+}
+const photosHtml = () => `<fieldset><legend>Photos</legend><div class="photos" id="phList"></div><div class="photos" id="phQueue"></div>
+  <label class="btn" style="display:inline-block;margin-top:8px">📷 Add photos<input type="file" id="phInput" accept="image/*" multiple hidden></label>
+  <p class="count" style="margin:6px 0 0">Photos are resized before upload and saved when you click Save.</p></fieldset>`;
+function renderQueue(){
+  const el = $("#phQueue"); if (!el) return;
+  el.innerHTML = photoQueue.map((f,i) => `<span class="ph q"><img src="${f._url}" alt="New photo ${i+1}"><button type="button" data-rmq="${i}" aria-label="Remove photo">✕</button></span>`).join("");
+  el.querySelectorAll("[data-rmq]").forEach(b => b.onclick = () => { photoQueue.splice(+b.dataset.rmq, 1); renderQueue(); });
+}
+async function loadPhotos(title){
+  const el = $("#phList"); if (!el) return;
+  if (DEMO) { el.innerHTML = `<span class="count">Photos aren't saved in demo mode.</span>`; return; }
+  const d = await photoDrive();
+  if (!d) { el.innerHTML = `<span class="count">Photo library not set up yet (run the Phase 3 script).</span>`; return; }
+  if (!title) { el.innerHTML = ""; return; }
+  el.innerHTML = `<span class="count">Loading photos…</span>`;
+  try {
+    const j = await graph(`/drives/${d}/root:/${encodeURIComponent(title)}:/children?$expand=thumbnails`);
+    el.innerHTML = j.value.length ? j.value.map(p => `<a class="ph" href="${esc(p.webUrl)}" target="_blank" rel="noopener"><img src="${esc(p.thumbnails?.[0]?.medium?.url || "")}" alt="${esc(p.name)}"></a>`).join("") : "";
+  } catch(e){ el.innerHTML = ""; }
+}
+async function shrink(file){
+  try {
+    const img = await createImageBitmap(file), s = Math.min(1, 1600 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(r => c.toBlob(b => r(b || file), "image/jpeg", 0.8));
+  } catch(e){ return file; }
+}
+async function uploadPhotos(title){
+  if (!photoQueue.length) return 0;
+  if (DEMO) { photoQueue = []; return 0; }
+  const d = await photoDrive(); if (!d) throw new Error("the photo library isn't set up yet");
+  let n = 0;
+  for (const [i, f] of photoQueue.entries()){
+    const blob = await shrink(f), name = `${title}_${Date.now()}_${i+1}.jpg`;
+    const r = await fetch(`https://graph.microsoft.com/v1.0/drives/${d}/root:/${encodeURIComponent(title)}/${name}:/content`,
+      { method:"PUT", headers:{ Authorization:"Bearer " + await token(), "Content-Type":"image/jpeg" }, body: blob });
+    if (!r.ok) throw new Error(r.status === 403 ? "you don't have permission to add photos" : `upload failed (${r.status})`);
+    n++;
+  }
+  photoQueue = []; return n;
+}
+const NO_PERMISSION = "You don't have permission to change this record. MJE staff can log new incidents, edit their own incidents and add photos; everything else is edited by the MJE site owners.";
+
+const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM, eq:EQ_FORM, tt:TT_FORM };
+const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item", eq:"Equipment item", tt:"Test" };
+const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule", eq:"Equipment_Register", tt:"Test_and_Tag" };
 const NUMERIC = new Set(Object.values(FORMS).flat().flatMap(s => s[1]).filter(f => f[2]==="number").map(f => f[0]));
 
 /* ---------------- derived ---------------- */
@@ -444,10 +611,10 @@ function calcIncident(f){
   f.TotalEstCost = num(f.EstDirectCost) + num(f.EstIndirectCost) + num(f.WorkcoverExcess) + num(f.EstCostRTW);
   return f;
 }
-function nextNumber(list, prefix){
+function nextNumber(list, prefix, width = 2){
   const re = new RegExp("^" + prefix.replace(/[-]/g,"\\-") + "(\\d+)$");
   const max = list.reduce((m, i) => { const r = re.exec(i.Title || ""); return r ? Math.max(m, +r[1]) : m; }, 0);
-  return prefix + pad(max + 1);
+  return prefix + String(max + 1).padStart(width, "0");
 }
 
 /* ---------------- pills ---------------- */
@@ -459,7 +626,7 @@ const priPill = p => { const c = {H:"p-crit",M:"p-warn",L:"p-grey"}[p]; return p
 function render(){
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === S.view));
   const banner = DEMO ? `<div class="banner">Demo mode — showing the existing registers as sample data. Changes are kept only until you refresh. Add the app registration details to CONFIG to connect to SharePoint.</div>` : "";
-  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk }[S.view])();
+  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets }[S.view])();
   bindView();
 }
 
@@ -488,6 +655,7 @@ function viewDash(){
   const revDue = S.rev.filter(r => ["overdue","none","soon"].includes(revState(r)))
     .sort((a,b) => (nextDue(a)||"0").localeCompare(nextDue(b)||"0"));
   const revOver = S.rev.filter(r => ["overdue","none"].includes(revState(r))).length;
+  const ttOn = !S.missing.includes("tt"), ttL = ttLatest(), ttOver = ttL.filter(r => ["overdue","fail"].includes(ttState(r))).length;
 
   return `
   <div class="grid kpis">
@@ -498,6 +666,7 @@ function viewDash(){
     <div class="card kpi ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
     ${riskOn ? `<div class="card kpi"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
     <div class="card kpi ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
+    ${ttOn ? `<div class="card kpi ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
   </div>
   <div class="grid two">
     <div class="card"><h3>Improvements by category</h3>
@@ -578,7 +747,7 @@ function viewImp(){
 
 function bindView(){
   const q = $("#q");
-  if (q) q.oninput = () => { S.filt[S.view].q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
+  if (q) q.oninput = () => { (S.view === "assets" ? S.filt[S.filt.assets.sub] : S.filt[S.view]).q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
   document.querySelectorAll("[data-f]").forEach(s => s.onchange = () => { const [k,f] = s.dataset.f.split(":"); S.filt[k][f] = s.value; render(); });
   document.querySelectorAll("[data-sort]").forEach(h => h.onclick = () => { const [k,c] = h.dataset.sort.split(":"); const cur = S.sort[k]; S.sort[k] = [c, cur[0]===c ? -cur[1] : 1]; render(); });
   document.querySelectorAll("[data-open]").forEach(r => r.onclick = () => { const [k,id] = r.dataset.open.split(":"); openForm(k, S[k].find(i => String(i.id) === id)); });
@@ -586,6 +755,8 @@ function bindView(){
   document.querySelectorAll("[data-reg]").forEach(b => b.onclick = () => { S.filt.risk.reg = b.dataset.reg; S.filt.risk.cell = ""; render(); });
   document.querySelectorAll("[data-res]").forEach(b => b.onclick = () => { S.filt.risk.residual = b.dataset.res === "1"; S.filt.risk.cell = ""; S.filt.risk.rating = ""; render(); });
   document.querySelectorAll("[data-cell]").forEach(b => b.onclick = () => { if (b.classList.contains("z")) return; const c = b.dataset.cell; S.filt.risk.cell = S.filt.risk.cell === c ? "" : c; render(); });
+  document.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => { S.filt.assets.sub = b.dataset.sub; render(); });
+  document.querySelectorAll("[data-ttall]").forEach(b => b.onclick = () => { S.filt.tt.all = b.dataset.ttall === "1"; render(); });
   document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.view = b.dataset.goto; render(); });
 }
 
@@ -605,24 +776,37 @@ function newTitle(key, f = {}){
   if (key === "inc") return nextNumber(S.inc, YEAR + "-");
   if (key === "imp") return nextNumber(S.imp, `IR-${YEAR}-`);
   if (key === "risk") return nextNumber(S.risk.filter(r => r.RegisterType === f.RegisterType), REF_PREFIX[f.RegisterType] || "R");
+  if (key === "eq") return nextNumber(S.eq, "EQ-", 3);
+  if (key === "tt") return nextNumber(S.tt, `TT-${YEAR}-`, 3);
   return f.Title || "";
 }
 function newDefaults(key){
   if (key === "inc") return { Title: newTitle("inc"), IncidentDate: TODAY, IncidentStatus: "Open", RTWProgram: "No" };
   if (key === "imp") return { Title: newTitle("imp"), DateIssued: TODAY, ImprovementStatus: "Open", Recurrence: "One-off", Priority: "M" };
+  if (key === "eq") return { Title: newTitle("eq"), Category: "Tool", EquipStatus: "In service" };
+  if (key === "tt") return { Title: newTitle("tt"), TestDate: TODAY, TestPeriod: "Yearly", NextTestDate: addMonths(TODAY, 12), Result: "Pass", Location: "Office" };
   const reg = S.filt.risk.reg || "OH&S";
   if (key === "risk") return { Title: newTitle("risk", { RegisterType: reg }), RegisterType: reg, RiskType: "Risk", RiskStatus: "Active" };
   return { RegisterType: reg, Signed: "No" };
 }
-function openForm(key, item){
+function openForm(key, item, prefill = {}){
   editing = { key, item };
+  photoQueue = [];
   const defs = FORMS[key];
-  const v = item ? { ...item } : newDefaults(key);
+  const v = item ? { ...item } : { ...newDefaults(key), ...prefill };
   const setTitle = t => $("#dlgTitle").textContent = (item ? "" : "New ") + NAMES[key].toLowerCase().replace(/^./, c => c.toUpperCase()) + (t ? " " + t : "");
   setTitle(v.Title);
-  $("#dlgBody").innerHTML = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`).join("")
+  const sections = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`);
+  if (key === "inc") sections.splice(1, 0, photosHtml());      // photos straight after the incident details
+  $("#dlgBody").innerHTML = sections.join("")
     + (key === "risk" ? `<p class="hint" id="mxHint"></p>` : "")
-    + (key === "rev" ? `<button type="button" class="btn" id="revToday">✓ Record a review today</button>` : "");
+    + (key === "rev" ? `<button type="button" class="btn" id="revToday">✓ Record a review today</button>` : "")
+    + (key === "tt" && item ? `<button type="button" class="btn" id="ttRetest">↻ Record a new test for this item</button>` : "")
+;
+  if (key === "inc"){
+    $("#phInput").onchange = e => { [...e.target.files].forEach(f => { f._url = URL.createObjectURL(f); photoQueue.push(f); }); e.target.value = ""; renderQueue(); };
+    loadPhotos(item?.Title);
+  }
   if (key === "risk"){
     const upd = (lName, cName, sName, rName, e) => {
       const m = matrix($(`[name=${lName}]`).value, $(`[name=${cName}]`).value);
@@ -640,6 +824,10 @@ function openForm(key, item){
       hint();
     };
     upd("Likelihood","Consequence","RiskScore","Rating"); upd("ResidualLikelihood","ResidualConsequence","ResidualScore","ResidualRating"); hint();
+  } else if (key === "tt"){
+    $("#dlgBody").oninput = e => { if (e.target.name === "TestDate" || e.target.name === "TestPeriod"){ const d = $("[name=TestDate]").value, m = TT_MONTHS[$("[name=TestPeriod]").value]; if (d && m) $("[name=NextTestDate]").value = addMonths(d, m); } };
+    if (item) $("#ttRetest").onclick = () => openForm("tt", undefined, { ItemKey: ttKey(item), PlantID:item.PlantID, Description:item.Description, Location:item.Location, TestPeriod:item.TestPeriod, CompetentPerson:item.CompetentPerson,
+      NextTestDate: addMonths(TODAY, TT_MONTHS[item.TestPeriod] || 12) });
   } else if (key === "rev"){
     $("#dlgBody").oninput = null;
     $("#revToday").onclick = () => { $("[name=ReviewDate]").value = TODAY; $("[name=Signed]").value = "Yes"; toast("Review date set to today — click Save to record it"); };
@@ -666,6 +854,7 @@ async function submitForm(e){
   if (missing.length){ missing[0].focus(); toast("Please fill in: " + missing.map(m => m.closest("label").innerText.replace(" *","").trim()).join(", ")); return; }
   let f = readForm();
   if (key === "inc") f = calcIncident(f);
+  if (key === "tt" && !f.ItemKey) f.ItemKey = f.Title;
   if (key === "imp" && f.ImprovementStatus === "Closed" && !f.DateClosed) f.DateClosed = TODAY;
   // types: numbers as numbers, blanks → null on update / omitted on create
   const out = {};
@@ -680,13 +869,18 @@ async function submitForm(e){
     if (DEMO) saved = { ...(item || { id: "demo" + Date.now() }), ...out, ...(item && key !== "rev" ? {} : { Title: f.Title }) };
     else {
       // guard against duplicate number if someone else saved first
-      if (!item && key !== "rev"){ S[key] = await loadList(key); out.Title = newTitle(key, f); }
+      if (!item && key !== "rev"){ S[key] = await loadList(key); out.Title = newTitle(key, f); if (key === "tt" && out.ItemKey === f.Title) out.ItemKey = out.Title; }
       saved = { ...(item || {}), ...(await saveItem(key, item?.id, out)) };
     }
     const idx = S[key].findIndex(i => i.id === saved.id);
     idx >= 0 ? S[key].splice(idx, 1, saved) : S[key].push(saved);
-    $("#dlg").close(); render(); toast(`Saved ${saved.Title}`);
-  } catch(err){ console.error(err); toast("Save failed: " + err.message); }
+    let msg = `Saved ${saved.Title}`;
+    if (key === "inc" && photoQueue.length){
+      try { const n = await uploadPhotos(saved.Title); if (n) msg += ` with ${n} photo${n===1?"":"s"}`; }
+      catch(pe){ msg += ` — but the photos weren't uploaded: ${pe.message}`; }
+    }
+    $("#dlg").close(); render(); toast(msg);
+  } catch(err){ console.error(err); toast(err.status === 403 || /access denied|forbidden|not authorized/i.test(err.message) ? NO_PERMISSION : "Save failed: " + err.message); }
   finally { $("#dlgSave").disabled = false; }
 }
 
@@ -714,6 +908,8 @@ async function start(){
     S.inc = SEED.inc.map((r,k) => calcIncident({ id:"i"+k, ...r })); S.imp = SEED.imp.map((r,k) => ({ id:"m"+k, ...r }));
     const toNum = r => { ["RiskScore","ResidualScore"].forEach(n => { if (r[n] !== undefined && r[n] !== "") r[n] = +r[n]; }); return r; };
     S.risk = (SEED.risk || []).map((r,k) => toNum({ id:"r"+k, ...r })); S.rev = (SEED.rev || []).map((r,k) => ({ id:"v"+k, ...r }));
+    const toNum2 = r => { ["Cost","DisposalValue"].forEach(n => { if (r[n] !== undefined && r[n] !== "") r[n] = +r[n]; }); return r; };
+    S.eq = (SEED.eq || []).map((r,k) => toNum2({ id:"e"+k, ...r })); S.tt = (SEED.tt || []).map((r,k) => ({ id:"t"+k, ...r }));
     $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); return;
   }
   try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
@@ -722,7 +918,7 @@ async function start(){
   $("#so").onclick = signOut;
   try {
     await getSite();
-    [S.inc, S.imp, S.risk, S.rev] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev")]);
+    [S.inc, S.imp, S.risk, S.rev, S.eq, S.tt] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev"), loadListSafe("eq"), loadListSafe("tt")]);
     $("#nav").hidden = false; render();
   } catch(e){
     $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists, the lists have been provisioned, and you have access.</div>`;
