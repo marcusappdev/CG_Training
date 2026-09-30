@@ -145,6 +145,36 @@ legend{font-weight:600;font-size:13px;color:var(--muted);text-transform:uppercas
 #dlg label.fld input,#dlg label.fld select,#dlg label.fld textarea{background:var(--surface)}
 #dlg label.fld input[readonly]{background:var(--grey-bg)}
 #dlg .df{border-top:3px solid var(--fc)}
+#dlg.f-staff,#dlg.f-course,#dlg.f-trn{--fc:#4f46e5;--fc-bg:#f0f0fd}
+#dlg.f-area,#dlg.f-ins{--fc:#0369a1;--fc-bg:#ecf5fb}
+#dlg.f-leg{--fc:#a21caf;--fc-bg:#fbf0fc}
+@media (prefers-color-scheme:dark){
+  #dlg.f-staff,#dlg.f-course,#dlg.f-trn{--fc:#8b8cf6;--fc-bg:#1d1d38}
+  #dlg.f-area,#dlg.f-ins{--fc:#4db4ea;--fc-bg:#122533}
+  #dlg.f-leg{--fc:#e07ae8;--fc-bg:#2c1630}
+}
+/* matrix / calendar */
+.mxwrap table{min-width:0;width:auto}
+table.matrix th,table.matrix td{padding:3px;border-bottom:1px solid var(--line);text-align:center}
+table.matrix th.vh{height:150px;vertical-align:bottom;white-space:nowrap;position:sticky;top:0;background:var(--surface2);cursor:default}
+table.matrix th.vh span{writing-mode:vertical-rl;transform:rotate(180deg);text-transform:none;letter-spacing:0;font-size:12px;color:var(--text);font-weight:600}
+table.matrix .who-cell{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:190px;padding:6px 10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text)}
+table.matrix thead .who-cell{background:var(--surface2);z-index:2;vertical-align:bottom;color:var(--muted);text-transform:uppercase;font-size:12px}
+.who-cell span{display:block;font-weight:400;color:var(--muted);font-size:11px}
+table.matrix tr.grp td{text-align:left;background:var(--grey-bg);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:6px 10px}
+table.cal th:not(.who-cell){font-size:12px;min-width:46px}
+.mx{width:44px;height:34px;border-radius:6px;border:1px solid transparent;font-size:10px;line-height:1.1;cursor:pointer;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;justify-content:center;font-style:normal}
+.legend .mx{width:22px;height:16px;margin-right:5px;vertical-align:-3px;font-size:9px;cursor:default}
+.mx-na{background:transparent;border:1px dashed var(--line)}
+.mx-na:hover{border-color:var(--muted)}
+.mx-done{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.mx-expiring{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.mx-expired{background:var(--crit);color:#fff}
+.mx-missing{background:var(--bad-bg);color:var(--crit);border:2px solid var(--crit);font-size:14px}
+.mx-planned{background:var(--grey-bg);color:var(--muted);border-color:var(--line)}
+.mxl{margin:0;flex-wrap:wrap}
+table.legt tr.child td:first-child{padding-left:30px;font-size:13px}
+table.legt a{font-size:12px;color:var(--info)}
 .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
 .fg .w2{grid-column:span 2}.fg .w3{grid-column:1/-1}
 label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -181,6 +211,8 @@ label.fld input[readonly]{background:var(--grey-bg)}
     <button data-v="imp">Improvements</button>
     <button data-v="risk">Risks</button>
     <button data-v="assets">Assets</button>
+    <button data-v="training">Training</button>
+    <button data-v="comp">Compliance</button>
   </nav>
   <div class="who" id="who"></div>
 </header>
@@ -204,12 +236,13 @@ const CONFIG = {
   TENANT_ID: "ea9e105c-2df6-47ef-a8e3-b4aa1d788423",
   SP_HOST:   "conceptcompg.sharepoint.com",
   SITE_PATH: "/sites/MJE",
-  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements", risk: "MJE_Risks", rev: "MJE_RiskReviews", eq: "MJE_Equipment", tt: "MJE_TestTag", photos: "MJE_IncidentPhotos" },
+  LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements", risk: "MJE_Risks", rev: "MJE_RiskReviews", eq: "MJE_Equipment", tt: "MJE_TestTag", photos: "MJE_IncidentPhotos",
+           staff: "MJE_Staff", course: "MJE_Courses", trn: "MJE_Training", area: "MJE_InspectionAreas", ins: "MJE_Inspections", leg: "MJE_Legislation" },
   SCOPES: ["Sites.ReadWrite.All", "User.Read"],
   RTW_HOURS_PER_DAY: 9
 };
 const DEMO = CONFIG.CLIENT_ID.startsWith("<<");
-const SEED = {"inc":[],"imp":[],"risk":[],"rev":[],"eq":[],"tt":[]};
+const SEED = {"inc":[],"imp":[],"risk":[],"rev":[],"eq":[],"tt":[],"staff":[],"course":[],"trn":[],"area":[],"ins":[],"leg":[]};
 
 /* ---------------- helpers ---------------- */
 const $ = s => document.querySelector(s);
@@ -283,10 +316,11 @@ async function saveItem(key, id, fields){
 }
 
 /* ---------------- state ---------------- */
-const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1], eq:["Title",1], tt:["NextTestDate",1] },
+const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], trn:[], area:[], ins:[], leg:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1], eq:["Title",1], tt:["NextTestDate",1], staff:["Title",1], course:["Title",1], trn:["Title",1], area:["Title",1], ins:["InspectionDate",-1], leg:["Title",1] },
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
-                   assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false } } };
+                   assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"" }, comp:{ sub:"ins" }, ins:{ year:YEAR }, leg:{ q:"", topic:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -627,10 +661,170 @@ async function uploadPhotos(title){
   photoQueue = []; return n;
 }
 const NO_PERMISSION = "You don't have permission to change this record. MJE staff can log new incidents, edit their own incidents and add photos; everything else is edited by the MJE site owners.";
+/* ================= TRAINING, INSPECTIONS, LEGISLATION (Phase 4) ================= */
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DEPTS = ["Administration","Service","Projects","Other"];
+const STAFF_FORM = [["Staff member", [
+  ["Title","Full name","text",{req:1}], ["EmployeeNo","Employee no.","text"], ["Position","Position","text",{req:1}],
+  ["Department","Department","select",{opts:DEPTS,req:1}], ["StaffStatus","Status","select",{opts:["Active","Left"]}], ["Notes","Notes","textarea",{w:3}] ]]];
+const COURSE_FORM = [["Course", [
+  ["Title","Course name","text",{req:1}], ["Category","Category","text"], ["RefresherMonths","Refresher every (months)","number"], ["Notes","Notes","textarea",{w:3}] ]]];
+const TRN_FORM = [
+  ["Requirement", [ ["StaffName","Staff member","select",{opts:[],req:1,dyn:"staff"}], ["Course","Course","select",{opts:[],req:1,dyn:"course"}], ["Requirement","Requirement","select",{opts:["Mandatory","Extended"],req:1}] ]],
+  ["Completion", [ ["CompletedDate","Date completed","date"], ["ExpiryDate","Expiry date","date"], ["Provider","Provider","text"], ["CertificateNo","Certificate no.","text"], ["Notes","Notes","textarea",{w:3}] ]]];
+const AREA_FORM = [["Inspection area", [
+  ["Title","Area","text",{req:1}], ["PlannedMonth","Planned month","select",{opts:MONTHS}], ["Frequency","Frequency","select",{opts:["Monthly","Quarterly","Six-monthly","Annually"]}],
+  ["Responsible","Responsible","text"], ["Notes","Notes","textarea",{w:3}] ]]];
+const INS_FORM = [
+  ["Inspection", [ ["Title","Inspection no.","text",{ro:1}], ["Area","Inspection area","select",{opts:[],req:1,dyn:"area"}], ["InspectionDate","Date","date",{req:1}], ["Inspector","Inspector","text"],
+    ["Outcome","Outcome","select",{opts:["Satisfactory","Actions required","Not satisfactory"]}], ["ActionsRaised","Actions raised (IR no.)","text"] ]],
+  ["Findings", [ ["Findings","Findings","textarea",{w:3}], ["Notes","Notes","textarea",{w:3}] ]]];
+const LEG_FORM = [
+  ["Legislation", [ ["Title","Title","text",{req:1,w:2}], ["LegType","Type","select",{opts:["Act","Regulation","Subordinate legislation"],req:1}],
+    ["ParentAct","Made under (Act)","text"], ["Topic","Topic","select",{opts:["OH&S","Environment","Transport","Workers' compensation","Employment","Other"]}], ["Link","Link (PacLII / QSEMS)","text",{w:2}] ]],
+  ["Review", [ ["Responsible","Responsible","text"], ["ReviewFrequency","Review frequency","select",{opts:["Monthly","Quarterly","Annually"]}], ["LastReviewed","Last reviewed","date"],
+    ["ComplianceStatus","Compliance status","select",{opts:["Compliant","Review required","Not assessed"]}],
+    ["ChangesNoted","Changes noted","textarea",{w:3}], ["AffectedDocuments","Affected documents / work method statements","textarea",{w:3}] ]]];
 
-const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM, eq:EQ_FORM, tt:TT_FORM };
-const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item", eq:"Equipment item", tt:"Test" };
-const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule", eq:"Equipment_Register", tt:"Test_and_Tag" };
+/* ---- training helpers ---- */
+const trnState = r => {
+  if (!r) return "na";
+  if (r.CompletedDate){ if (r.ExpiryDate && r.ExpiryDate < TODAY) return "expired"; if (r.ExpiryDate && r.ExpiryDate <= addDays(TODAY, 60)) return "expiring"; return "done"; }
+  return r.Requirement === "Mandatory" ? "missing" : "planned";
+};
+const TRN_LABEL = { done:"Completed", expiring:"Expires within 60 days", expired:"Expired", missing:"Mandatory – not recorded", planned:"Extended – not yet done", na:"Not required" };
+const activeStaff = () => S.staff.filter(s => s.StaffStatus !== "Left");
+const trnFor = (name, course) => S.trn.find(r => r.StaffName === name && r.Course === course);
+function viewTraining(){
+  const sub = S.filt.training.sub;
+  const tabs = `<div class="bar chips"><button class="chip ${sub==="matrix"?"on":""}" data-tsub="matrix">Competency matrix</button><button class="chip ${sub==="staff"?"on":""}" data-tsub="staff">Staff <span>${activeStaff().length}</span></button><button class="chip ${sub==="course"?"on":""}" data-tsub="course">Courses <span>${S.course.length}</span></button></div>`;
+  if (S.missing.includes("trn") || S.missing.includes("staff")) return `<div class="bar"><h2>Training & Competency</h2></div>${tabs}<div class="banner err">The training lists haven't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
+  if (sub === "staff") return viewSimpleList("staff", "Staff", tabs, [["Title","Name"],["EmployeeNo","Emp no."],["Position","Position"],["Department","Department"],["StaffStatus","Status"]], "+ New staff member");
+  if (sub === "course") return viewSimpleList("course", "Courses", tabs, [["Title","Course"],["Category","Category"],["RefresherMonths","Refresher (months)"]], "+ New course");
+  const f = S.filt.trn, q = f.q.toLowerCase();
+  const staff = activeStaff().filter(s => (!f.dept || s.Department === f.dept) && (!q || [s.Title,s.Position,s.EmployeeNo].join(" ").toLowerCase().includes(q)))
+    .sort((a,b) => DEPTS.indexOf(a.Department) - DEPTS.indexOf(b.Department) || a.Title.localeCompare(b.Title));
+  const courses = [...S.course].sort((a,b) => (a.Category||"").localeCompare(b.Category||"") || a.Title.localeCompare(b.Title));
+  const mand = S.trn.filter(r => r.Requirement === "Mandatory" && activeStaff().some(s => s.Title === r.StaffName));
+  const ok = mand.filter(r => ["done","expiring"].includes(trnState(r))).length;
+  const cnt = s => S.trn.filter(r => trnState(r) === s && activeStaff().some(x => x.Title === r.StaffName)).length;
+  const pct = mand.length ? Math.round(ok / mand.length * 100) : 0;
+  let dept = "";
+  const body = staff.map(s => {
+    const head = s.Department !== dept ? `<tr class="grp"><td colspan="${courses.length + 1}">${esc(s.Department || "—")}</td></tr>` : ""; dept = s.Department;
+    return head + `<tr><th class="who-cell" data-open="staff:${s.id}"><b>${esc(s.Title)}</b><span>${esc(s.Position || "")}${s.EmployeeNo ? " · #" + esc(s.EmployeeNo) : ""}</span></th>` +
+      courses.map(c => { const r = trnFor(s.Title, c.Title), st = trnState(r);
+        const txt = st === "done" || st === "expiring" || st === "expired" ? fmtDate(r.CompletedDate).slice(0,5) + "<br>" + r.CompletedDate.slice(2,4) : st === "missing" ? "●" : st === "planned" ? "○" : "";
+        return `<td><button class="mx mx-${st}" data-mx="${esc(s.Title)}|${esc(c.Title)}" title="${esc(s.Title)} — ${esc(c.Title)}: ${TRN_LABEL[st]}${r && r.ExpiryDate ? " (expires " + fmtDate(r.ExpiryDate) + ")" : ""}">${txt}</button></td>`; }).join("") + `</tr>`;
+  }).join("");
+  return `
+  <div class="bar"><h2>Training & Competency</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:trn">Export CSV</button><button class="btn primary" data-act="new:trn">+ Record training</button></div>
+  ${tabs}
+  <div class="grid kpis">
+    <div class="card kpi"><div class="l">Mandatory training compliance</div><div class="v">${pct}%</div><div class="s">${ok} of ${mand.length} requirements current</div></div>
+    <div class="card kpi ${cnt("missing")?"alert":""}"><div class="l">Not recorded</div><div class="v">${cnt("missing")}</div><div class="s">mandatory, no completion date</div></div>
+    <div class="card kpi ${cnt("expired")?"alert":""}"><div class="l">Expired</div><div class="v">${cnt("expired")}</div><div class="s">needs refresher</div></div>
+    <div class="card kpi"><div class="l">Expiring in 60 days</div><div class="v">${cnt("expiring")}</div><div class="s">book now</div></div>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search staff name or position…" value="${esc(f.q)}">
+    <select class="f" data-f="trn:dept">${opt(DEPTS, f.dept, "All departments")}</select>
+    <span class="legend mxl"><span><i class="mx mx-done"></i>Completed</span><span><i class="mx mx-expiring"></i>Expiring</span><span><i class="mx mx-expired"></i>Expired</span><span><i class="mx mx-missing">●</i>Mandatory, not recorded</span><span><i class="mx mx-planned">○</i>Extended</span></span>
+  </div>
+  <div class="tablewrap mxwrap"><table class="matrix"><thead><tr><th class="who-cell">Staff member</th>${courses.map(c => `<th class="vh"><span>${esc(c.Title)}</span></th>`).join("")}</tr></thead>
+  <tbody>${body}</tbody></table>${staff.length ? "" : `<div class="empty">No staff match</div>`}</div>
+  <p class="count">Click a cell to record completion. Empty cells aren't required — click one to add it as extended training.</p>`;
+}
+function viewSimpleList(key, title, tabs, cols, addLabel){
+  const rows = sortRows(S[key], key);
+  return `<div class="bar"><h2>${title}</h2><span class="grow"></span><button class="btn" data-act="csv:${key}">Export CSV</button><button class="btn primary" data-act="new:${key}">${addLabel}</button></div>${tabs}
+  <div class="tablewrap"><table><thead><tr>${cols.map(([c,l]) => th(key, c, l)).join("")}</tr></thead><tbody>
+  ${rows.map(r => `<tr data-open="${key}:${r.id}">${cols.map(([c],i) => `<td>${i ? esc(r[c] ?? "") : `<b>${esc(r[c])}</b>`}</td>`).join("")}</tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">Nothing here yet</div>`}</div>`;
+}
+
+/* ---- inspections ---- */
+function viewCompliance(){
+  const sub = S.filt.comp.sub;
+  const tabs = `<div class="bar chips"><button class="chip ${sub==="ins"?"on":""}" data-csub="ins">Workplace inspections <span>${S.area.length} areas</span></button><button class="chip ${sub==="leg"?"on":""}" data-csub="leg">Legislation <span>${S.leg.length}</span></button></div>`;
+  return sub === "leg" ? viewLegislation(tabs) : viewInspections(tabs);
+}
+const insYears = () => [...new Set(S.ins.map(i => (i.InspectionDate||"").slice(0,4)).filter(Boolean).concat(YEAR))].sort().reverse();
+function areaMonthState(a, y, mi){
+  const done = S.ins.filter(i => i.Area === a.Title && (i.InspectionDate||"").startsWith(`${y}-${pad(mi+1)}`));
+  const planned = a.PlannedMonth === MONTHS[mi] || a.Frequency === "Monthly" || (a.Frequency === "Quarterly" && MONTHS.indexOf(a.PlannedMonth) % 3 === mi % 3) || (a.Frequency === "Six-monthly" && MONTHS.indexOf(a.PlannedMonth) % 6 === mi % 6);
+  const monthEnd = ymd(new Date(+y, mi + 1, 0));
+  return { done, planned, overdue: planned && !done.length && monthEnd < TODAY };
+}
+function viewInspections(tabs){
+  if (S.missing.includes("area")) return `<div class="bar"><h2>Compliance</h2></div>${tabs}<div class="banner err">The inspection lists haven't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
+  const f = S.filt.ins, y = f.year;
+  const areas = [...S.area].sort((a,b) => (MONTHS.indexOf(a.PlannedMonth) + 13) % 13 - (MONTHS.indexOf(b.PlannedMonth) + 13) % 13 || a.Title.localeCompare(b.Title));
+  let planned = 0, done = 0, overdue = 0;
+  const rowsHtml = areas.map(a => `<tr><th class="who-cell" data-open="area:${a.id}"><b>${esc(a.Title)}</b><span>${esc(a.Frequency || "")}${a.PlannedMonth ? "" : " · not scheduled"}</span></th>` +
+    MONTHS.map((m, mi) => { const s = areaMonthState(a, y, mi); if (s.planned) planned++; if (s.done.length) done++; if (s.overdue) overdue++;
+      const cls = s.done.length ? "done" : s.overdue ? "expired" : s.planned ? "planned" : "na";
+      const label = s.done.length ? s.done.map(d => fmtDate(d.InspectionDate).slice(0,5)).join(" ") : s.planned ? (s.overdue ? "due" : "plan") : "";
+      const act = s.done.length ? `data-open="ins:${s.done[0].id}"` : `data-newins="${esc(a.Title)}|${mi}"`;
+      return `<td><button class="mx mx-${cls}" ${act} title="${esc(a.Title)} — ${m} ${y}: ${s.done.length ? "inspected " + s.done.map(d => fmtDate(d.InspectionDate)).join(", ") : s.overdue ? "planned, not done" : s.planned ? "planned" : "not planned"}">${label}</button></td>`; }).join("") + `</tr>`).join("");
+  const log = sortRows(S.ins.filter(i => (i.InspectionDate||"").startsWith(y)), "ins");
+  return `
+  <div class="bar"><h2>Workplace Inspection Program</h2><span class="grow"></span>
+    <button class="btn" data-act="new:area">+ New area</button><button class="btn primary" data-act="new:ins">+ Record inspection</button></div>
+  ${tabs}
+  <div class="grid kpis">
+    <div class="card kpi"><div class="l">Inspections ${esc(y)}</div><div class="v">${S.ins.filter(i => (i.InspectionDate||"").startsWith(y)).length}</div><div class="s">${done} of ${planned} planned slots done</div></div>
+    <div class="card kpi ${overdue?"alert":""}"><div class="l">Planned, not done</div><div class="v">${overdue}</div><div class="s">months already passed</div></div>
+    <div class="card kpi"><div class="l">Areas not scheduled</div><div class="v">${S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${S.area.length} checklist areas</div></div>
+  </div>
+  <div class="bar"><select class="f" data-f="ins:year">${insYears().map(v => `<option ${v===y?"selected":""}>${v}</option>`).join("")}</select>
+    <span class="legend mxl"><span><i class="mx mx-done"></i>Inspected</span><span><i class="mx mx-planned">plan</i>Planned</span><span><i class="mx mx-expired">due</i>Planned, missed</span></span></div>
+  <div class="tablewrap mxwrap"><table class="matrix cal"><thead><tr><th class="who-cell">Checklist area</th>${MONTHS.map(m => `<th>${m.slice(0,3)}</th>`).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table></div>
+  <p class="count">Click a planned or empty month to record an inspection; click a completed one to open it. Click an area name to change its planned month.</p>
+  <div class="bar" style="margin-top:22px"><h2>Inspection log ${esc(y)}</h2><span class="grow"></span><button class="btn" data-act="csv:ins">Export CSV</button></div>
+  <div class="tablewrap"><table><thead><tr>${th("ins","Title","No.")}${th("ins","InspectionDate","Date")}${th("ins","Area","Area")}${th("ins","Inspector","Inspector")}${th("ins","Outcome","Outcome")}<th>Findings</th>${th("ins","ActionsRaised","Actions")}</tr></thead><tbody>
+  ${log.map(i => `<tr data-open="ins:${i.id}"><td class="mono"><b>${esc(i.Title)}</b></td><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Inspector)}</td>
+    <td>${i.Outcome ? `<span class="pill ${i.Outcome==="Satisfactory"?"p-ok":i.Outcome==="Actions required"?"p-warn":"p-crit"}">${esc(i.Outcome)}</span>` : ""}</td><td class="clip"><div>${esc(i.Findings || i.Notes)}</div></td><td class="mono">${esc(i.ActionsRaised)}</td></tr>`).join("")}
+  </tbody></table>${log.length ? "" : `<div class="empty">No inspections recorded in ${esc(y)}</div>`}</div>`;
+}
+
+/* ---- legislation ---- */
+const legDue = r => { if (!r.LastReviewed) return ""; return addMonths(r.LastReviewed, { Monthly:1, Quarterly:3, Annually:12 }[r.ReviewFrequency] || 1); };
+const legState = r => !r.LastReviewed ? "none" : legDue(r) < TODAY ? "overdue" : "ok";
+function viewLegislation(tabs){
+  if (S.missing.includes("leg")) return `<div class="bar"><h2>Compliance</h2></div>${tabs}<div class="banner err">The legislation list hasn't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
+  const f = S.filt.leg, q = f.q.toLowerCase();
+  const rows = S.leg.filter(r => (!f.topic || r.Topic === f.topic) && (!q || [r.Title,r.ParentAct,r.ChangesNoted,r.AffectedDocuments].join(" ").toLowerCase().includes(q)));
+  const acts = rows.filter(r => r.LegType === "Act");
+  const orphans = rows.filter(r => r.LegType !== "Act" && !acts.some(a => a.Title === r.ParentAct));
+  const typeOrder = { "Act":0, "Regulation":1, "Subordinate legislation":2 };
+  const line = (r, child) => `<tr data-open="leg:${r.id}" class="${child?"child":""}"><td>${child ? "↳ " : ""}<b>${esc(r.Title)}</b>${r.Link ? ` <a href="${esc(r.Link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open ↗</a>` : ""}</td>
+    <td><span class="pill ${r.LegType==="Act"?"p-info":"p-grey"}">${esc(r.LegType)}</span></td><td>${esc(r.Topic)}</td><td>${esc(r.Responsible)}</td>
+    <td class="mono">${fmtDate(r.LastReviewed)}</td><td>${{ none:`<span class="pill p-bad">Not reviewed</span>`, overdue:`<span class="pill p-crit">Review due</span>`, ok:`<span class="pill p-ok">Up to date</span>` }[legState(r)]}</td>
+    <td>${r.ComplianceStatus ? `<span class="pill ${r.ComplianceStatus==="Compliant"?"p-ok":r.ComplianceStatus==="Review required"?"p-warn":"p-grey"}">${esc(r.ComplianceStatus)}</span>` : ""}</td></tr>`;
+  const body = acts.sort((a,b) => a.Title.localeCompare(b.Title)).map(a => line(a) + rows.filter(r => r.ParentAct === a.Title && r.LegType !== "Act")
+    .sort((x,y) => typeOrder[x.LegType] - typeOrder[y.LegType] || x.Title.localeCompare(y.Title)).map(r => line(r, true)).join("")).join("") + orphans.map(r => line(r)).join("");
+  const due = S.leg.filter(r => legState(r) !== "ok").length;
+  return `
+  <div class="bar"><h2>Legislative Compliance Register</h2><span class="grow"></span>
+    <button class="btn" data-act="csv:leg">Export CSV</button><button class="btn primary" data-act="new:leg">+ Add legislation</button></div>
+  ${tabs}
+  <div class="grid kpis">
+    <div class="card kpi"><div class="l">Instruments</div><div class="v">${S.leg.length}</div><div class="s">${S.leg.filter(r => r.LegType==="Act").length} Acts</div></div>
+    <div class="card kpi ${due?"alert":""}"><div class="l">Reviews due</div><div class="v">${due}</div><div class="s">register requires monthly review</div></div>
+    <div class="card kpi"><div class="l">Compliant</div><div class="v">${S.leg.filter(r => r.ComplianceStatus === "Compliant").length}</div><div class="s">${S.leg.filter(r => r.ComplianceStatus === "Not assessed").length} not assessed</div></div>
+  </div>
+  <div class="bar"><input type="search" id="q" placeholder="Search legislation, changes, documents…" value="${esc(f.q)}">
+    <select class="f" data-f="leg:topic">${opt(["OH&S","Environment","Transport","Workers' compensation","Employment","Other"], f.topic, "All topics")}</select><span class="count">${rows.length} of ${S.leg.length}</span></div>
+  <div class="tablewrap"><table class="legt"><thead><tr><th>Legislation</th><th>Type</th><th>Topic</th><th>Responsible</th><th>Last reviewed</th><th>Review</th><th>Status</th></tr></thead><tbody>${body}</tbody></table>${rows.length ? "" : `<div class="empty">No legislation matches</div>`}</div>
+  <p class="count">Monthly review: check each instrument for amendments; record changes and the documents (e.g. Work Method Statements) whose owners must be told.</p>`;
+}
+
+const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM, eq:EQ_FORM, tt:TT_FORM, staff:STAFF_FORM, course:COURSE_FORM, trn:TRN_FORM, area:AREA_FORM, ins:INS_FORM, leg:LEG_FORM };
+const USER_TITLE = new Set(["rev","staff","course","area","leg","trn"]);
+const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item", eq:"Equipment item", tt:"Test", staff:"Staff member", course:"Course", trn:"Training record", area:"Inspection area", ins:"Inspection", leg:"Legislation" };
+const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule", eq:"Equipment_Register", tt:"Test_and_Tag", staff:"Staff", course:"Courses", trn:"Training_Records", area:"Inspection_Areas", ins:"Inspections", leg:"Legislation_Register" };
 const NUMERIC = new Set(Object.values(FORMS).flat().flatMap(s => s[1]).filter(f => f[2]==="number").map(f => f[0]));
 
 /* ---------------- derived ---------------- */
@@ -656,7 +850,7 @@ const priPill = p => { const c = {H:"p-crit",M:"p-warn",L:"p-grey"}[p]; return p
 function render(){
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === S.view));
   const banner = DEMO ? `<div class="banner">Demo mode — showing the existing registers as sample data. Changes are kept only until you refresh. Add the app registration details to CONFIG to connect to SharePoint.</div>` : "";
-  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets }[S.view])();
+  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets, training:viewTraining, comp:viewCompliance }[S.view])();
   bindView();
 }
 
@@ -686,6 +880,12 @@ function viewDash(){
     .sort((a,b) => (nextDue(a)||"0").localeCompare(nextDue(b)||"0"));
   const revOver = S.rev.filter(r => ["overdue","none"].includes(revState(r))).length;
   const ttOn = !S.missing.includes("tt"), ttL = ttLatest(), ttOver = ttL.filter(r => ["overdue","fail"].includes(ttState(r))).length;
+  const trnOn = !S.missing.includes("trn") && !S.missing.includes("staff");
+  const mand = S.trn.filter(r => r.Requirement === "Mandatory" && activeStaff().some(s => s.Title === r.StaffName));
+  const trnPct = mand.length ? Math.round(mand.filter(r => ["done","expiring"].includes(trnState(r))).length / mand.length * 100) : 0;
+  const insOn = !S.missing.includes("area");
+  const insMissed = insOn ? S.area.reduce((n, a) => n + MONTHS.filter((m, mi) => areaMonthState(a, YEAR, mi).overdue).length, 0) : 0;
+  const legOn = !S.missing.includes("leg"), legDueN = S.leg.filter(r => legState(r) !== "ok").length;
 
   return `
   <div class="grid kpis">
@@ -697,6 +897,9 @@ function viewDash(){
     ${riskOn ? `<div class="card kpi"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
     <div class="card kpi ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
     ${ttOn ? `<div class="card kpi ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
+    ${trnOn ? `<div class="card kpi ${trnPct<80?"alert":""}"><div class="l">Mandatory training</div><div class="v">${trnPct}%</div><div class="s">of ${mand.length} requirements current</div></div>` : ""}
+    ${insOn ? `<div class="card kpi ${insMissed?"alert":""}"><div class="l">Inspections missed ${YEAR}</div><div class="v">${insMissed}</div><div class="s">planned months passed</div></div>` : ""}
+    ${legOn ? `<div class="card kpi ${legDueN?"alert":""}"><div class="l">Legislation reviews due</div><div class="v">${legDueN}</div><div class="s">monthly review</div></div>` : ""}
   </div>
   <div class="grid two">
     <div class="card"><h3>Improvements by category</h3>
@@ -777,7 +980,7 @@ function viewImp(){
 
 function bindView(){
   const q = $("#q");
-  if (q) q.oninput = () => { (S.view === "assets" ? S.filt[S.filt.assets.sub] : S.filt[S.view]).q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
+  if (q) q.oninput = () => { ({ assets: S.filt[S.filt.assets.sub], training: S.filt.trn, comp: S.filt.leg }[S.view] || S.filt[S.view]).q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
   document.querySelectorAll("[data-f]").forEach(s => s.onchange = () => { const [k,f] = s.dataset.f.split(":"); S.filt[k][f] = s.value; render(); });
   document.querySelectorAll("[data-sort]").forEach(h => h.onclick = () => { const [k,c] = h.dataset.sort.split(":"); const cur = S.sort[k]; S.sort[k] = [c, cur[0]===c ? -cur[1] : 1]; render(); });
   document.querySelectorAll("[data-open]").forEach(r => r.onclick = () => { const [k,id] = r.dataset.open.split(":"); openForm(k, S[k].find(i => String(i.id) === id)); });
@@ -787,6 +990,12 @@ function bindView(){
   document.querySelectorAll("[data-cell]").forEach(b => b.onclick = () => { if (b.classList.contains("z")) return; const c = b.dataset.cell; S.filt.risk.cell = S.filt.risk.cell === c ? "" : c; render(); });
   document.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => { S.filt.assets.sub = b.dataset.sub; render(); });
   document.querySelectorAll("[data-ttall]").forEach(b => b.onclick = () => { S.filt.tt.all = b.dataset.ttall === "1"; render(); });
+  document.querySelectorAll("[data-tsub]").forEach(b => b.onclick = () => { S.filt.training.sub = b.dataset.tsub; render(); });
+  document.querySelectorAll("[data-csub]").forEach(b => b.onclick = () => { S.filt.comp.sub = b.dataset.csub; render(); });
+  document.querySelectorAll("[data-mx]").forEach(b => b.onclick = () => { const [n, c] = b.dataset.mx.split("|"); const r = trnFor(n, c);
+    r ? openForm("trn", r) : openForm("trn", undefined, { StaffName:n, Course:c, Requirement:"Extended" }); });
+  document.querySelectorAll("[data-newins]").forEach(b => b.onclick = () => { const [a, mi] = b.dataset.newins.split("|"); const y = S.filt.ins.year, mm = pad(+mi + 1);
+    openForm("ins", undefined, { Area:a, InspectionDate: TODAY.startsWith(`${y}-${mm}`) ? TODAY : `${y}-${mm}-01` }); });
   document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.view = b.dataset.goto; render(); });
 }
 
@@ -797,7 +1006,8 @@ function fieldHtml([name, label, type, o = {}], v){
   const attrs = `name="${name}" ${o.req?"required":""} ${o.ro?"readonly tabindex=-1":""}`;
   if (type === "textarea") return `<label class="${cls}">${lab}<textarea ${attrs}>${esc(v)}</textarea></label>`;
   if (type === "select"){
-    const list = o.opts.includes(v) || !v ? o.opts : [...o.opts, v];     // keep fill-in values
+    const base = o.dyn ? (o.dyn === "staff" ? activeStaff() : S[o.dyn]).map(r => r.Title).sort((a,b) => a.localeCompare(b)) : o.opts;
+    const list = base.includes(v) || !v ? base : [...base, v];     // keep fill-in values
     return `<label class="${cls}">${lab}<select ${attrs}><option value=""></option>${list.map(x => `<option ${x===v?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`;
   }
   return `<label class="${cls}">${lab}<input type="${type}" ${type==="number"?'step="any" min="0"':""} ${attrs} value="${esc(v ?? "")}"></label>`;
@@ -807,6 +1017,8 @@ function newTitle(key, f = {}){
   if (key === "imp") return nextNumber(S.imp, `IR-${YEAR}-`);
   if (key === "risk") return nextNumber(S.risk.filter(r => r.RegisterType === f.RegisterType), REF_PREFIX[f.RegisterType] || "R");
   if (key === "eq") return nextNumber(S.eq, "EQ-", 3);
+  if (key === "ins") return nextNumber(S.ins, `INS-${YEAR}-`, 3);
+  if (key === "trn") return `${f.StaffName} — ${f.Course}`;
   if (key === "tt") return nextNumber(S.tt, `TT-${YEAR}-`, 3);
   return f.Title || "";
 }
@@ -814,6 +1026,12 @@ function newDefaults(key){
   if (key === "inc") return { Title: newTitle("inc"), IncidentDate: TODAY, IncidentStatus: "Open", RTWProgram: "No" };
   if (key === "imp") return { Title: newTitle("imp"), DateIssued: TODAY, ImprovementStatus: "Open", Recurrence: "One-off", Priority: "M" };
   if (key === "eq") return { Title: newTitle("eq"), Category: "Tool", EquipStatus: "In service" };
+  if (key === "staff") return { StaffStatus: "Active", Department: "Service" };
+  if (key === "course") return {};
+  if (key === "trn") return { Requirement: "Mandatory" };
+  if (key === "area") return { Frequency: "Annually" };
+  if (key === "ins") return { Title: newTitle("ins"), InspectionDate: TODAY, Outcome: "Satisfactory" };
+  if (key === "leg") return { LegType: "Act", ReviewFrequency: "Monthly", ComplianceStatus: "Not assessed" };
   if (key === "tt") return { Title: newTitle("tt"), TestDate: TODAY, TestPeriod: "Yearly", NextTestDate: addMonths(TODAY, 12), Result: "Pass", Location: "Office" };
   const reg = S.filt.risk.reg || "OH&S";
   if (key === "risk") return { Title: newTitle("risk", { RegisterType: reg }), RegisterType: reg, RiskType: "Risk", RiskStatus: "Active" };
@@ -825,7 +1043,7 @@ function openForm(key, item, prefill = {}){
   const defs = FORMS[key];
   const v = item ? { ...item } : { ...newDefaults(key), ...prefill };
   const setTitle = t => $("#dlgTitle").textContent = (item ? "" : "New ") + NAMES[key].toLowerCase().replace(/^./, c => c.toUpperCase()) + (t ? " " + t : "");
-  const KIND = { inc:"Safety Incident Register", imp:"Improvement Register", risk:"Risk Register", rev:"Risk Review Schedule", eq:"Plant & Equipment Register", tt:"Test & Tag Register" };
+  const KIND = { inc:"Safety Incident Register", imp:"Improvement Register", risk:"Risk Register", rev:"Risk Review Schedule", eq:"Plant & Equipment Register", tt:"Test & Tag Register", staff:"Training & Competency · Staff", course:"Training & Competency · Courses", trn:"Training & Competency", area:"Workplace Inspection Program", ins:"Workplace Inspection", leg:"Legislative Compliance Register" };
   $("#dlg").className = "f-" + key;
   $("#dlgKind").textContent = KIND[key] + (key === "risk" && v.RegisterType ? " · " + v.RegisterType : "");
   setTitle(v.Title);
@@ -835,6 +1053,7 @@ function openForm(key, item, prefill = {}){
     + (key === "risk" ? `<p class="hint" id="mxHint"></p>` : "")
     + (key === "rev" ? `<button type="button" class="btn" id="revToday">✓ Record a review today</button>` : "")
     + (key === "tt" && item ? `<button type="button" class="btn" id="ttRetest">↻ Record a new test for this item</button>` : "")
+    + (key === "leg" ? `<button type="button" class="btn" id="legToday">✓ Record a review today</button>` : "")
 ;
   if (key === "inc"){
     $("#phInput").onchange = e => { [...e.target.files].forEach(f => { f._url = URL.createObjectURL(f); photoQueue.push(f); }); e.target.value = ""; renderQueue(); };
@@ -861,6 +1080,13 @@ function openForm(key, item, prefill = {}){
     $("#dlgBody").oninput = e => { if (e.target.name === "TestDate" || e.target.name === "TestPeriod"){ const d = $("[name=TestDate]").value, m = TT_MONTHS[$("[name=TestPeriod]").value]; if (d && m) $("[name=NextTestDate]").value = addMonths(d, m); } };
     if (item) $("#ttRetest").onclick = () => openForm("tt", undefined, { ItemKey: ttKey(item), PlantID:item.PlantID, Description:item.Description, Location:item.Location, TestPeriod:item.TestPeriod, CompetentPerson:item.CompetentPerson,
       NextTestDate: addMonths(TODAY, TT_MONTHS[item.TestPeriod] || 12) });
+  } else if (key === "leg"){
+    $("#dlgBody").oninput = null;
+    $("#legToday").onclick = () => { $("[name=LastReviewed]").value = TODAY; if ($("[name=ComplianceStatus]").value === "Not assessed") $("[name=ComplianceStatus]").value = "Compliant"; toast("Review date set to today — click Save to record it"); };
+  } else if (key === "trn"){
+    const exp = () => { const c = S.course.find(x => x.Title === $("[name=Course]").value), d = $("[name=CompletedDate]").value;
+      if (c && num(c.RefresherMonths) && d && !$("[name=ExpiryDate]").value) $("[name=ExpiryDate]").value = addMonths(d, num(c.RefresherMonths)); };
+    $("#dlgBody").oninput = e => { if (e.target.name === "CompletedDate" || e.target.name === "Course") exp(); };
   } else if (key === "rev"){
     $("#dlgBody").oninput = null;
     $("#revToday").onclick = () => { $("[name=ReviewDate]").value = TODAY; $("[name=Signed]").value = "Yes"; toast("Review date set to today — click Save to record it"); };
@@ -888,6 +1114,7 @@ async function submitForm(e){
   let f = readForm();
   if (key === "inc") f = calcIncident(f);
   if (key === "tt" && !f.ItemKey) f.ItemKey = f.Title;
+  if (key === "trn"){ f.Title = `${f.StaffName} — ${f.Course}`; const dup = trnFor(f.StaffName, f.Course); if (dup && dup !== item){ toast(`${f.StaffName} already has a ${f.Course} record — open that one instead.`); return; } }
   if (key === "imp" && f.ImprovementStatus === "Closed" && !f.DateClosed) f.DateClosed = TODAY;
   // types: numbers as numbers, blanks → null on update / omitted on create
   const out = {};
@@ -895,14 +1122,14 @@ async function submitForm(e){
     if (NUMERIC.has(k) || (typeof val === "number")) { const n = val === "" ? null : +val; if (n !== null || item) out[k] = n; }
     else if (val !== "" || item) out[k] = val === "" ? null : val;
   }
-  if (item && key !== "rev") delete out.Title;
+  if (item && !USER_TITLE.has(key)) delete out.Title;
   $("#dlgSave").disabled = true;
   try {
     let saved;
-    if (DEMO) saved = { ...(item || { id: "demo" + Date.now() }), ...out, ...(item && key !== "rev" ? {} : { Title: f.Title }) };
+    if (DEMO) saved = { ...(item || { id: "demo" + Date.now() }), ...out, ...(item && !USER_TITLE.has(key) ? {} : { Title: f.Title }) };
     else {
       // guard against duplicate number if someone else saved first
-      if (!item && key !== "rev"){ S[key] = await loadList(key); out.Title = newTitle(key, f); if (key === "tt" && out.ItemKey === f.Title) out.ItemKey = out.Title; }
+      if (!item && !USER_TITLE.has(key) || key === "ins" && !item){ S[key] = await loadList(key); out.Title = newTitle(key, f); if (key === "tt" && out.ItemKey === f.Title) out.ItemKey = out.Title; }
       saved = { ...(item || {}), ...(await saveItem(key, item?.id, out)) };
     }
     const idx = S[key].findIndex(i => i.id === saved.id);
@@ -944,6 +1171,8 @@ async function start(){
     S.risk = (SEED.risk || []).map((r,k) => toNum({ id:"r"+k, ...r })); S.rev = (SEED.rev || []).map((r,k) => ({ id:"v"+k, ...r }));
     const toNum2 = r => { ["Cost","DisposalValue"].forEach(n => { if (r[n] !== undefined && r[n] !== "") r[n] = +r[n]; }); return r; };
     S.eq = (SEED.eq || []).map((r,k) => toNum2({ id:"e"+k, ...r })); S.tt = (SEED.tt || []).map((r,k) => ({ id:"t"+k, ...r }));
+    ["staff","course","trn","area","ins","leg"].forEach(k => S[k] = (SEED[k] || []).map((r,i) => ({ id:k+i, ...r })));
+    S.course.forEach(c => { if (c.RefresherMonths) c.RefresherMonths = +c.RefresherMonths; });
     $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); return;
   }
   try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
@@ -953,6 +1182,7 @@ async function start(){
   try {
     await getSite();
     [S.inc, S.imp, S.risk, S.rev, S.eq, S.tt] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev"), loadListSafe("eq"), loadListSafe("tt")]);
+    [S.staff, S.course, S.trn, S.area, S.ins, S.leg] = await Promise.all(["staff","course","trn","area","ins","leg"].map(loadListSafe));
     $("#nav").hidden = false; render();
   } catch(e){
     $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists, the lists have been provisioned, and you have access.</div>`;
