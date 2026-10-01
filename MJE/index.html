@@ -83,6 +83,19 @@ input[type=search]{width:240px;max-width:100%}
 .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
 .kpi .v{font-size:28px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
 .kpi .s{color:var(--muted);font-size:12px}
+/* KPI tiles: centred, 4px register-coloured border, shadow below */
+:root{--c-inc:#d63b25;--c-imp:#2563eb;--c-risk:#7c3aed;--c-rev:#0f8a80;--c-eq:#15803d;--c-tt:#b45309;--c-trn:#4f46e5;--c-ins:#0369a1;--c-leg:#a21caf;
+  --kpi-shadow:0 8px 16px -6px rgba(16,24,40,.28),0 3px 6px -3px rgba(16,24,40,.18)}
+@media (prefers-color-scheme:dark){:root{--c-inc:#f07a63;--c-imp:#6f9bf5;--c-risk:#a98bf5;--c-rev:#3cc2b6;--c-eq:#4ccb7c;--c-tt:#eaa24f;--c-trn:#8b8cf6;--c-ins:#4db4ea;--c-leg:#e07ae8;
+  --kpi-shadow:0 8px 18px -6px rgba(0,0,0,.7),0 3px 6px -3px rgba(0,0,0,.5)}}
+.kpi{--kc:var(--accent);text-align:center;border:4px solid var(--kc);box-shadow:var(--kpi-shadow);display:flex;flex-direction:column;justify-content:center;align-items:center}
+.kpis{gap:16px;margin-bottom:20px}
+.kpis.dash{display:flex;flex-wrap:wrap;justify-content:center}
+.kpis.dash .kpi{flex:0 0 165px;min-height:150px}
+@media (min-width:900px){.kpis.dash .kpi{flex-basis:calc((100% - 5*16px)/6)}}
+@media (min-width:1300px){.kpis.dash .kpi{flex-basis:calc((100% - 6*16px)/7)}}
+.kpi.k-inc{--kc:var(--c-inc)}.kpi.k-imp{--kc:var(--c-imp)}.kpi.k-risk{--kc:var(--c-risk)}.kpi.k-rev{--kc:var(--c-rev)}.kpi.k-eq{--kc:var(--c-eq)}
+.kpi.k-tt{--kc:var(--c-tt)}.kpi.k-trn{--kc:var(--c-trn)}.kpi.k-ins{--kc:var(--c-ins)}.kpi.k-leg{--kc:var(--c-leg)}
 .kpi.alert .v{color:var(--crit)}
 .two{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))}
 .card h3{margin:0 0 12px;font-size:14px}
@@ -559,8 +572,8 @@ function viewEquip(tabs){
     <button class="btn" data-act="csv:eq">Export CSV</button><button class="btn primary" data-act="new:eq">+ New item</button></div>
   ${tabs}
   <div class="grid kpis">
-    ${EQ_CATS.filter(c => S.eq.some(r => r.Category === c)).map(c => `<div class="card kpi"><div class="l">${c}</div><div class="v">${S.eq.filter(r => r.Category === c && r.EquipStatus !== "Disposed").length}</div><div class="s">in service</div></div>`).join("")}
-    <div class="card kpi"><div class="l">Purchase cost</div><div class="v">${kina(cost)}</div><div class="s">disposal value ${kina(disp)}</div></div>
+    ${EQ_CATS.filter(c => S.eq.some(r => r.Category === c)).map(c => `<div class="card kpi k-eq"><div class="l">${c}</div><div class="v">${S.eq.filter(r => r.Category === c && r.EquipStatus !== "Disposed").length}</div><div class="s">in service</div></div>`).join("")}
+    <div class="card kpi k-eq"><div class="l">Purchase cost</div><div class="v">${kina(cost)}</div><div class="s">disposal value ${kina(disp)}</div></div>
   </div>
   <div class="bar">
     <input type="search" id="q" placeholder="Search make, model, rego, serial…" value="${esc(f.q)}">
@@ -591,10 +604,10 @@ function viewTestTag(tabs){
     <button class="btn" data-act="csv:tt">Export CSV</button><button class="btn primary" data-act="new:tt">+ New test</button></div>
   ${tabs}
   <div class="grid kpis">
-    <div class="card kpi ${c("overdue")?"alert":""}"><div class="l">Overdue for test</div><div class="v">${c("overdue")}</div><div class="s">of ${latest.length} items</div></div>
-    <div class="card kpi"><div class="l">Due in 30 days</div><div class="v">${c("soon")}</div><div class="s">&nbsp;</div></div>
-    <div class="card kpi ${c("fail")?"alert":""}"><div class="l">Failed last test</div><div class="v">${c("fail")}</div><div class="s">remove from service</div></div>
-    <div class="card kpi"><div class="l">Current</div><div class="v">${c("ok")}</div><div class="s">tag in date</div></div>
+    <div class="card kpi k-tt ${c("overdue")?"alert":""}"><div class="l">Overdue for test</div><div class="v">${c("overdue")}</div><div class="s">of ${latest.length} items</div></div>
+    <div class="card kpi k-tt"><div class="l">Due in 30 days</div><div class="v">${c("soon")}</div><div class="s">&nbsp;</div></div>
+    <div class="card kpi k-tt ${c("fail")?"alert":""}"><div class="l">Failed last test</div><div class="v">${c("fail")}</div><div class="s">remove from service</div></div>
+    <div class="card kpi k-tt"><div class="l">Current</div><div class="v">${c("ok")}</div><div class="s">tag in date</div></div>
   </div>
   <div class="bar">
     <input type="search" id="q" placeholder="Search tag, description, location…" value="${esc(f.q)}">
@@ -722,10 +735,10 @@ function viewTraining(){
     <button class="btn" data-act="csv:trn">Export CSV</button><button class="btn primary" data-act="new:trn">+ Record training</button></div>
   ${tabs}
   <div class="grid kpis">
-    <div class="card kpi"><div class="l">Mandatory training compliance</div><div class="v">${pct}%</div><div class="s">${ok} of ${mand.length} requirements current</div></div>
-    <div class="card kpi ${cnt("missing")?"alert":""}"><div class="l">Not recorded</div><div class="v">${cnt("missing")}</div><div class="s">mandatory, no completion date</div></div>
-    <div class="card kpi ${cnt("expired")?"alert":""}"><div class="l">Expired</div><div class="v">${cnt("expired")}</div><div class="s">needs refresher</div></div>
-    <div class="card kpi"><div class="l">Expiring in 60 days</div><div class="v">${cnt("expiring")}</div><div class="s">book now</div></div>
+    <div class="card kpi k-trn"><div class="l">Mandatory training compliance</div><div class="v">${pct}%</div><div class="s">${ok} of ${mand.length} requirements current</div></div>
+    <div class="card kpi k-trn ${cnt("missing")?"alert":""}"><div class="l">Not recorded</div><div class="v">${cnt("missing")}</div><div class="s">mandatory, no completion date</div></div>
+    <div class="card kpi k-trn ${cnt("expired")?"alert":""}"><div class="l">Expired</div><div class="v">${cnt("expired")}</div><div class="s">needs refresher</div></div>
+    <div class="card kpi k-trn"><div class="l">Expiring in 60 days</div><div class="v">${cnt("expiring")}</div><div class="s">book now</div></div>
   </div>
   <div class="bar">
     <input type="search" id="q" placeholder="Search staff name or position…" value="${esc(f.q)}">
@@ -774,9 +787,9 @@ function viewInspections(tabs){
     <button class="btn" data-act="new:area">+ New area</button><button class="btn primary" data-act="new:ins">+ Record inspection</button></div>
   ${tabs}
   <div class="grid kpis">
-    <div class="card kpi"><div class="l">Inspections ${esc(y)}</div><div class="v">${S.ins.filter(i => (i.InspectionDate||"").startsWith(y)).length}</div><div class="s">${done} of ${planned} planned slots done</div></div>
-    <div class="card kpi ${overdue?"alert":""}"><div class="l">Planned, not done</div><div class="v">${overdue}</div><div class="s">months already passed</div></div>
-    <div class="card kpi"><div class="l">Areas not scheduled</div><div class="v">${S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${S.area.length} checklist areas</div></div>
+    <div class="card kpi k-ins"><div class="l">Inspections ${esc(y)}</div><div class="v">${S.ins.filter(i => (i.InspectionDate||"").startsWith(y)).length}</div><div class="s">${done} of ${planned} planned slots done</div></div>
+    <div class="card kpi k-ins ${overdue?"alert":""}"><div class="l">Planned, not done</div><div class="v">${overdue}</div><div class="s">months already passed</div></div>
+    <div class="card kpi k-ins"><div class="l">Areas not scheduled</div><div class="v">${S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${S.area.length} checklist areas</div></div>
   </div>
   <div class="bar"><select class="f" data-f="ins:year">${insYears().map(v => `<option ${v===y?"selected":""}>${v}</option>`).join("")}</select>
     <span class="legend mxl"><span><i class="mx mx-done"></i>Inspected</span><span><i class="mx mx-planned">plan</i>Planned</span><span><i class="mx mx-expired">due</i>Planned, missed</span></span></div>
@@ -811,9 +824,9 @@ function viewLegislation(tabs){
     <button class="btn" data-act="csv:leg">Export CSV</button><button class="btn primary" data-act="new:leg">+ Add legislation</button></div>
   ${tabs}
   <div class="grid kpis">
-    <div class="card kpi"><div class="l">Instruments</div><div class="v">${S.leg.length}</div><div class="s">${S.leg.filter(r => r.LegType==="Act").length} Acts</div></div>
-    <div class="card kpi ${due?"alert":""}"><div class="l">Reviews due</div><div class="v">${due}</div><div class="s">register requires monthly review</div></div>
-    <div class="card kpi"><div class="l">Compliant</div><div class="v">${S.leg.filter(r => r.ComplianceStatus === "Compliant").length}</div><div class="s">${S.leg.filter(r => r.ComplianceStatus === "Not assessed").length} not assessed</div></div>
+    <div class="card kpi k-leg"><div class="l">Instruments</div><div class="v">${S.leg.length}</div><div class="s">${S.leg.filter(r => r.LegType==="Act").length} Acts</div></div>
+    <div class="card kpi k-leg ${due?"alert":""}"><div class="l">Reviews due</div><div class="v">${due}</div><div class="s">register requires monthly review</div></div>
+    <div class="card kpi k-leg"><div class="l">Compliant</div><div class="v">${S.leg.filter(r => r.ComplianceStatus === "Compliant").length}</div><div class="s">${S.leg.filter(r => r.ComplianceStatus === "Not assessed").length} not assessed</div></div>
   </div>
   <div class="bar"><input type="search" id="q" placeholder="Search legislation, changes, documents…" value="${esc(f.q)}">
     <select class="f" data-f="leg:topic">${opt(["OH&S","Environment","Transport","Workers' compensation","Employment","Other"], f.topic, "All topics")}</select><span class="count">${rows.length} of ${S.leg.length}</span></div>
@@ -888,18 +901,18 @@ function viewDash(){
   const legOn = !S.missing.includes("leg"), legDueN = S.leg.filter(r => legState(r) !== "ok").length;
 
   return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="l">Incidents ${YEAR}</div><div class="v">${incY.length}</div><div class="s">${incOpen.length} open</div></div>
-    <div class="card kpi ${lti?"alert":""}"><div class="l">Lost time injuries ${YEAR}</div><div class="v">${lti}</div><div class="s">year to date</div></div>
-    <div class="card kpi"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
-    <div class="card kpi"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
-    <div class="card kpi ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
-    ${riskOn ? `<div class="card kpi"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
-    <div class="card kpi ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
-    ${ttOn ? `<div class="card kpi ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
-    ${trnOn ? `<div class="card kpi ${trnPct<80?"alert":""}"><div class="l">Mandatory training</div><div class="v">${trnPct}%</div><div class="s">of ${mand.length} requirements current</div></div>` : ""}
-    ${insOn ? `<div class="card kpi ${insMissed?"alert":""}"><div class="l">Inspections missed ${YEAR}</div><div class="v">${insMissed}</div><div class="s">planned months passed</div></div>` : ""}
-    ${legOn ? `<div class="card kpi ${legDueN?"alert":""}"><div class="l">Legislation reviews due</div><div class="v">${legDueN}</div><div class="s">monthly review</div></div>` : ""}
+  <div class="grid kpis dash">
+    <div class="card kpi k-inc"><div class="l">Incidents ${YEAR}</div><div class="v">${incY.length}</div><div class="s">${incOpen.length} open</div></div>
+    <div class="card kpi k-inc ${lti?"alert":""}"><div class="l">Lost time injuries ${YEAR}</div><div class="v">${lti}</div><div class="s">year to date</div></div>
+    <div class="card kpi k-inc"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
+    <div class="card kpi k-imp"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
+    <div class="card kpi k-imp ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
+    ${riskOn ? `<div class="card kpi k-risk"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
+    <div class="card kpi k-rev ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
+    ${ttOn ? `<div class="card kpi k-tt ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
+    ${trnOn ? `<div class="card kpi k-trn ${trnPct<80?"alert":""}"><div class="l">Mandatory training</div><div class="v">${trnPct}%</div><div class="s">of ${mand.length} requirements current</div></div>` : ""}
+    ${insOn ? `<div class="card kpi k-ins ${insMissed?"alert":""}"><div class="l">Inspections missed ${YEAR}</div><div class="v">${insMissed}</div><div class="s">planned months passed</div></div>` : ""}
+    ${legOn ? `<div class="card kpi k-leg ${legDueN?"alert":""}"><div class="l">Legislation reviews due</div><div class="v">${legDueN}</div><div class="s">monthly review</div></div>` : ""}
   </div>
   <div class="grid two">
     <div class="card"><h3>Improvements by category</h3>
