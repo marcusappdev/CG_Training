@@ -97,6 +97,9 @@ input[type=search]{width:240px;max-width:100%}
 .kpi[data-go]:hover,.kpi[data-go]:focus-visible{transform:translateY(-3px);box-shadow:0 14px 22px -8px rgba(16,24,40,.35),0 4px 8px -4px rgba(16,24,40,.2);outline:none}
 .kpi[data-go]:focus-visible{outline:3px solid var(--kc);outline-offset:3px}
 .kpi[data-go]::after{content:"View ›";font-size:11px;color:var(--kc);font-weight:600;margin-top:6px;opacity:.85}
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--fbc,var(--accent));border-radius:10px;padding:9px 12px;margin-bottom:14px;box-shadow:var(--shadow)}
+.filterbar .ft{font-size:13px;color:var(--muted)}.filterbar b{color:var(--text)}
+.filterbar .grow{flex:1}
 .fchip{display:inline-flex;align-items:center;gap:6px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
 .kpis.dash .kpi{flex:0 0 165px;min-height:150px}
 @media (min-width:900px){.kpis.dash .kpi{flex-basis:calc((100% - 5*16px)/6)}}
@@ -110,8 +113,9 @@ input[type=search]{width:240px;max-width:100%}
 .hb .t{height:12px;background:var(--grey-bg);border-radius:3px;overflow:hidden;display:flex}
 .hb .t i{display:block;height:100%}
 .hb .n{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
-.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px;align-items:center}
+.legend > span{display:inline-flex;align-items:center;gap:6px;line-height:1;white-space:nowrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;flex:none}
 .tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto;box-shadow:var(--shadow)}
 table{border-collapse:collapse;width:100%;min-width:760px}
 th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
@@ -184,7 +188,8 @@ table.matrix thead .who-cell{background:var(--surface2);z-index:2;vertical-align
 table.matrix tr.grp td{text-align:left;background:var(--grey-bg);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:6px 10px}
 table.cal th:not(.who-cell){font-size:12px;min-width:46px}
 .mx{width:44px;height:34px;border-radius:6px;border:1px solid transparent;font-size:10px;line-height:1.1;cursor:pointer;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;justify-content:center;font-style:normal}
-.legend .mx{width:22px;height:16px;margin-right:5px;vertical-align:-3px;font-size:9px;cursor:default}
+.legend .mx{width:22px;height:16px;margin:0;padding:0;box-sizing:border-box;font-size:9px;line-height:1;cursor:default;flex:none;display:inline-flex;align-items:center;justify-content:center;border-width:2px}
+.legend .mx-na{border-width:1px}
 .mx-na{background:transparent;border:1px dashed var(--line)}
 .mx-na:hover{border-color:var(--muted)}
 .mx-done{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
@@ -511,7 +516,7 @@ function viewRisk(){
     <td>${ratingPill(r.ResidualRating)}</td><td>${esc(r.Responsible)}</td><td>${statPill(r.RiskStatus)}</td></tr>`; }).join("")}
   </tbody></table>${rows.length ? "" : `<div class="empty">No risks match</div>`}</div>
 
-  <div class="bar" id="revSection" style="margin-top:26px"><h2>Review & sign-off schedule</h2>${S.filt.rev.state ? `<button class="fchip" data-clear="rev">Overdue / not recorded only ✕</button>` : `<button class="chip" data-revover="1">Show overdue only</button>`}<span class="grow"></span>
+  <div class="bar" id="revSection" style="margin-top:26px"><h2>Review & sign-off schedule</h2><button class="chip ${S.filt.rev.state?"on":""}" data-revover="1">Overdue only</button><span class="grow"></span>
     <button class="btn" data-act="csv:rev">Export CSV</button><button class="btn primary" data-act="new:rev">+ New review item</button></div>
   <div class="tablewrap"><table><thead><tr>
     ${th("rev","Title","Title / aspect")}${th("rev","RegisterType","Register")}<th>Covers</th>${th("rev","ReviewFrequency","Frequency")}<th>Action / control</th>${th("rev","Responsible","Responsible")}${th("rev","ReviewDate","Last review")}<th>Next due</th><th>Signed</th>
@@ -750,7 +755,7 @@ function viewTraining(){
   <div class="bar">
     <input type="search" id="q" placeholder="Search staff name or position…" value="${esc(f.q)}">
     <select class="f" data-f="trn:dept">${opt(DEPTS, f.dept, "All departments")}</select>
-    ${f.gaps ? `<button class="fchip" data-clear="trn">Staff with gaps only ✕</button>` : `<button class="chip" data-gaps="1">Show staff with gaps</button>`}
+    <button class="chip ${f.gaps?"on":""}" data-gaps="1">Staff with gaps only</button>
     <span class="legend mxl"><span><i class="mx mx-done"></i>Completed</span><span><i class="mx mx-expiring"></i>Expiring</span><span><i class="mx mx-expired"></i>Expired</span><span><i class="mx mx-missing">●</i>Mandatory, not recorded</span><span><i class="mx mx-planned">○</i>Extended</span></span>
   </div>
   <div class="tablewrap mxwrap"><table class="matrix"><thead><tr><th class="who-cell">Staff member</th>${courses.map(c => `<th class="vh"><span>${esc(c.Title)}</span></th>`).join("")}</tr></thead>
@@ -801,7 +806,7 @@ function viewInspections(tabs){
     <div class="card kpi k-ins"><div class="l">Areas not scheduled</div><div class="v">${S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${S.area.length} checklist areas</div></div>
   </div>
   <div class="bar"><select class="f" data-f="ins:year">${insYears().map(v => `<option ${v===y?"selected":""}>${v}</option>`).join("")}</select>
-    ${f.missed ? `<button class="fchip" data-clear="ins">Missed inspections only ✕</button>` : `<button class="chip" data-missed="1">Show missed only</button>`}
+    <button class="chip ${f.missed?"on":""}" data-missed="1">Missed only</button>
     <span class="legend mxl"><span><i class="mx mx-done"></i>Inspected</span><span><i class="mx mx-planned">plan</i>Planned</span><span><i class="mx mx-expired">due</i>Planned, missed</span></span></div>
   <div class="tablewrap mxwrap"><table class="matrix cal"><thead><tr><th class="who-cell">Checklist area</th>${MONTHS.map(m => `<th>${m.slice(0,3)}</th>`).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table></div>
   <p class="count">Click a planned or empty month to record an inspection; click a completed one to open it. Click an area name to change its planned month.</p>
@@ -874,7 +879,8 @@ const priPill = p => { const c = {H:"p-crit",M:"p-warn",L:"p-grey"}[p]; return p
 function render(){
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === S.view));
   const banner = DEMO ? `<div class="banner">Demo mode — showing the existing registers as sample data. Changes are kept only until you refresh. Add the app registration details to CONFIG to connect to SharePoint.</div>` : "";
-  $("#main").innerHTML = banner + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets, training:viewTraining, comp:viewCompliance }[S.view])();
+  const tb = S.tile && S.view !== "dash" ? `<div class="filterbar" style="--fbc:var(--c-${GO_LABEL[S.tile][1]})"><span class="ft">Showing from dashboard:</span> <b>${esc(GO_LABEL[S.tile][0])}</b><span class="grow"></span><button class="fchip" data-clearall="1">✕ Clear filter</button></div>` : "";
+  $("#main").innerHTML = banner + tb + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets, training:viewTraining, comp:viewCompliance }[S.view])();
   bindView();
 }
 
@@ -1005,17 +1011,17 @@ function viewImp(){
 function bindView(){
   const q = $("#q");
   if (q) q.oninput = () => { ({ assets: S.filt[S.filt.assets.sub], training: S.filt.trn, comp: S.filt.leg }[S.view] || S.filt[S.view]).q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
-  document.querySelectorAll("[data-f]").forEach(s => s.onchange = () => { const [k,f] = s.dataset.f.split(":"); S.filt[k][f] = s.value; render(); });
+  document.querySelectorAll("[data-f]").forEach(s => s.onchange = () => { const [k,f] = s.dataset.f.split(":"); S.filt[k][f] = s.value; S.tile = null; render(); });
   document.querySelectorAll("[data-sort]").forEach(h => h.onclick = () => { const [k,c] = h.dataset.sort.split(":"); const cur = S.sort[k]; S.sort[k] = [c, cur[0]===c ? -cur[1] : 1]; render(); });
   document.querySelectorAll("[data-open]").forEach(r => r.onclick = () => { const [k,id] = r.dataset.open.split(":"); openForm(k, S[k].find(i => String(i.id) === id)); });
   document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => { const [a,k] = b.dataset.act.split(":"); a === "new" ? openForm(k) : exportCsv(k); });
   document.querySelectorAll("[data-reg]").forEach(b => b.onclick = () => { S.filt.risk.reg = b.dataset.reg; S.filt.risk.cell = ""; render(); });
   document.querySelectorAll("[data-res]").forEach(b => b.onclick = () => { S.filt.risk.residual = b.dataset.res === "1"; S.filt.risk.cell = ""; S.filt.risk.rating = ""; render(); });
   document.querySelectorAll("[data-cell]").forEach(b => b.onclick = () => { if (b.classList.contains("z")) return; const c = b.dataset.cell; S.filt.risk.cell = S.filt.risk.cell === c ? "" : c; render(); });
-  document.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => { S.filt.assets.sub = b.dataset.sub; render(); });
+  document.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => { resetFilt(); S.filt.assets.sub = b.dataset.sub; render(); });
   document.querySelectorAll("[data-ttall]").forEach(b => b.onclick = () => { S.filt.tt.all = b.dataset.ttall === "1"; render(); });
-  document.querySelectorAll("[data-tsub]").forEach(b => b.onclick = () => { S.filt.training.sub = b.dataset.tsub; render(); });
-  document.querySelectorAll("[data-csub]").forEach(b => b.onclick = () => { S.filt.comp.sub = b.dataset.csub; render(); });
+  document.querySelectorAll("[data-tsub]").forEach(b => b.onclick = () => { resetFilt(); S.filt.training.sub = b.dataset.tsub; render(); });
+  document.querySelectorAll("[data-csub]").forEach(b => b.onclick = () => { resetFilt(); S.filt.comp.sub = b.dataset.csub; render(); });
   document.querySelectorAll("[data-mx]").forEach(b => b.onclick = () => { const [n, c] = b.dataset.mx.split("|"); const r = trnFor(n, c);
     r ? openForm("trn", r) : openForm("trn", undefined, { StaffName:n, Course:c, Requirement:"Extended" }); });
   document.querySelectorAll("[data-newins]").forEach(b => b.onclick = () => { const [a, mi] = b.dataset.newins.split("|"); const y = S.filt.ins.year, mm = pad(+mi + 1);
@@ -1023,19 +1029,26 @@ function bindView(){
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => goTile(b.dataset.go); b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goTile(b.dataset.go); } }; });
   document.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => { const k = b.dataset.clear;
     if (k === "rev") S.filt.rev.state = ""; if (k === "trn") S.filt.trn.gaps = false; if (k === "ins") S.filt.ins.missed = false; render(); });
-  document.querySelectorAll("[data-revover]").forEach(b => b.onclick = () => { S.filt.rev.state = "due"; render(); $("#revSection")?.scrollIntoView({ block:"start" }); });
-  document.querySelectorAll("[data-gaps]").forEach(b => b.onclick = () => { S.filt.trn.gaps = true; render(); });
-  document.querySelectorAll("[data-missed]").forEach(b => b.onclick = () => { S.filt.ins.missed = true; render(); });
+  document.querySelectorAll("[data-revover]").forEach(b => b.onclick = () => { S.tile = null; S.filt.rev.state = S.filt.rev.state ? "" : "due"; render(); $("#revSection")?.scrollIntoView({ block:"start" }); });
+  document.querySelectorAll("[data-gaps]").forEach(b => b.onclick = () => { S.tile = null; S.filt.trn.gaps = !S.filt.trn.gaps; render(); });
+  document.querySelectorAll("[data-missed]").forEach(b => b.onclick = () => { S.tile = null; S.filt.ins.missed = !S.filt.ins.missed; render(); });
+  document.querySelectorAll("[data-clearall]").forEach(b => b.onclick = () => { resetFilt(); render(); window.scrollTo({ top:0 }); });
   document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.view = b.dataset.goto; render(); });
 }
 
 /* ---------------- dashboard tile links ---------------- */
 function resetFilt(){
+  S.tile = null;
+  S.sort.inc = ["Title",-1]; S.sort.imp = ["Title",-1]; S.sort.risk = ["Title",1];
   Object.assign(S.filt.inc, { q:"", status:"", year:YEAR, sev:"" }); Object.assign(S.filt.imp, { q:"", status:"open", cat:"", pri:"" });
   Object.assign(S.filt.risk, { q:"", reg:"", rating:"", status:"", cell:"", residual:false }); S.filt.rev.state = "";
   Object.assign(S.filt.tt, { q:"", state:"", all:false }); Object.assign(S.filt.trn, { q:"", dept:"", gaps:false });
   Object.assign(S.filt.ins, { year:YEAR, missed:false }); Object.assign(S.filt.leg, { q:"", topic:"", state:"" });
 }
+const GO_LABEL = { inc:["Incidents in "+YEAR,"inc"], lti:["Lost time injuries in "+YEAR,"inc"], cost:["Incidents in "+YEAR+", highest cost first","inc"],
+  impopen:["Open improvements","imp"], impover:["Overdue improvement actions","imp"], risk:["Open high & very high risks, highest score first","risk"],
+  rev:["Risk reviews overdue or not recorded","rev"], tt:["Items overdue for test or failed last test","tt"], trn:["Staff with missing or expired mandatory training","trn"],
+  ins:["Areas with missed inspections in "+YEAR,"ins"], leg:["Legislation due for review","leg"] };
 const GO = {
   inc:      () => { S.view = "inc"; S.sort.inc = ["Title",-1]; },
   lti:      () => { S.view = "inc"; S.filt.inc.sev = "Lost Time Injury"; },
@@ -1049,7 +1062,7 @@ const GO = {
   ins:      () => { S.view = "comp"; S.filt.comp.sub = "ins"; S.filt.ins.missed = true; },
   leg:      () => { S.view = "comp"; S.filt.comp.sub = "leg"; S.filt.leg.state = "due"; },
 };
-function goTile(k){ resetFilt(); const anchor = GO[k](); render(); const el = anchor && $(anchor); el ? el.scrollIntoView({ behavior:"smooth", block:"start" }) : window.scrollTo({ top:0 }); }
+function goTile(k){ resetFilt(); const anchor = GO[k](); S.tile = k; render(); const el = anchor && $(anchor); el ? el.scrollIntoView({ behavior:"smooth", block:"start" }) : window.scrollTo({ top:0 }); }
 
 /* ---------------- form ---------------- */
 let editing = null;
@@ -1216,7 +1229,7 @@ async function start(){
   $("#dlgLogo").src = $(".logo .chip img").src;
   $("#frm").onsubmit = submitForm;
   $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
-  document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { S.view = b.dataset.v; render(); });
+  document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { resetFilt(); S.view = b.dataset.v; render(); window.scrollTo({ top:0 }); });
   if (DEMO){
     S.inc = SEED.inc.map((r,k) => calcIncident({ id:"i"+k, ...r })); S.imp = SEED.imp.map((r,k) => ({ id:"m"+k, ...r }));
     const toNum = r => { ["RiskScore","ResidualScore"].forEach(n => { if (r[n] !== undefined && r[n] !== "") r[n] = +r[n]; }); return r; };
