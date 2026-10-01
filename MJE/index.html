@@ -91,6 +91,11 @@ input[type=search]{width:240px;max-width:100%}
 .kpi{--kc:var(--accent);text-align:center;border:4px solid var(--kc);box-shadow:var(--kpi-shadow);display:flex;flex-direction:column;justify-content:center;align-items:center}
 .kpis{gap:16px;margin-bottom:20px}
 .kpis.dash{display:flex;flex-wrap:wrap;justify-content:center}
+.kpi[data-go]{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.kpi[data-go]:hover,.kpi[data-go]:focus-visible{transform:translateY(-3px);box-shadow:0 14px 22px -8px rgba(16,24,40,.35),0 4px 8px -4px rgba(16,24,40,.2);outline:none}
+.kpi[data-go]:focus-visible{outline:3px solid var(--kc);outline-offset:3px}
+.kpi[data-go]::after{content:"View ›";font-size:11px;color:var(--kc);font-weight:600;margin-top:6px;opacity:.85}
+.fchip{display:inline-flex;align-items:center;gap:6px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
 .kpis.dash .kpi{flex:0 0 165px;min-height:150px}
 @media (min-width:900px){.kpis.dash .kpi{flex-basis:calc((100% - 5*16px)/6)}}
 @media (min-width:1300px){.kpis.dash .kpi{flex-basis:calc((100% - 6*16px)/7)}}
@@ -333,7 +338,7 @@ const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], 
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"" }, comp:{ sub:"ins" }, ins:{ year:YEAR }, leg:{ q:"", topic:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -464,7 +469,7 @@ function viewRisk(){
   const f = S.filt.risk, q = f.q.toLowerCase(), lk = f.residual ? "ResidualLikelihood" : "Likelihood", ck = f.residual ? "ResidualConsequence" : "Consequence";
   const base = S.risk.filter(r => !f.reg || r.RegisterType === f.reg);
   const rows = sortRows(base.filter(r =>
-    (!f.rating || (f.residual ? r.ResidualRating : r.Rating) === f.rating) && (!f.status || r.RiskStatus === f.status) &&
+    (!f.rating || (f.rating === "hi" ? openRisk(r) && ["High","Very High"].includes(f.residual ? r.ResidualRating : r.Rating) : (f.residual ? r.ResidualRating : r.Rating) === f.rating)) && (!f.status || r.RiskStatus === f.status) &&
     (!f.cell || (r[lk] + "|" + r[ck]) === f.cell) &&
     (!q || [r.Title,r.ActivityArea,r.Task,r.Hazard,r.Impact,r.Controls,r.Responsible].join(" ").toLowerCase().includes(q))), "risk");
   const chips = [["", "All", S.risk.length], ...REGISTERS.map(g => [g, g, S.risk.filter(r => r.RegisterType === g).length])]
@@ -473,7 +478,7 @@ function viewRisk(){
   rc.forEach(r => r.total = r.parts[0]);
   const rcMax = Math.max(1, ...rc.map(r => r.total));
   const rcCol = { Low:"var(--ok)", Medium:"var(--warn)", High:"var(--bad)", "Very High":"var(--crit)", Positive:"var(--info)" };
-  const revs = sortRows(S.rev.filter(r => !f.reg || r.RegisterType === f.reg), "rev");
+  const revs = sortRows(S.rev.filter(r => (!f.reg || r.RegisterType === f.reg) && (!S.filt.rev.state || ["overdue","none"].includes(revState(r)))), "rev");
   const [cl, cc] = (f.cell || "|").split("|");
   return `
   <div class="bar"><h2>Risk Registers</h2><span class="grow"></span>
@@ -489,7 +494,7 @@ function viewRisk(){
   </div>
   <div class="bar">
     <input type="search" id="q" placeholder="Search activity, hazard, controls…" value="${esc(f.q)}">
-    <select class="f" data-f="risk:rating">${opt(RATINGS, f.rating, f.residual ? "All residual ratings" : "All ratings")}</select>
+    <select class="f" data-f="risk:rating">${opt(RATINGS, f.rating, f.residual ? "All residual ratings" : "All ratings")}<option value="hi" ${f.rating==="hi"?"selected":""}>High & very high (open risks)</option></select>
     <select class="f" data-f="risk:status">${opt(RISK_STATUS, f.status, "All statuses")}</select>
     ${f.cell ? `<button class="chip on" data-cell="${esc(f.cell)}">${esc(cl)} × ${esc(cc)} ✕</button>` : ""}
     <span class="count">${rows.length} of ${base.length}</span>
@@ -504,7 +509,7 @@ function viewRisk(){
     <td>${ratingPill(r.ResidualRating)}</td><td>${esc(r.Responsible)}</td><td>${statPill(r.RiskStatus)}</td></tr>`; }).join("")}
   </tbody></table>${rows.length ? "" : `<div class="empty">No risks match</div>`}</div>
 
-  <div class="bar" style="margin-top:26px"><h2>Review & sign-off schedule</h2><span class="grow"></span>
+  <div class="bar" id="revSection" style="margin-top:26px"><h2>Review & sign-off schedule</h2>${S.filt.rev.state ? `<button class="fchip" data-clear="rev">Overdue / not recorded only ✕</button>` : `<button class="chip" data-revover="1">Show overdue only</button>`}<span class="grow"></span>
     <button class="btn" data-act="csv:rev">Export CSV</button><button class="btn primary" data-act="new:rev">+ New review item</button></div>
   <div class="tablewrap"><table><thead><tr>
     ${th("rev","Title","Title / aspect")}${th("rev","RegisterType","Register")}<th>Covers</th>${th("rev","ReviewFrequency","Frequency")}<th>Action / control</th>${th("rev","Responsible","Responsible")}${th("rev","ReviewDate","Last review")}<th>Next due</th><th>Signed</th>
@@ -595,10 +600,10 @@ function viewTestTag(tabs){
   const f = S.filt.tt, q = f.q.toLowerCase();
   const latest = ttLatest();
   const src = f.all ? S.tt : latest;
-  const rows = sortRows(src.filter(r => (!f.state || ttState(r) === f.state) &&
+  const rows = sortRows(src.filter(r => (!f.state || (f.state === "attn" ? ["overdue","fail"].includes(ttState(r)) : ttState(r) === f.state)) &&
     (!q || [r.Title,r.PlantID,r.Description,r.Location,r.Comments,r.Remarks].join(" ").toLowerCase().includes(q))), "tt");
   const c = s => latest.filter(r => ttState(r) === s).length;
-  const states = [["overdue","Overdue"],["soon","Due in 30 days"],["fail","Failed"],["ok","Current"]];
+  const states = [["attn","Overdue or failed"],["overdue","Overdue"],["soon","Due in 30 days"],["fail","Failed"],["ok","Current"]];
   return `
   <div class="bar"><h2>Test & Tag Register</h2><span class="grow"></span>
     <button class="btn" data-act="csv:tt">Export CSV</button><button class="btn primary" data-act="new:tt">+ New test</button></div>
@@ -715,7 +720,7 @@ function viewTraining(){
   if (sub === "staff") return viewSimpleList("staff", "Staff", tabs, [["Title","Name"],["EmployeeNo","Emp no."],["Position","Position"],["Department","Department"],["StaffStatus","Status"]], "+ New staff member");
   if (sub === "course") return viewSimpleList("course", "Courses", tabs, [["Title","Course"],["Category","Category"],["RefresherMonths","Refresher (months)"]], "+ New course");
   const f = S.filt.trn, q = f.q.toLowerCase();
-  const staff = activeStaff().filter(s => (!f.dept || s.Department === f.dept) && (!q || [s.Title,s.Position,s.EmployeeNo].join(" ").toLowerCase().includes(q)))
+  const staff = activeStaff().filter(s => (!f.dept || s.Department === f.dept) && (!f.gaps || S.trn.some(r => r.StaffName === s.Title && r.Requirement === "Mandatory" && ["missing","expired"].includes(trnState(r)))) && (!q || [s.Title,s.Position,s.EmployeeNo].join(" ").toLowerCase().includes(q)))
     .sort((a,b) => DEPTS.indexOf(a.Department) - DEPTS.indexOf(b.Department) || a.Title.localeCompare(b.Title));
   const courses = [...S.course].sort((a,b) => (a.Category||"").localeCompare(b.Category||"") || a.Title.localeCompare(b.Title));
   const mand = S.trn.filter(r => r.Requirement === "Mandatory" && activeStaff().some(s => s.Title === r.StaffName));
@@ -743,6 +748,7 @@ function viewTraining(){
   <div class="bar">
     <input type="search" id="q" placeholder="Search staff name or position…" value="${esc(f.q)}">
     <select class="f" data-f="trn:dept">${opt(DEPTS, f.dept, "All departments")}</select>
+    ${f.gaps ? `<button class="fchip" data-clear="trn">Staff with gaps only ✕</button>` : `<button class="chip" data-gaps="1">Show staff with gaps</button>`}
     <span class="legend mxl"><span><i class="mx mx-done"></i>Completed</span><span><i class="mx mx-expiring"></i>Expiring</span><span><i class="mx mx-expired"></i>Expired</span><span><i class="mx mx-missing">●</i>Mandatory, not recorded</span><span><i class="mx mx-planned">○</i>Extended</span></span>
   </div>
   <div class="tablewrap mxwrap"><table class="matrix"><thead><tr><th class="who-cell">Staff member</th>${courses.map(c => `<th class="vh"><span>${esc(c.Title)}</span></th>`).join("")}</tr></thead>
@@ -773,10 +779,11 @@ function areaMonthState(a, y, mi){
 function viewInspections(tabs){
   if (S.missing.includes("area")) return `<div class="bar"><h2>Compliance</h2></div>${tabs}<div class="banner err">The inspection lists haven't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
   const f = S.filt.ins, y = f.year;
-  const areas = [...S.area].sort((a,b) => (MONTHS.indexOf(a.PlannedMonth) + 13) % 13 - (MONTHS.indexOf(b.PlannedMonth) + 13) % 13 || a.Title.localeCompare(b.Title));
+  const areas = [...S.area].filter(a => !f.missed || MONTHS.some((m, mi) => areaMonthState(a, y, mi).overdue)).sort((a,b) => (MONTHS.indexOf(a.PlannedMonth) + 13) % 13 - (MONTHS.indexOf(b.PlannedMonth) + 13) % 13 || a.Title.localeCompare(b.Title));
   let planned = 0, done = 0, overdue = 0;
+  S.area.forEach(a => MONTHS.forEach((m, mi) => { const s = areaMonthState(a, y, mi); if (s.planned) planned++; if (s.done.length) done++; if (s.overdue) overdue++; }));   // KPIs always cover every area
   const rowsHtml = areas.map(a => `<tr><th class="who-cell" data-open="area:${a.id}"><b>${esc(a.Title)}</b><span>${esc(a.Frequency || "")}${a.PlannedMonth ? "" : " · not scheduled"}</span></th>` +
-    MONTHS.map((m, mi) => { const s = areaMonthState(a, y, mi); if (s.planned) planned++; if (s.done.length) done++; if (s.overdue) overdue++;
+    MONTHS.map((m, mi) => { const s = areaMonthState(a, y, mi);
       const cls = s.done.length ? "done" : s.overdue ? "expired" : s.planned ? "planned" : "na";
       const label = s.done.length ? s.done.map(d => fmtDate(d.InspectionDate).slice(0,5)).join(" ") : s.planned ? (s.overdue ? "due" : "plan") : "";
       const act = s.done.length ? `data-open="ins:${s.done[0].id}"` : `data-newins="${esc(a.Title)}|${mi}"`;
@@ -792,6 +799,7 @@ function viewInspections(tabs){
     <div class="card kpi k-ins"><div class="l">Areas not scheduled</div><div class="v">${S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${S.area.length} checklist areas</div></div>
   </div>
   <div class="bar"><select class="f" data-f="ins:year">${insYears().map(v => `<option ${v===y?"selected":""}>${v}</option>`).join("")}</select>
+    ${f.missed ? `<button class="fchip" data-clear="ins">Missed inspections only ✕</button>` : `<button class="chip" data-missed="1">Show missed only</button>`}
     <span class="legend mxl"><span><i class="mx mx-done"></i>Inspected</span><span><i class="mx mx-planned">plan</i>Planned</span><span><i class="mx mx-expired">due</i>Planned, missed</span></span></div>
   <div class="tablewrap mxwrap"><table class="matrix cal"><thead><tr><th class="who-cell">Checklist area</th>${MONTHS.map(m => `<th>${m.slice(0,3)}</th>`).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table></div>
   <p class="count">Click a planned or empty month to record an inspection; click a completed one to open it. Click an area name to change its planned month.</p>
@@ -808,7 +816,7 @@ const legState = r => !r.LastReviewed ? "none" : legDue(r) < TODAY ? "overdue" :
 function viewLegislation(tabs){
   if (S.missing.includes("leg")) return `<div class="bar"><h2>Compliance</h2></div>${tabs}<div class="banner err">The legislation list hasn't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
   const f = S.filt.leg, q = f.q.toLowerCase();
-  const rows = S.leg.filter(r => (!f.topic || r.Topic === f.topic) && (!q || [r.Title,r.ParentAct,r.ChangesNoted,r.AffectedDocuments].join(" ").toLowerCase().includes(q)));
+  const rows = S.leg.filter(r => (!f.topic || r.Topic === f.topic) && (!f.state || legState(r) !== "ok") && (!q || [r.Title,r.ParentAct,r.ChangesNoted,r.AffectedDocuments].join(" ").toLowerCase().includes(q)));
   const acts = rows.filter(r => r.LegType === "Act");
   const orphans = rows.filter(r => r.LegType !== "Act" && !acts.some(a => a.Title === r.ParentAct));
   const typeOrder = { "Act":0, "Regulation":1, "Subordinate legislation":2 };
@@ -829,6 +837,7 @@ function viewLegislation(tabs){
     <div class="card kpi k-leg"><div class="l">Compliant</div><div class="v">${S.leg.filter(r => r.ComplianceStatus === "Compliant").length}</div><div class="s">${S.leg.filter(r => r.ComplianceStatus === "Not assessed").length} not assessed</div></div>
   </div>
   <div class="bar"><input type="search" id="q" placeholder="Search legislation, changes, documents…" value="${esc(f.q)}">
+    <select class="f" data-f="leg:state"><option value="">All review states</option><option value="due" ${f.state?"selected":""}>Review due / not reviewed</option></select>
     <select class="f" data-f="leg:topic">${opt(["OH&S","Environment","Transport","Workers' compensation","Employment","Other"], f.topic, "All topics")}</select><span class="count">${rows.length} of ${S.leg.length}</span></div>
   <div class="tablewrap"><table class="legt"><thead><tr><th>Legislation</th><th>Type</th><th>Topic</th><th>Responsible</th><th>Last reviewed</th><th>Review</th><th>Status</th></tr></thead><tbody>${body}</tbody></table>${rows.length ? "" : `<div class="empty">No legislation matches</div>`}</div>
   <p class="count">Monthly review: check each instrument for amendments; record changes and the documents (e.g. Work Method Statements) whose owners must be told.</p>`;
@@ -902,17 +911,17 @@ function viewDash(){
 
   return `
   <div class="grid kpis dash">
-    <div class="card kpi k-inc"><div class="l">Incidents ${YEAR}</div><div class="v">${incY.length}</div><div class="s">${incOpen.length} open</div></div>
-    <div class="card kpi k-inc ${lti?"alert":""}"><div class="l">Lost time injuries ${YEAR}</div><div class="v">${lti}</div><div class="s">year to date</div></div>
-    <div class="card kpi k-inc"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
-    <div class="card kpi k-imp"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
-    <div class="card kpi k-imp ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
-    ${riskOn ? `<div class="card kpi k-risk"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
-    <div class="card kpi k-rev ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
-    ${ttOn ? `<div class="card kpi k-tt ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
-    ${trnOn ? `<div class="card kpi k-trn ${trnPct<80?"alert":""}"><div class="l">Mandatory training</div><div class="v">${trnPct}%</div><div class="s">of ${mand.length} requirements current</div></div>` : ""}
-    ${insOn ? `<div class="card kpi k-ins ${insMissed?"alert":""}"><div class="l">Inspections missed ${YEAR}</div><div class="v">${insMissed}</div><div class="s">planned months passed</div></div>` : ""}
-    ${legOn ? `<div class="card kpi k-leg ${legDueN?"alert":""}"><div class="l">Legislation reviews due</div><div class="v">${legDueN}</div><div class="s">monthly review</div></div>` : ""}
+    <div role="button" tabindex="0" data-go="inc" title="Open the matching register" class="card kpi k-inc"><div class="l">Incidents ${YEAR}</div><div class="v">${incY.length}</div><div class="s">${incOpen.length} open</div></div>
+    <div role="button" tabindex="0" data-go="lti" title="Open the matching register" class="card kpi k-inc ${lti?"alert":""}"><div class="l">Lost time injuries ${YEAR}</div><div class="v">${lti}</div><div class="s">year to date</div></div>
+    <div role="button" tabindex="0" data-go="cost" title="Open the matching register" class="card kpi k-inc"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
+    <div role="button" tabindex="0" data-go="impopen" title="Open the matching register" class="card kpi k-imp"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
+    <div role="button" tabindex="0" data-go="impover" title="Open the matching register" class="card kpi k-imp ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
+    ${riskOn ? `<div role="button" tabindex="0" data-go="risk" title="Open the matching register" class="card kpi k-risk"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
+    <div role="button" tabindex="0" data-go="rev" title="Open the matching register" class="card kpi k-rev ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
+    ${ttOn ? `<div role="button" tabindex="0" data-go="tt" title="Open the matching register" class="card kpi k-tt ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
+    ${trnOn ? `<div role="button" tabindex="0" data-go="trn" title="Open the matching register" class="card kpi k-trn ${trnPct<80?"alert":""}"><div class="l">Mandatory training</div><div class="v">${trnPct}%</div><div class="s">of ${mand.length} requirements current</div></div>` : ""}
+    ${insOn ? `<div role="button" tabindex="0" data-go="ins" title="Open the matching register" class="card kpi k-ins ${insMissed?"alert":""}"><div class="l">Inspections missed ${YEAR}</div><div class="v">${insMissed}</div><div class="s">planned months passed</div></div>` : ""}
+    ${legOn ? `<div role="button" tabindex="0" data-go="leg" title="Open the matching register" class="card kpi k-leg ${legDueN?"alert":""}"><div class="l">Legislation reviews due</div><div class="v">${legDueN}</div><div class="s">monthly review</div></div>` : ""}
   </div>
   <div class="grid two">
     <div class="card"><h3>Improvements by category</h3>
@@ -1009,8 +1018,36 @@ function bindView(){
     r ? openForm("trn", r) : openForm("trn", undefined, { StaffName:n, Course:c, Requirement:"Extended" }); });
   document.querySelectorAll("[data-newins]").forEach(b => b.onclick = () => { const [a, mi] = b.dataset.newins.split("|"); const y = S.filt.ins.year, mm = pad(+mi + 1);
     openForm("ins", undefined, { Area:a, InspectionDate: TODAY.startsWith(`${y}-${mm}`) ? TODAY : `${y}-${mm}-01` }); });
+  document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => goTile(b.dataset.go); b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goTile(b.dataset.go); } }; });
+  document.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => { const k = b.dataset.clear;
+    if (k === "rev") S.filt.rev.state = ""; if (k === "trn") S.filt.trn.gaps = false; if (k === "ins") S.filt.ins.missed = false; render(); });
+  document.querySelectorAll("[data-revover]").forEach(b => b.onclick = () => { S.filt.rev.state = "due"; render(); $("#revSection")?.scrollIntoView({ block:"start" }); });
+  document.querySelectorAll("[data-gaps]").forEach(b => b.onclick = () => { S.filt.trn.gaps = true; render(); });
+  document.querySelectorAll("[data-missed]").forEach(b => b.onclick = () => { S.filt.ins.missed = true; render(); });
   document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.view = b.dataset.goto; render(); });
 }
+
+/* ---------------- dashboard tile links ---------------- */
+function resetFilt(){
+  Object.assign(S.filt.inc, { q:"", status:"", year:YEAR, sev:"" }); Object.assign(S.filt.imp, { q:"", status:"open", cat:"", pri:"" });
+  Object.assign(S.filt.risk, { q:"", reg:"", rating:"", status:"", cell:"", residual:false }); S.filt.rev.state = "";
+  Object.assign(S.filt.tt, { q:"", state:"", all:false }); Object.assign(S.filt.trn, { q:"", dept:"", gaps:false });
+  Object.assign(S.filt.ins, { year:YEAR, missed:false }); Object.assign(S.filt.leg, { q:"", topic:"", state:"" });
+}
+const GO = {
+  inc:      () => { S.view = "inc"; S.sort.inc = ["Title",-1]; },
+  lti:      () => { S.view = "inc"; S.filt.inc.sev = "Lost Time Injury"; },
+  cost:     () => { S.view = "inc"; S.sort.inc = ["TotalEstCost",-1]; },
+  impopen:  () => { S.view = "imp"; S.filt.imp.status = "open"; },
+  impover:  () => { S.view = "imp"; S.filt.imp.status = "overdue"; S.sort.imp = ["TargetDate",1]; },
+  risk:     () => { S.view = "risk"; S.filt.risk.rating = "hi"; S.sort.risk = ["RiskScore",-1]; },
+  rev:      () => { S.view = "risk"; S.filt.rev.state = "due"; return "#revSection"; },
+  tt:       () => { S.view = "assets"; S.filt.assets.sub = "tt"; S.filt.tt.state = "attn"; },
+  trn:      () => { S.view = "training"; S.filt.training.sub = "matrix"; S.filt.trn.gaps = true; },
+  ins:      () => { S.view = "comp"; S.filt.comp.sub = "ins"; S.filt.ins.missed = true; },
+  leg:      () => { S.view = "comp"; S.filt.comp.sub = "leg"; S.filt.leg.state = "due"; },
+};
+function goTile(k){ resetFilt(); const anchor = GO[k](); render(); const el = anchor && $(anchor); el ? el.scrollIntoView({ behavior:"smooth", block:"start" }) : window.scrollTo({ top:0 }); }
 
 /* ---------------- form ---------------- */
 let editing = null;
