@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MJE Service Hub</title>
+<link rel="icon" type="image/png" href="../shared/mje-icon.png">
+<link rel="stylesheet" href="../shared/mje.css?v=20261002">
+</head>
+<body>
+<!-- Placeholder until the Service Hub shell is built (deliverable 4). No data, no sign-in. -->
+<header>
+  <div class="logo"><span class="chip"><img src="../shared/mje-logo.png" alt="MJ Electrical"></span><span id="apps"></span></div>
+</header>
+<main id="main">
+  <div class="card signin"><div class="full"><img src="../shared/mje-logo-full.png" alt="MJ Electrical — Electrical | Communications | Security | Fire"></div>
+    <h2>Service Hub</h2><p>Quotes, jobs, scheduling and invoicing for MJ Electrical — coming soon.</p>
+    <a class="btn primary" href="../" style="display:inline-block;text-decoration:none">Go to the Safety Hub</a></div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="../shared/mje-config.js?v=20261002"></script>
+<script src="../shared/mje-core.js?v=20261002"></script>
+<script>$("#apps").outerHTML = mjeAppSwitcher("service");</script>
+</body>
+</html>
