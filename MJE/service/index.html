@@ -5,21 +5,260 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MJE Service Hub</title>
 <link rel="icon" type="image/png" href="../shared/mje-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
 <link rel="stylesheet" href="../shared/mje.css?v=20261002">
+<style>
+/* Service Hub only — everything shared with the Safety Hub is in ../shared/mje.css */
+.rolepill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:1px 6px;color:#fff}
+.sync{display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:#4ade80}
+.sync.off::before{background:#fbbf24}
+.sync.err::before{background:#f87171}
+.viewas{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.viewas .grow{flex:1}
+.todo{border:2px dashed var(--line);border-radius:var(--r);padding:28px;text-align:center;color:var(--muted)}
+.todo b{color:var(--text)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+table.setup{min-width:0}
+main.tech{max-width:640px}
+nav button{white-space:nowrap}
+a.btn{color:inherit;text-decoration:none;display:inline-block}
+@media (max-width:720px){ .who .nm{display:none} }
+</style>
 </head>
 <body>
-<!-- Placeholder until the Service Hub shell is built (deliverable 4). No data, no sign-in. -->
 <header>
   <div class="logo"><span class="chip"><img src="../shared/mje-logo.png" alt="MJ Electrical"></span><span id="apps"></span></div>
+  <nav id="nav" hidden></nav>
+  <div class="who" id="who"></div>
 </header>
-<main id="main">
-  <div class="card signin"><div class="full"><img src="../shared/mje-logo-full.png" alt="MJ Electrical — Electrical | Communications | Security | Fire"></div>
-    <h2>Service Hub</h2><p>Quotes, jobs, scheduling and invoicing for MJ Electrical — coming soon.</p>
-    <a class="btn primary" href="../" style="display:inline-block;text-decoration:none">Go to the Safety Hub</a></div>
-</main>
+<main id="main"><div class="empty">Loading…</div></main>
+
+<dialog id="dlg"><form method="dialog" id="frm" novalidate>
+  <div class="dh"><span class="dlg-logo"><img id="dlgLogo" alt="MJ Electrical"></span><div class="dt"><span class="kind" id="dlgKind"></span><h2 id="dlgTitle"></h2></div><button type="button" class="btn" id="dlgX" aria-label="Close">✕</button></div>
+  <div class="db" id="dlgBody"></div>
+  <div class="df"><button type="button" class="btn" id="dlgCancel">Cancel</button><button type="submit" class="btn primary" id="dlgSave">Save</button></div>
+</form></dialog>
 <div class="toast" id="toast"></div>
+
 <script src="../shared/mje-config.js?v=20261002"></script>
 <script src="../shared/mje-core.js?v=20261002"></script>
-<script>$("#apps").outerHTML = mjeAppSwitcher("service");</script>
+<script>
+/* =====================================================================
+   MJE Service Hub — quote → job → schedule → field completion → invoice
+   The Microsoft 365 connection (CLIENT_ID, TENANT_ID, SP_HOST, SITE_PATH)
+   is in ../shared/mje-config.js, shared with the Safety Hub.
+   This repo is public: no customer names, register data or seed data here.
+   ===================================================================== */
+const CONFIG = {
+  ...MJE_TENANT,
+  LISTS: {
+    customers:"MJE_Customers", sites:"MJE_Sites", assets:"MJE_CustomerAssets",
+    quotes:"MJE_Quotes", qlines:"MJE_QuoteLines",
+    jobs:"MJE_Jobs", assign:"MJE_JobAssignments", time:"MJE_TimeEntries", mat:"MJE_JobMaterials", notes:"MJE_JobNotes",
+    comp:"MJE_JobCompletions", chk:"MJE_Checklists", resp:"MJE_ChecklistResponses", files:"MJE_JobFiles",
+    inv:"MJE_Invoices", iline:"MJE_InvoiceLines", pay:"MJE_InvoicePayments", sync:"MJE_MyobSync",
+    rates:"MJE_LabourRates", settings:"MJE_ServiceSettings", numbers:"MJE_ServiceNumbers",
+    // Safety Hub lists the Service Hub reads
+    staff:"MJE_Staff", trn:"MJE_Training", course:"MJE_Courses", tt:"MJE_TestTag", risk:"MJE_Risks", inc:"MJE_Incidents",
+  },
+  // Sign-in asks only for what the Safety Hub already has; Mail.Send.Shared is requested when a quote/invoice is first emailed.
+  SCOPES: ["Sites.ReadWrite.All", "User.Read"],
+};
+const DEMO = CONFIG.CLIENT_ID.startsWith("<<");
+
+const LIST_INFO = {
+  customers:"Customers (billing entities)", sites:"Service sites", assets:"Customer equipment", quotes:"Quotes", qlines:"Quote lines",
+  jobs:"Jobs", assign:"Technician bookings", time:"Time entries", mat:"Job materials", notes:"Job notes & photos", comp:"Job completions",
+  chk:"Checklist templates", resp:"Checklist answers", files:"Job files library", inv:"Invoices", iline:"Invoice lines", pay:"Payments",
+  sync:"MYOB sync queue", rates:"Labour rates", settings:"Service settings", numbers:"Number counters",
+  staff:"Staff (Safety Hub)", trn:"Training records (Safety Hub)", course:"Courses (Safety Hub)", tt:"Test & tag (Safety Hub)",
+  risk:"Risk registers (Safety Hub)", inc:"Incidents (Safety Hub)" };
+const SAFETY_KEYS = ["staff","trn","course","tt","risk","inc"];
+
+/* ---------------- screens & who sees them ---------------- */
+const OFFICE = ["Admin","Office"], TECH = ["Technician"];
+const ROUTES = {
+  dash:      { label:"Dashboard",         roles:OFFICE, lists:["jobs","assign","quotes","inv"], step:"Dashboard — jobs by status, today's schedule, unscheduled jobs, quotes awaiting reply, completed-not-invoiced value, overdue jobs" },
+  customers: { label:"Customers & Sites", roles:OFFICE, lists:["customers","sites","assets"],   step:"Customers & Sites — search, create and edit; each site shows its equipment and full job history" },
+  quotes:    { label:"Quotes",            roles:OFFICE, lists:["quotes","qlines","rates","numbers"], step:"Quotes — labour and parts lines, GST, print/PDF, email, follow-up list, Convert to Job" },
+  jobs:      { label:"Job Centre",        roles:OFFICE, lists:["jobs","assign","time","mat","notes","comp","numbers"], step:"Job Centre — filterable job grid and the job page (Details, Schedule, Time, Materials, Notes & Photos, Checklists, Safety, Invoice)" },
+  schedule:  { label:"Scheduler",         roles:OFFICE, lists:["jobs","assign","staff"],         step:"Scheduler — one row per technician, day and week views, drag and drop, clash warnings" },
+  invoices:  { label:"Invoicing",         roles:OFFICE, lists:["inv","iline","pay","sync","numbers"], step:"Invoicing — invoices from completed jobs, deposits, progress, credit notes, payments, Send to MYOB" },
+  settings:  { label:"Settings",          roles:OFFICE, lists:["settings","rates","numbers","chk"], step:"" },
+  my:        { label:"My Jobs",           roles:TECH,   lists:["jobs","assign","time","mat","notes","comp","resp"], step:"My Jobs — today and upcoming, site map link, timer with GPS, materials, notes, photos, checklists, signature, mark complete — works offline" },
+};
+
+/* ---------------- state ---------------- */
+const S = { have:new Set(), staff:[], me:null, role:"", roleSource:"", viewAs:"", route:"", param:"" };
+
+/* ---------------- role detection ----------------
+   The role only decides which screens open. SharePoint permissions still decide
+   what each person can change (Owners / MJE Office / staff in Visitors).        */
+function resolveRole(){
+  const email = String(account?.username || "").trim().toLowerCase();
+  S.me = email ? S.staff.find(s => String(s.Email || "").trim().toLowerCase() === email) || null : null;
+  if (DEMO){ const r = new URLSearchParams(location.search).get("role"); return [["Admin","Office","Technician","None"].includes(r) ? r : "Admin", "demo"]; }
+  if (S.me && ["Admin","Office","Technician","None"].includes(S.me.HubRole)) return [S.me.HubRole, "staff"];
+  // First run: nobody has an office role yet, so let whoever signs in set things up
+  if (!S.staff.some(s => OFFICE.includes(s.HubRole))) return ["Admin", "setup"];
+  return ["None", S.me ? "norole" : "nomatch"];
+}
+const effRole = () => S.viewAs ? "Technician" : S.role;
+const techName = () => S.viewAs || S.me?.Title || account?.name || "";
+const technicians = () => S.staff.filter(s => s.StaffStatus !== "Left" && (s.HubRole === "Technician" || s.Department === "Service"))
+  .map(s => s.Title).sort((a,b) => a.localeCompare(b));
+
+/* ---------------- routing: #/route/param ---------------- */
+function defaultRoute(){ const r = effRole(); return r === "Technician" ? "my" : OFFICE.includes(r) ? "dash" : ""; }
+function readHash(){
+  const [route = "", ...rest] = location.hash.replace(/^#\/?/, "").split("/");
+  const ok = ROUTES[route] && ROUTES[route].roles.includes(effRole());
+  S.route = ok ? route : defaultRoute(); S.param = ok ? decodeURIComponent(rest.join("/")) : "";
+}
+const go = (route, param = "") => { location.hash = "#/" + route + (param ? "/" + encodeURIComponent(param) : ""); };
+window.addEventListener("hashchange", () => { readHash(); render(); window.scrollTo({ top:0 }); });
+
+/* ---------------- header ---------------- */
+function renderHeader(){
+  const nav = $("#nav"), r = effRole();
+  const items = Object.entries(ROUTES).filter(([, v]) => v.roles.includes(r));
+  nav.innerHTML = items.map(([k, v]) => `<button data-route="${k}" class="${k === S.route ? "on" : ""}">${v.label}</button>`).join("");
+  nav.hidden = !items.length;
+  nav.querySelectorAll("[data-route]").forEach(b => b.onclick = () => go(b.dataset.route));
+  $("#who").innerHTML = `<span class="sync" id="sync"></span><span class="nm">${esc(account?.name || account?.username || "")}</span>`
+    + (S.role ? `<span class="rolepill" title="Service Hub role${S.roleSource === "setup" ? " (first-run set-up)" : ""}">${esc(S.viewAs ? "Tech view" : S.role)}</span>` : "")
+    + (DEMO ? "" : `<button id="so">Sign out</button>`);
+  if ($("#so")) $("#so").onclick = signOut;
+  showSync();
+}
+// Online / offline indicator. The technician view's write queue (built with My Jobs) adds its count here.
+const SYNC = { waiting:0, error:"" };
+function showSync(){
+  const el = $("#sync"); if (!el) return;
+  const on = navigator.onLine;
+  el.className = "sync" + (SYNC.error ? " err" : on ? "" : " off");
+  el.textContent = SYNC.error ? "Sync problem" : on ? (SYNC.waiting ? `Syncing ${SYNC.waiting}` : "Online") : `Offline${SYNC.waiting ? " · " + SYNC.waiting + " waiting" : ""}`;
+  el.title = SYNC.error || (on ? "Connected — changes save straight to SharePoint" : "No connection — changes are kept on this device and sent when you're back online");
+}
+window.addEventListener("online", showSync); window.addEventListener("offline", showSync);
+
+/* ---------------- views ---------------- */
+const missingFor = keys => keys.filter(k => !S.have.has(CONFIG.LISTS[k]));
+function notSetUp(keys){
+  const m = missingFor(keys); if (!m.length) return "";
+  return `<div class="banner err">These SharePoint lists aren't set up yet: <b>${m.map(k => esc(CONFIG.LISTS[k])).join(", ")}</b>.<br>
+    Run the setup kit (Setup-MJE-Hub.ps1, steps 10–13) on ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)}, then refresh this page.</div>`;
+}
+function render(){
+  renderHeader();
+  $("#main").className = effRole() === "Technician" ? "tech" : "";
+  let banner = DEMO ? `<div class="banner">Demo mode — nothing is read from or saved to SharePoint. Add <code>?role=Office</code> or <code>?role=Technician</code> to the address to try other roles.</div>` : "";
+  if (S.roleSource === "setup" && !S.viewAs) banner += `<div class="banner">First-run set-up: nobody has a Service Hub role yet, so you have the Admin view. In <b>MJE_Staff</b> (Safety Hub → Training → Staff, or the list itself) fill in each person's <b>M365 Email</b> and <b>Service Hub Role</b> — see Settings.</div>`;
+  if (S.viewAs) banner += `<div class="banner viewas"><span>Showing the technician view for <b>${esc(S.viewAs)}</b>. SharePoint still saves as you.</span><span class="grow"></span><button class="btn" id="backOffice">← Back to office view</button></div>`;
+  const view = { dash:viewDash, customers:viewTodo, quotes:viewTodo, jobs:viewTodo, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
+  $("#main").innerHTML = banner + view();
+  if ($("#backOffice")) $("#backOffice").onclick = () => { S.viewAs = ""; go("dash"); };
+  bindView();
+}
+function bindView(){
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
+}
+
+function viewTodo(){
+  const r = ROUTES[S.route];
+  return `<div class="bar"><h2>${r.label}</h2></div>${notSetUp(r.lists)}
+    <div class="todo"><b>${esc(r.label)}</b> is the next thing to be built.<br>${esc(r.step)}</div>`;
+}
+function viewDash(){
+  return `<div class="bar"><h2>Service Hub</h2></div>${notSetUp(ROUTES.dash.lists)}
+    <div class="grid kpis dash">
+      ${[["k-job","Jobs open"],["k-job","Scheduled today"],["k-job","Unscheduled"],["k-quo","Quotes awaiting reply"],["k-inv","Completed, not invoiced"],["k-job","Overdue jobs"]]
+        .map(([k, l]) => `<div class="card kpi ${k}"><div class="l">${l}</div><div class="v">—</div><div class="s">coming next</div></div>`).join("")}
+    </div>
+    <div class="todo"><b>Dashboard</b> figures arrive with the first screen review.<br>${esc(ROUTES.dash.step)}</div>`;
+}
+function viewMy(){
+  const n = techName();
+  return `<div class="bar"><h2>My Jobs</h2><span class="grow"></span><span class="count">${fmtDate(TODAY)}</span></div>${notSetUp(ROUTES.my.lists)}
+    <div class="card"><h3>Today — ${esc(n || "technician")}</h3><div class="empty">Your jobs for today will appear here.</div></div>
+    <p class="count">${esc(ROUTES.my.step)}.</p>`;
+}
+function viewNoAccess(){
+  const why = { nomatch:`Your Microsoft 365 account (<b>${esc(account?.username || "")}</b>) isn't linked to anyone in the MJE staff list yet.`,
+                norole:`You're in the MJE staff list as <b>${esc(S.me?.Title || "")}</b>, but no Service Hub role has been set for you.`,
+                staff:`Your Service Hub role is set to <b>None</b>.` }[S.roleSource] || "";
+  return `<div class="card signin"><h2>Service Hub access</h2><p>${why}</p>
+    <p>Ask the MJE office to add your sign-in email and a <b>Service Hub Role</b> (Technician or Office) to your staff record, then refresh.</p>
+    <a class="btn" href="${MJE_ROOT}">Go to the Safety Hub</a></div>`;
+}
+function viewSettings(){
+  const keys = Object.keys(CONFIG.LISTS), service = keys.filter(k => !SAFETY_KEYS.includes(k));
+  const row = k => `<tr><td class="mono"><b>${esc(CONFIG.LISTS[k])}</b></td><td>${esc(LIST_INFO[k])}</td><td>${S.have.has(CONFIG.LISTS[k]) ? `<span class="pill p-ok">Set up</span>` : `<span class="pill p-bad">Not set up</span>`}</td></tr>`;
+  const ready = service.filter(k => S.have.has(CONFIG.LISTS[k])).length;
+  const staff = S.staff.filter(s => s.StaffStatus !== "Left");
+  const withEmail = staff.filter(s => s.Email).length, withRole = staff.filter(s => ["Admin","Office","Technician"].includes(s.HubRole)).length;
+  const techs = technicians();
+  return `<div class="bar"><h2>Settings</h2></div>
+  <div class="grid two">
+    <div class="card"><h3>You</h3><dl class="kv">
+      <dt>Signed in as</dt><dd>${esc(account?.name || "")} <span class="count">${esc(account?.username || "")}</span></dd>
+      <dt>Staff record</dt><dd>${S.me ? esc(S.me.Title) : `<span class="pill p-warn">No match on M365 Email</span>`}</dd>
+      <dt>Service Hub role</dt><dd><b>${esc(S.role)}</b> <span class="count">${{ staff:"from MJE_Staff", setup:"first-run set-up (no office roles yet)", demo:"demo" }[S.roleSource] || ""}</span></dd></dl>
+      ${S.role === "Admin" || S.role === "Office" ? `<div class="bar" style="margin:14px 0 0"><select class="f" id="viewAsName"><option value="">Pick a technician…</option>${techs.map(t => `<option>${esc(t)}</option>`).join("")}</select>
+        <button class="btn" id="viewAs">See the technician view</button></div>` : ""}</div>
+    <div class="card"><h3>Staff roles</h3><dl class="kv">
+      <dt>Active staff</dt><dd>${staff.length}</dd><dt>With M365 email</dt><dd>${withEmail} <span class="count">blank = no account; the office enters for them</span></dd>
+      <dt>With a Service Hub role</dt><dd>${withRole}</dd><dt>Technicians</dt><dd>${techs.length}</dd></dl>
+      <p class="count" style="margin-top:12px">Set <b>M365 Email</b> and <b>Service Hub Role</b> on each person in MJE_Staff. The role only picks which screens open — SharePoint groups (Owners, MJE Office, Visitors) still decide what each person can change.</p></div>
+  </div>
+  <div class="bar" style="margin-top:22px"><h2>SharePoint set-up</h2><span class="grow"></span><span class="count">${ready} of ${service.length} Service Hub lists ready</span></div>
+  ${ready < service.length ? `<div class="banner">Run Setup-MJE-Hub.ps1 (steps 10–16) on ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} to create the missing lists, then refresh.</div>` : ""}
+  <div class="grid two">
+    <div class="tablewrap"><table class="setup"><thead><tr><th>Service Hub list</th><th>Holds</th><th>Status</th></tr></thead><tbody>${service.map(row).join("")}</tbody></table></div>
+    <div class="tablewrap" style="align-self:start"><table class="setup"><thead><tr><th>Safety Hub list</th><th>Used for</th><th>Status</th></tr></thead><tbody>${SAFETY_KEYS.map(row).join("")}</tbody></table></div>
+  </div>
+  <div class="todo" style="margin-top:20px">Labour rates, rounding, markup, GST, numbering, checklist templates, job type → course mapping and company details are added with the Settings screen.</div>`;
+}
+
+/* ---------------- boot ---------------- */
+function showSignIn(msg){
+  $("#main").innerHTML = `<div class="card signin"><div class="full"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical — Electrical | Communications | Security | Fire"></div><h2>Service Hub</h2><p>Quotes, jobs, scheduling and invoicing for MJ Electrical.</p>
+    ${msg ? `<div class="banner err">${esc(msg)}</div>` : ""}<button class="btn primary" id="si">Sign in with Microsoft 365</button></div>`;
+  $("#si").onclick = signIn;
+}
+// Names of every list on the site (one call), so screens can say "not set up" instead of failing
+async function siteListNames(){
+  let url = `/sites/${siteId}/lists?$select=name,displayName&$top=999`, out = new Set();
+  while (url){ const j = await graph(url); j.value.forEach(l => { out.add(l.name); out.add(l.displayName); }); url = j["@odata.nextLink"]; }
+  return out;
+}
+async function start(){
+  $("#apps").outerHTML = mjeAppSwitcher("service");
+  $("#dlgLogo").src = $(".logo .chip img").src;
+  $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
+  if (DEMO){
+    account = { name:"Demo user", username:"demo@example.com" };
+    Object.values(CONFIG.LISTS).forEach(n => S.have.add(n));
+  } else {
+    try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
+    if (!account) return showSignIn();
+    try {
+      await getSite();
+      S.have = await siteListNames();
+      if (S.have.has(CONFIG.LISTS.staff)) S.staff = await listItems(CONFIG.LISTS.staff);
+    } catch(e){
+      renderHeader();
+      $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists and you have access.</div>`;
+      return;
+    }
+  }
+  [S.role, S.roleSource] = resolveRole();
+  readHash(); render();
+}
+start();
+</script>
 </body>
 </html>
