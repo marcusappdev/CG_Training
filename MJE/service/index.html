@@ -28,6 +28,25 @@ table.roles input,table.roles select{width:100%;min-width:170px;background:var(-
 table.roles tr.dirty td{background:var(--warn-bg)}
 table.roles tbody tr{cursor:default}
 .banner a{color:inherit}
+table.qlines{min-width:980px}
+table.qlines td{vertical-align:middle;padding:6px 8px}
+table.qlines tbody tr{cursor:default}
+table.qlines input,table.qlines select{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 7px;color:var(--text)}
+table.qlines select[data-f=LabourRateCode]{margin-bottom:4px}
+table.qlines input.num{text-align:right;width:96px}
+table.qlines input.unit{width:72px}
+table.qlines select[data-f=LineKind]{width:92px}
+table.qlines select[data-f=TaxCode]{width:78px}
+table.qlines tr.txt td,table tr.txt td{background:var(--grey-bg)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.rowbtns{display:inline-flex;gap:3px;white-space:nowrap}
+.qtotals{margin:12px 0 0 auto;max-width:380px}
+.qtotals div{display:flex;justify-content:space-between;gap:16px;padding:4px 2px}
+.qtotals .g{border-top:2px solid var(--text);font-weight:700;font-size:16px;margin-top:4px;padding-top:8px}
+label.chk span{display:flex;align-items:center;gap:8px;color:var(--text);font-size:14px}
+label.chk input{width:auto}
+#printArea{display:none}
+@media print{ body > *:not(#printArea){display:none !important} #printArea{display:block} body{background:#fff} @page{size:A4;margin:12mm} }
 .gpscell{justify-content:flex-end}.gpscell .btn{padding:8px 12px;white-space:nowrap}
 .crumbs{font-size:13px;color:var(--muted);margin-bottom:6px}.crumbs a{color:inherit}
 tr[data-go],tr[data-edit]{cursor:pointer}
@@ -94,11 +113,11 @@ const CUST_LOAD = ["customers","sites","assets","jobs","quotes","sync","settings
 const ROUTES = {
   dash:      { label:"Dashboard",         roles:OFFICE, lists:["jobs","assign","quotes","inv","comp","time","mat","rates"], load:["jobs","assign","quotes","inv","comp","time","mat","rates"], step:"Dashboard — jobs by status, today's schedule, unscheduled jobs, quotes awaiting reply, completed-not-invoiced value, overdue jobs" },
   customers: { label:"Customers & Sites", roles:OFFICE, lists:["customers","sites","assets"], load:CUST_LOAD, step:"Customers & Sites — search, create and edit; each site shows its equipment and full job history" },
-  quotes:    { label:"Quotes",            roles:OFFICE, lists:["quotes","qlines","rates","numbers"], step:"Quotes — labour and parts lines, GST, print/PDF, email, follow-up list, Convert to Job" },
+  quotes:    { label:"Quotes",            roles:OFFICE, lists:["quotes","qlines","rates","numbers"], load:["quotes","qlines","rates","settings","customers","sites","jobs"], step:"Quotes — labour and parts lines, GST, print/PDF, email, follow-up list, Convert to Job" },
   jobs:      { label:"Job Centre",        roles:OFFICE, lists:["jobs","assign","time","mat","notes","comp","numbers"], step:"Job Centre — filterable job grid and the job page (Details, Schedule, Time, Materials, Notes & Photos, Checklists, Safety, Invoice)" },
   schedule:  { label:"Scheduler",         roles:OFFICE, lists:["jobs","assign","staff"],         step:"Scheduler — one row per technician, day and week views, drag and drop, clash warnings" },
   invoices:  { label:"Invoicing",         roles:OFFICE, lists:["inv","iline","pay","sync","numbers"], step:"Invoicing — invoices from completed jobs, deposits, progress, credit notes, payments, Send to MYOB" },
-  settings:  { label:"Settings",          roles:OFFICE, lists:["settings","rates","numbers","chk"], step:"" },
+  settings:  { label:"Settings",          roles:OFFICE, lists:["settings","rates","numbers","chk"], load:["settings","rates"], step:"" },
   site:      { label:"Site",              roles:OFFICE, nav:false, lists:["customers","sites","assets"], load:CUST_LOAD, step:"" },
   my:        { label:"My Jobs",           roles:TECH,   lists:["jobs","assign","time","mat","notes","comp","resp"], step:"My Jobs — today and upcoming, site map link, timer with GPS, materials, notes, photos, checklists, signature, mark complete — works offline" },
 };
@@ -249,7 +268,7 @@ function render(){
       .catch(e => { $("#main").innerHTML = banner + `<div class="banner err">${isForbidden(e) ? "You don't have access to some of the Service Hub lists. Ask an MJE site owner to add you to the MJE Office group." : "Couldn't load data from SharePoint: " + esc(e.message)}</div>`; });
     return;
   }
-  const view = { dash:viewDash, customers:viewCustomers, site:viewSite, quotes:viewTodo, jobs:viewTodo, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
+  const view = { dash:viewDash, customers:viewCustomers, site:viewSite, quotes:viewQuotes, jobs:viewTodo, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
   $("#main").innerHTML = banner + view();
   if ($("#backOffice")) $("#backOffice").onclick = () => { S.viewAs = ""; go("dash"); };
   bindView();
@@ -259,7 +278,7 @@ function bindView(){
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go(b.dataset.go);
     b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(b.dataset.go); } }; });
   if ($("#refresh")) $("#refresh").onclick = refreshData;
-  bindCustomers(); bindRoles();
+  bindCustomers(); bindRoles(); bindQuotes(); bindSettings();
   const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
 }
 
@@ -364,6 +383,8 @@ function viewSettings(){
       <dt>With a Service Hub role</dt><dd>${withRole}</dd><dt>Technicians</dt><dd>${techs.length}</dd></dl>
       <p class="count" style="margin-top:12px">Set these in <b>Staff &amp; roles</b> below. The role only picks which screens open — SharePoint groups (Owners, MJE Office, Visitors) still decide what each person can change.</p></div>
   </div>
+  ${companySettings()}
+  ${ratesTable()}
   ${rolesEditor()}
   <div class="bar" style="margin-top:22px"><h2>SharePoint set-up</h2><span class="grow"></span><span class="count">${ready} of ${service.length} Service Hub lists ready</span></div>
   ${ready < service.length ? `<div class="banner">Run Setup-MJE-Hub.ps1 (steps 10–16) on ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} to create the missing lists, then refresh.</div>` : ""}
@@ -371,7 +392,7 @@ function viewSettings(){
     <div class="tablewrap"><table class="setup"><thead><tr><th>Service Hub list</th><th>Holds</th><th>Status</th></tr></thead><tbody>${service.map(row).join("")}</tbody></table></div>
     <div class="tablewrap" style="align-self:start"><table class="setup"><thead><tr><th>Safety Hub list</th><th>Used for</th><th>Status</th></tr></thead><tbody>${SAFETY_KEYS.map(row).join("")}</tbody></table></div>
   </div>
-  <div class="todo" style="margin-top:20px">Labour rates, rounding, markup, GST, numbering, checklist templates, job type → course mapping and company details are added with the Settings screen.</div>`;
+  <div class="todo" style="margin-top:20px">Rounding, numbering, checklist templates and job type → course mapping are added with the Settings screen.</div>`;
 }
 
 /* ---------------- Settings → Staff & roles (edits MJE_Staff: Email, HubRole) ---------------- */
@@ -428,8 +449,10 @@ const CUST_TYPES = ["Commercial","Government","Residential","Internal"];
 const ASSET_TYPES = ["Switchboard","Distribution board","Generator","UPS","Air conditioning","Lighting","Solar / Inverter","Motor / Pump","Other"];
 const setting = (key, dflt = "") => { const r = (D.settings || []).find(x => x.Title === key); return r && r.SettingValue != null && r.SettingValue !== "" ? r.SettingValue : dflt; };
 const custOpts = () => [...(D.customers || [])].filter(c => c.CustomerStatus !== "Inactive").sort((a, b) => a.Title.localeCompare(b.Title)).map(c => [c.CustomerCode, `${c.Title} (${c.CustomerCode})`]);
-const siteOpts = () => [...(D.sites || [])].filter(x => x.SiteStatus !== "Inactive").sort((a, b) => (a.CustomerName || "").localeCompare(b.CustomerName || "") || a.Title.localeCompare(b.Title))
+const siteOpts = cust => [...(D.sites || [])].filter(x => x.SiteStatus !== "Inactive" && (!cust || x.CustomerCode === cust)).sort((a, b) => (a.CustomerName || "").localeCompare(b.CustomerName || "") || a.Title.localeCompare(b.Title))
   .map(x => [x.SiteCode, `${x.Title} — ${x.CustomerName || x.CustomerCode} (${x.SiteCode})`]);
+const JOB_TYPES = ["Service / Break-fix","Inspection & Test","Installation","Preventive Maintenance"];
+let FORM_CUST = "";
 const FORMS = {
   cust: { list:"customers", name:"Customer", kind:"Customers & Sites · Customer", counter:"C", code:"CustomerCode", prefix:"C-", width:4, sections:[
     ["Customer", [["Title","Customer name (billing entity)","text",{req:1,w:2}], ["CustomerCode","Customer code","text",{ro:1}], ["TradingName","Trading name","text"],
@@ -444,11 +467,20 @@ const FORMS = {
     ["Site contact", [["ContactName","Name","text"], ["ContactPhone","Phone","tel"], ["ContactEmail","Email","email"] ]],
     ["For the technician", [["AccessNotes","Access notes (gate, keys, escort, hours)","textarea",{w:3}], ["SiteHazards","Site hazards","textarea",{w:3}] ]] ] },
   asset: { list:"assets", name:"Equipment", kind:"Customers & Sites · Customer equipment", counter:"A", code:"Title", prefix:"A-", width:4, sections:[
-    ["Equipment", [["Title","Asset code","text",{ro:1}], ["SiteCode","Site","select",{req:1,w:2,opts:siteOpts}], ["AssetType","Type","select",{opts:ASSET_TYPES,req:1}],
+    ["Equipment", [["Title","Asset code","text",{ro:1}], ["SiteCode","Site","select",{req:1,w:2,opts:() => siteOpts()}], ["AssetType","Type","select",{opts:ASSET_TYPES,req:1}],
       ["Description","Description","text",{w:2}], ["AssetStatus","Status","select",{opts:["In service","Faulty","Decommissioned"]}] ]],
     ["Details", [["Make","Make","text"], ["Model","Model","text"], ["SerialNo","Serial no.","text"], ["RatingSize","Rating / size (e.g. 400 A, 60 kVA)","text"],
       ["LocationOnSite","Location on site","text"], ["InstallDate","Install date","date"], ["WarrantyEnd","Warranty end","date"] ]],
     ["Notes", [["Notes","Notes","textarea",{w:3}]]] ] },
+  quote: { list:"quotes", name:"Quote", kind:"Quotes · Quote", counter:`Q-${YEAR}`, code:"Title", prefix:`Q-${YEAR}-`, width:3, sections:[
+    ["Customer", [["Title","Quote no.","text",{ro:1}], ["CustomerCode","Customer","select",{req:1,w:2,opts:custOpts}], ["SiteCode","Site","select",{w:2,opts:() => siteOpts(FORM_CUST)}],
+      ["JobType","Job type","select",{opts:JOB_TYPES,req:1}], ["ContactName","Attention (contact name)","text"], ["ContactEmail","Contact email — the quote is emailed here","email",{w:2}] ]],
+    ["Quote", [["QuoteDate","Quote date","date",{req:1}], ["ValidUntil","Valid until","date",{req:1}], ["Scope","Scope of work (printed on the quote)","textarea",{w:3}],
+      ["Terms","Terms (printed on the quote)","textarea",{w:3}], ["Notes","Internal notes (not printed)","textarea",{w:3}] ]] ] },
+  rate: { list:"rates", name:"Labour rate", kind:"Settings · Labour rate", code:"RateCode", manualCode:true, sections:[
+    ["Labour rate", [["Title","Labour type (shown on quotes), e.g. Electrician — normal time","text",{req:1,w:2}], ["RateCode","Rate code, e.g. ELEC-NORM","text",{req:1,roEdit:1}],
+      ["RateEx","Rate (PGK, ex GST)","number",{req:1,min0:1}], ["RateUnit","Charged per","select",{opts:["Hour","Call-out","Fixed"],req:1}], ["MinChargeHours","Minimum charge (hours)","number",{min0:1}],
+      ["RateStatus","Status","select",{opts:["Active","Retired"]}], ["SortOrder","Sort order (lower first)","number"] ]] ] },
 };
 const NO_PERMISSION = "You don't have permission to change this. Customers, sites, equipment and jobs are edited by the MJE office (the MJE Office group) and the site owners.";
 function fieldHtml([name, label, type, o = {}], v){
@@ -469,18 +501,28 @@ const numericFields = kind => new Set(FORMS[kind].sections.flatMap(s => s[1]).fi
 function formDefaults(kind){
   if (kind === "cust") return { CustomerType:"Commercial", CustomerStatus:"Active", PaymentTermsDays: num(setting("PaymentTermsDays", 30)) };
   if (kind === "site") return { SiteStatus:"Active", Province:"National Capital District" };
+  if (kind === "quote") return { QuoteDate:TODAY, ValidUntil: addDays(TODAY, num(setting("QuoteValidityDays", 30))), JobType:"Service / Break-fix", Terms: setting("QuoteTerms", "") };
+  if (kind === "rate") return { RateUnit:"Hour", RateStatus:"Active" };
   return { AssetStatus:"In service" };
 }
 let EDIT = null;
 function openForm(kind, item, prefill = {}){
   const F = FORMS[kind]; EDIT = { kind, item, warned:"" };
   const v = item ? { ...item } : { ...formDefaults(kind), ...prefill };
-  $("#dlg").className = "f-" + kind;
+  FORM_CUST = v.CustomerCode || "";
+  $("#frm").onsubmit = submitForm; $("#dlgSave").textContent = "Save";
+  $("#dlg").className = "f-" + (kind === "quote" ? "quo" : kind);
   $("#dlgKind").textContent = F.kind;
   $("#dlgTitle").textContent = item ? `${item.Title}${F.code !== "Title" && item[F.code] ? " · " + item[F.code] : ""}` : `New ${F.name.toLowerCase()}`;
-  $("#dlgBody").innerHTML = F.sections.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div>
+  $("#dlgBody").innerHTML = F.sections.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(item && f[3]?.roEdit ? [f[0], f[1], f[2], { ...f[3], ro:1 }] : f, v[f[0]])).join("")}</div>
 </fieldset>`).join("")
-    + (item ? "" : `<p class="count">The ${F.name.toLowerCase()} code is given when you save.</p>`);
+    + (item || F.manualCode ? "" : `<p class="count">The ${F.name.toLowerCase()} ${kind === "quote" ? "number" : "code"} is given when you save.</p>`);
+  if (kind === "quote") $("[name=CustomerCode]").onchange = e => {
+    FORM_CUST = e.target.value; const c = D.customers.find(x => x.CustomerCode === FORM_CUST);
+    $("[name=SiteCode]").innerHTML = `<option value=""></option>` + siteOpts(FORM_CUST).map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
+    if (c && !$("[name=ContactName]").value) $("[name=ContactName]").value = c.AccountsContact || "";
+    if (c && !$("[name=ContactEmail]").value) $("[name=ContactEmail]").value = c.Email || "";
+  };
   if ($("#gpsHere")) $("#gpsHere").onclick = () => {
     if (!navigator.geolocation) return toast("This device can't share its location");
     toast("Finding your location…");
@@ -516,6 +558,13 @@ async function submitForm(e){
   const dup = kind === "cust" ? D.customers.find(c => c !== item && norm(c.Title) === norm(f.Title))
             : kind === "site" ? D.sites.find(x => x !== item && x.CustomerCode === f.CustomerCode && norm(x.Title) === norm(f.Title))
             : (f.SerialNo ? D.assets.find(a => a !== item && norm(a.SerialNo) === norm(f.SerialNo) && norm(a.Make) === norm(f.Make)) : null);
+  if (kind === "rate"){ f.RateCode = f.RateCode.toUpperCase().replace(/\s+/g, "-");
+    const same = D.rates.find(r => r !== item && norm(r.RateCode) === norm(f.RateCode)); if (same) return toast(`Rate code ${f.RateCode} is already used by "${same.Title}"`); }
+  if (kind === "quote"){
+    if (f.ValidUntil < f.QuoteDate) return toast("Valid until can't be before the quote date");
+    f.CustomerName = D.customers.find(c => c.CustomerCode === f.CustomerCode)?.Title || "";
+    f.SiteName = D.sites.find(x => x.SiteCode === f.SiteCode)?.Title || "";
+  }
   if (dup && EDIT.warned !== dup.id){ EDIT.warned = dup.id; toast(`There's already ${kind === "asset" ? "equipment with this make and serial no." : `a ${F.name.toLowerCase()} called "${dup.Title}"`} (${dup[F.code]}). Click Save again to add it anyway.`); return; }
   // copies kept beside the codes so SharePoint views and exports read well
   if (kind === "site") f.CustomerName = D.customers.find(c => c.CustomerCode === f.CustomerCode)?.Title || "";
@@ -528,13 +577,15 @@ async function submitForm(e){
   if (item) delete out[F.code];
   $("#dlgSave").disabled = true;
   try {
-    if (!item) out[F.code] = await takeNumber(F.counter, F.prefix, F.width, list.map(r => r[F.code]));
+    if (!item && !F.manualCode) out[F.code] = await takeNumber(F.counter, F.prefix, F.width, list.map(r => r[F.code]));
+    if (!item && kind === "quote"){ out.QuoteStatus = "Draft"; out.PreparedBy = S.me?.Title || account?.name || ""; }
     const saved = DEMO ? { ...(item || { id:"demo" + Date.now() }), ...out } : { ...(item || {}), ...(await saveListItem(CONFIG.LISTS[F.list], item?.id, out)) };
     const before = item ? { ...item } : null;
     const i = list.findIndex(r => r.id === saved.id); i >= 0 ? list.splice(i, 1, saved) : list.push(saved);
     $("#dlg").close();
-    toast(`Saved ${saved[F.code]}${kind === "asset" ? "" : " · " + saved.Title}`);
+    toast(`Saved ${saved[F.code]}${F.code === "Title" ? "" : " · " + saved.Title}`);
     if (!item && kind === "cust") go("customers", saved.CustomerCode);
+    else if (!item && kind === "quote") go("quotes", saved.Title);
     else if (!item && kind === "site" && S.route !== "customers") go("site", saved.SiteCode);
     else render();
     if (before) updateCopies(kind, before, saved);
@@ -634,7 +685,7 @@ function quotesTable(quotes, showSite){
     <td class="mono">${fmtDate(q.ValidUntil)}</td><td class="mono">${money(q.SubtotalEx)}</td><td>${pill(q.QuoteStatus)}</td><td class="mono">${esc(q.JobNo || "")}</td></tr>`).join("")}
   </tbody></table>${rows.length ? "" : `<div class="empty">No quotes yet</div>`}</div>`;
 }
-const notFound = (what, code) => `<div class="bar"><a class="btn" href="#/customers">← Customers</a></div><div class="banner err">${what} <b>${esc(code)}</b> wasn't found. It may have been removed — try ↻ Refresh on the Customers page.</div>`;
+const notFound = (what, code, back = "#/customers", label = "Customers") => `<div class="bar"><a class="btn" href="${back}">← ${label}</a></div><div class="banner err">${what} <b>${esc(code)}</b> wasn't found. It may have been removed — try ↻ Refresh on the ${label} page.</div>`;
 
 function viewCustomer(code){
   const c = D.customers.find(x => x.CustomerCode === code); if (!c) return notFound("Customer", code);
@@ -645,7 +696,7 @@ function viewCustomer(code){
   return `
   <div class="crumbs"><a href="#/customers">Customers</a> › ${esc(c.Title)}</div>
   <div class="bar"><h2>${esc(c.Title)}</h2>${custStatusPill(c.CustomerStatus)}<span class="grow"></span>
-    <button class="btn" data-edit="cust|${esc(c.id)}">Edit customer</button><button class="btn primary" data-new="site|${esc(code)}">+ New site</button></div>
+    <button class="btn" data-edit="cust|${esc(c.id)}">Edit customer</button><button class="btn" data-newq="${esc(code)}|">+ New quote</button><button class="btn primary" data-new="site|${esc(code)}">+ New site</button></div>
   <div class="grid two">
     <div class="card"><h3>Customer</h3><dl class="kv">
       <dt>Code</dt><dd class="mono">${esc(c.CustomerCode)}</dd>
@@ -688,7 +739,7 @@ function viewSite(){
   return `
   <div class="crumbs"><a href="#/customers">Customers</a> › ${c ? `<a href="#/customers/${encodeURIComponent(c.CustomerCode)}">${esc(c.Title)}</a>` : esc(x.CustomerName || x.CustomerCode || "")} › ${esc(x.Title)}</div>
   <div class="bar"><h2>${esc(x.Title)}</h2>${x.SiteStatus === "Inactive" ? `<span class="pill p-grey">Inactive</span>` : ""}<span class="grow"></span>
-    ${map ? `<a class="btn" href="${esc(map)}" target="_blank" rel="noopener">🗺 Map</a>` : ""}<button class="btn" data-edit="site|${esc(x.id)}">Edit site</button><button class="btn primary" data-new="asset|${esc(code)}">+ Add equipment</button></div>
+    ${map ? `<a class="btn" href="${esc(map)}" target="_blank" rel="noopener">🗺 Map</a>` : ""}<button class="btn" data-edit="site|${esc(x.id)}">Edit site</button><button class="btn" data-newq="${esc(x.CustomerCode)}|${esc(code)}">+ New quote</button><button class="btn primary" data-new="asset|${esc(code)}">+ Add equipment</button></div>
   <div class="grid two">
     <div class="card"><h3>Site</h3><dl class="kv">
       <dt>Code</dt><dd class="mono">${esc(x.SiteCode)}</dd><dt>Customer</dt><dd>${c ? `<a href="#/customers/${encodeURIComponent(c.CustomerCode)}">${esc(c.Title)}</a>` : esc(x.CustomerName || "")}</dd>
@@ -727,6 +778,428 @@ async function queueMyobLink(code){
     RequestedBy: S.me?.Title || account?.name || "", Payload: JSON.stringify({ name:c.Title, email:c.Email || "", phone:c.Phone || "", address:c.BillingAddress || "", tin:c.TIN || "" }) };
   try { const saved = DEMO ? { id:"demo" + Date.now(), ...item } : await saveListItem(CONFIG.LISTS.sync, null, item); D.sync.push(saved); toast("Added to the MYOB queue"); render(); }
   catch(e){ toast(isForbidden(e) ? "You don't have permission to use the MYOB queue — it's for the MJE office." : "Couldn't queue it: " + e.message); }
+}
+
+/* =====================================================================
+   SMALL DIALOGS (email, decline, follow-up, convert, settings)
+   ===================================================================== */
+function openDialog({ cls = "", kind, title, body, save = "Save", onSubmit }){
+  EDIT = null;
+  $("#dlg").className = cls; $("#dlgKind").textContent = kind; $("#dlgTitle").textContent = title;
+  $("#dlgBody").innerHTML = body; $("#dlgSave").textContent = save;
+  $("#frm").onsubmit = async e => {
+    e.preventDefault();
+    const missing = [...$("#dlgBody").querySelectorAll("[required]")].filter(el => !el.value.trim());
+    if (missing.length){ missing[0].focus(); return toast("Please fill in: " + missing.map(m => m.closest("label").innerText.replace(" *", "").trim()).join(", ")); }
+    $("#dlgSave").disabled = true;
+    try { await onSubmit(); } catch(err){ console.error(err); toast(isForbidden(err) ? NO_PERMISSION : err.message); }
+    finally { $("#dlgSave").disabled = false; }
+  };
+  $("#dlg").showModal();
+}
+const val = n => ($(`#dlgBody [name="${n}"]`)?.value || "").trim();
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/* =====================================================================
+   QUOTES
+   ===================================================================== */
+const k2 = v => "K " + num(v).toLocaleString("en-AU", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const r2 = v => Math.round((num(v) + Number.EPSILON) * 100) / 100;
+const gstPct = () => num(setting("GSTRatePct", 10));
+const markupPct = () => num(setting("MaterialMarkupPct", 0));
+const followDays = () => num(setting("QuoteFollowUpDays", 7)) || 7;
+const quoteState = q => (q.QuoteStatus === "Sent" && q.ValidUntil && q.ValidUntil < TODAY) ? "Expired" : (q.QuoteStatus || "Draft");
+const QPILL = { Draft:"p-grey", Sent:"p-info", Accepted:"p-ok", Declined:"p-bad", Expired:"p-warn" };
+const qPill = q => { const st = quoteState(q); return `<span class="pill ${QPILL[st] || "p-grey"}">${st}</span>`; };
+const followDue = q => quoteState(q) === "Sent" && q.FollowUpDate && q.FollowUpDate <= TODAY;
+const LINE_KINDS = ["Labour","Parts","Fee","Text"];
+const UNIT_OF = { Hour:"hr", "Call-out":"call-out", Fixed:"each" };
+const lineAmount = l => l.LineKind === "Text" ? 0 : r2(num(l.Qty) * num(l.UnitPriceEx));
+function totalsOf(ls){
+  let sub = 0, gst = 0, cost = 0, partsSell = 0;
+  ls.forEach(l => { if (l.LineKind === "Text") return; const t = lineAmount(l); sub += t;
+    if ((l.TaxCode || "GST") === "GST") gst += t * gstPct() / 100;
+    if (l.LineKind === "Parts" && l.UnitCost !== "" && l.UnitCost != null){ cost += num(l.Qty) * num(l.UnitCost); partsSell += t; } });
+  sub = r2(sub); gst = r2(gst);
+  return { sub, gst, inc: r2(sub + gst), cost: r2(cost), partsSell: r2(partsSell) };
+}
+const quoteLines = no => (D.qlines || []).filter(l => l.Title === no).sort((a, b) => num(a.LineNo) - num(b.LineNo));
+const activeRates = () => [...(D.rates || [])].filter(r => r.RateStatus !== "Retired").sort((a, b) => num(a.SortOrder) - num(b.SortOrder) || String(a.Title).localeCompare(String(b.Title)));
+const sentFields = () => ({ QuoteStatus:"Sent", SentDate:TODAY, FollowUpDate: addDays(TODAY, followDays()) });
+
+S.qf = { q:"", status:"open" };
+S.qe = {};                          // unsaved line edits, per quote number
+const Q_FILTERS = [["open","Draft & sent"],["Draft","Draft"],["Sent","Awaiting reply"],["follow","Follow-up due"],["Expired","Expired"],["Accepted","Accepted"],["Declined","Declined"],["all","All"]];
+window.addEventListener("beforeunload", e => { if (Object.values(S.qe).some(x => x.dirty)) { e.preventDefault(); e.returnValue = ""; } });
+
+function viewQuotes(){
+  if (S.param === "awaiting" || S.param === "followup"){ S.qf.status = S.param === "awaiting" ? "Sent" : "follow"; history.replaceState(null, "", "#/quotes"); S.param = ""; }
+  if (S.param) return viewQuote(S.param);
+  const f = S.qf, q = norm(f.q);
+  const match = x => { const st = quoteState(x); return f.status === "all" || (f.status === "open" ? ["Draft","Sent"].includes(st) : f.status === "follow" ? followDue(x) : st === f.status); };
+  const rows = D.quotes.filter(x => match(x) && (!q || norm([x.Title, x.CustomerName, x.SiteName, x.Scope, x.ContactName, x.JobNo].join(" ")).includes(q)))
+    .sort((a, b) => String(b.Title).localeCompare(String(a.Title), undefined, { numeric:true }));
+  const drafts = D.quotes.filter(x => quoteState(x) === "Draft"), sent = D.quotes.filter(x => quoteState(x) === "Sent"), due = sent.filter(followDue).length;
+  const yr = D.quotes.filter(x => (x.QuoteDate || "").startsWith(YEAR)), won = yr.filter(x => x.QuoteStatus === "Accepted"), lost = yr.filter(x => x.QuoteStatus === "Declined");
+  const sum = a => a.reduce((t, x) => t + num(x.SubtotalEx), 0);
+  const rate = won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) + "% won" : "no decisions yet";
+  return `
+  <div class="bar"><h2>Quotes</h2><span class="grow"></span><button class="btn" id="refresh">↻ Refresh</button><button class="btn primary" data-newq="|">+ New quote</button></div>
+  ${notSetUp(ROUTES.quotes.lists)}
+  ${!activeRates().length ? `<div class="banner">No labour rates yet — add them in <a href="#/settings"><b>Settings → Labour rates</b></a> so labour lines can be priced from a list.</div>` : ""}
+  <div class="grid kpis">
+    <div class="card kpi k-quo" role="button" tabindex="0" data-qf="Draft"><div class="l">Drafts</div><div class="v">${drafts.length}</div><div class="s">${kina(sum(drafts))} ex GST</div></div>
+    <div class="card kpi k-quo" role="button" tabindex="0" data-qf="Sent"><div class="l">Awaiting reply</div><div class="v">${sent.length}</div><div class="s">${kina(sum(sent))} ex GST</div></div>
+    <div class="card kpi k-quo ${due ? "alert" : ""}" role="button" tabindex="0" data-qf="follow"><div class="l">Follow-ups due</div><div class="v">${due}</div><div class="s">sent, follow-up date reached</div></div>
+    <div class="card kpi k-quo" role="button" tabindex="0" data-qf="Accepted"><div class="l">Accepted ${YEAR}</div><div class="v">${kina(sum(won))}</div><div class="s">${won.length} quote${won.length === 1 ? "" : "s"} · ${rate}</div></div>
+  </div>
+  <div class="bar"><input type="search" id="qq" placeholder="Search quote no., customer, site, scope…" value="${esc(f.q)}">
+    <span class="chips" style="display:flex;flex-wrap:wrap">${Q_FILTERS.map(([v, l]) => `<button class="chip ${f.status === v ? "on" : ""}" data-qf="${v}">${l}</button>`).join("")}</span>
+    <span class="count">${rows.length} of ${D.quotes.length}</span></div>
+  <div class="tablewrap"><table><thead><tr><th>Quote</th><th>Customer · site</th><th>Scope</th><th>Date</th><th>Valid until</th><th>Total inc GST</th><th>Follow up</th><th>Status</th><th>Job</th></tr></thead><tbody>
+  ${rows.map(x => `<tr data-go="quotes/${encodeURIComponent(x.Title)}" tabindex="0"><td class="mono"><b>${esc(x.Title)}</b></td>
+    <td><b>${esc(x.CustomerName || "")}</b>${x.SiteName ? `<br><span class="count">${esc(x.SiteName)}</span>` : ""}</td><td class="clip"><div>${esc(x.Scope || "")}</div></td>
+    <td class="mono">${fmtDate(x.QuoteDate)}</td><td class="mono">${fmtDate(x.ValidUntil)}</td><td class="mono">${x.TotalInc != null ? k2(x.TotalInc) : ""}</td>
+    <td>${quoteState(x) === "Sent" && x.FollowUpDate ? (followDue(x) ? `<span class="pill p-warn">Due ${fmtDate(x.FollowUpDate)}</span>` : `<span class="mono count">${fmtDate(x.FollowUpDate)}</span>`) : ""}</td>
+    <td>${qPill(x)}</td><td class="mono">${esc(x.JobNo || "")}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">${D.quotes.length ? "No quotes match" : "No quotes yet — click <b>+ New quote</b>"}</div>`}</div>`;
+}
+
+const rowBtns = i => `<span class="rowbtns"><button type="button" class="btn sm" data-mv="${i}|-1" title="Move up">↑</button><button type="button" class="btn sm" data-mv="${i}|1" title="Move down">↓</button><button type="button" class="btn sm danger" data-rm="${i}" title="Remove line">✕</button></span>`;
+function lineRow(l, i){
+  const kind = `<select data-f="LineKind" aria-label="Line type">${LINE_KINDS.map(k => `<option ${k === l.LineKind ? "selected" : ""}>${k}</option>`).join("")}</select>`;
+  if (l.LineKind === "Text") return `<tr data-i="${i}" class="txt"><td>${kind}</td><td colspan="6"><input data-f="Description" value="${esc(l.Description || "")}" placeholder="Heading or note, e.g. Stage 1 — switchboard upgrade"></td><td></td><td>${rowBtns(i)}</td></tr>`;
+  const rates = activeRates(), rateSel = l.LineKind === "Labour" ? `<select data-f="LabourRateCode" aria-label="Labour rate"><option value="">${rates.length ? "Choose a labour rate…" : "No labour rates in Settings — type a price"}</option>${rates.map(r => `<option value="${esc(r.RateCode)}" ${r.RateCode === l.LabourRateCode ? "selected" : ""}>${esc(r.Title)} — ${k2(r.RateEx)} / ${UNIT_OF[r.RateUnit] || "hr"}</option>`).join("")}</select>` : "";
+  const ph = { Labour:"Work description", Parts:"Item, e.g. 63 A 4-pole MCB", Fee:"e.g. Call-out fee, permit, travel" }[l.LineKind];
+  return `<tr data-i="${i}"><td>${kind}</td>
+    <td>${rateSel}<input data-f="Description" value="${esc(l.Description || "")}" placeholder="${ph}"></td>
+    <td><input data-f="Qty" type="number" step="any" min="0" value="${esc(l.Qty ?? "")}" class="num" aria-label="Quantity"></td>
+    <td><input data-f="Unit" value="${esc(l.Unit || "")}" class="unit" aria-label="Unit"></td>
+    <td>${l.LineKind === "Parts" ? `<input data-f="UnitCost" type="number" step="any" min="0" value="${esc(l.UnitCost ?? "")}" class="num" title="Your cost — never printed" aria-label="Unit cost">` : ""}</td>
+    <td><input data-f="UnitPriceEx" type="number" step="any" min="0" value="${esc(l.UnitPriceEx ?? "")}" class="num" aria-label="Unit price ex GST"></td>
+    <td><select data-f="TaxCode" aria-label="Tax">${["GST","FRE"].map(t => `<option ${t === (l.TaxCode || "GST") ? "selected" : ""}>${t}</option>`).join("")}</select></td>
+    <td class="mono lt">${k2(lineAmount(l))}</td><td>${rowBtns(i)}</td></tr>`;
+}
+const linesBody = ls => ls.length ? ls.map(lineRow).join("") : `<tr class="emptyrow"><td colspan="9"><div class="empty">No lines yet — add labour, parts or fees with the buttons above</div></td></tr>`;
+function totalsHtml(ls, internal){
+  const t = totalsOf(ls), m = t.partsSell - t.cost;
+  return `<div class="qtotals"><div><span>Subtotal (ex GST)</span><span class="mono">${k2(t.sub)}</span></div><div><span>GST ${gstPct()}%</span><span class="mono">${k2(t.gst)}</span></div>
+    <div class="g"><span>Total (inc GST)</span><span class="mono">${k2(t.inc)}</span></div>
+    ${internal && t.partsSell ? `<div class="count"><span>Parts margin (internal — not printed)</span><span class="mono">${k2(m)}${t.partsSell ? ` · ${Math.round(m / t.partsSell * 100)}%` : ""}</span></div>` : ""}</div>`;
+}
+function viewQuote(no){
+  const q = D.quotes.find(x => x.Title === no); if (!q) return notFound("Quote", no, "#/quotes", "Quotes");
+  const QE = S.qe[no] ||= { lines: quoteLines(no).map(l => ({ ...l })), removed: [], dirty: false };
+  const st = quoteState(q), draft = q.QuoteStatus === "Draft";
+  const c = D.customers.find(x => x.CustomerCode === q.CustomerCode), site = D.sites.find(x => x.SiteCode === q.SiteCode);
+  const b = (act, label, primary) => `<button class="btn ${primary ? "primary" : ""}" data-qact="${act}">${label}</button>`;
+  const actions = draft ? [b("edit","Edit details"), b("print","Print / PDF"), b("email","Email quote"), b("sent","Mark as sent", 1)]
+    : st === "Sent" ? [b("edit","Edit details"), b("print","Print / PDF"), b("email","Email again"), b("follow","Followed up"), b("redraft","Back to draft"), b("declined","Declined"), b("accepted","Accepted", 1)]
+    : st === "Expired" ? [b("print","Print / PDF"), b("redraft","Re-issue (back to draft)"), b("declined","Declined"), b("accepted","Accepted", 1)]
+    : st === "Accepted" ? [b("print","Print / PDF"), q.JobNo ? `<a class="btn primary" href="#/jobs/${encodeURIComponent(q.JobNo)}">Open job ${esc(q.JobNo)}</a>` : b("convert","Convert to job", 1)]
+    : [b("print","Print / PDF"), b("redraft","Back to draft")];
+  const ls = draft ? QE.lines : quoteLines(no);
+  return `
+  <div class="crumbs"><a href="#/quotes">Quotes</a> › ${esc(q.Title)}</div>
+  <div class="bar"><h2>${esc(q.Title)}</h2>${qPill(q)}${followDue(q) ? `<span class="pill p-warn">Follow-up due</span>` : ""}<span class="grow"></span>${actions.join("")}</div>
+  ${draft && QE.dirty ? `<div class="banner">These lines have unsaved changes — click <b>Save lines</b> below.</div>` : ""}
+  <div class="grid two">
+    <div class="card"><h3>Quote</h3><dl class="kv">
+      <dt>Customer</dt><dd>${c ? `<a href="#/customers/${encodeURIComponent(c.CustomerCode)}">${esc(c.Title)}</a>` : esc(q.CustomerName || "")}</dd>
+      <dt>Site</dt><dd>${site ? `<a href="#/site/${encodeURIComponent(site.SiteCode)}">${esc(site.Title)}</a>` : esc(q.SiteName || "—")}</dd>
+      <dt>Attention</dt><dd>${esc(q.ContactName || "—")}${q.ContactEmail ? ` · <a href="mailto:${esc(q.ContactEmail)}">${esc(q.ContactEmail)}</a>` : ""}</dd>
+      <dt>Job type</dt><dd>${esc(q.JobType || "—")}</dd>
+      <dt>Quote date</dt><dd>${fmtDate(q.QuoteDate)}</dd><dt>Valid until</dt><dd>${fmtDate(q.ValidUntil)}${st === "Expired" ? ` <span class="pill p-warn">expired</span>` : ""}</dd>
+      ${q.SentDate ? `<dt>Sent</dt><dd>${fmtDate(q.SentDate)}</dd>` : ""}${st === "Sent" && q.FollowUpDate ? `<dt>Follow up</dt><dd>${fmtDate(q.FollowUpDate)}</dd>` : ""}
+      <dt>Prepared by</dt><dd>${esc(q.PreparedBy || "—")}</dd>
+      ${q.JobNo ? `<dt>Job</dt><dd><a href="#/jobs/${encodeURIComponent(q.JobNo)}">${esc(q.JobNo)}</a></dd>` : ""}
+      ${q.DeclineReason ? `<dt>Declined because</dt><dd>${lines(q.DeclineReason)}</dd>` : ""}</dl></div>
+    <div class="card"><h3>Scope of work</h3><div>${lines(q.Scope) || `<span class="count">No scope written yet — use Edit details.</span>`}</div>
+      ${q.Notes ? `<h3 style="margin-top:16px">Internal notes</h3><div class="count">${lines(q.Notes)}</div>` : ""}</div>
+  </div>
+  <div class="bar" style="margin-top:22px"><h2>Lines</h2><span class="grow"></span>
+    ${draft ? `<button class="btn" data-addl="Labour">+ Labour</button><button class="btn" data-addl="Parts">+ Parts</button><button class="btn" data-addl="Fee">+ Fee</button><button class="btn" data-addl="Text">+ Heading / note</button>`
+      : `<span class="count">Lines are locked once the quote is sent${st === "Accepted" || st === "Declined" ? " or decided" : " — use Back to draft to change them"}.</span>`}</div>
+  ${draft ? `<div class="tablewrap"><table class="qlines" id="qlines"><thead><tr><th>Type</th><th>Description</th><th>Qty</th><th>Unit</th><th title="Never printed">Cost (internal)</th><th>Unit price ex GST</th><th>Tax</th><th>Amount</th><th></th></tr></thead>
+      <tbody>${linesBody(ls)}</tbody></table></div>
+      <div id="qtot">${totalsHtml(ls, true)}</div>
+      <div class="bar" style="justify-content:flex-end;margin-top:12px"><span class="count" id="qDirty">${QE.dirty ? "Unsaved changes" : ""}</span><button class="btn" id="qDiscard" ${QE.dirty ? "" : "disabled"}>Discard changes</button><button class="btn primary" id="qSave" ${QE.dirty ? "" : "disabled"}>Save lines</button></div>`
+    : `<div class="tablewrap"><table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit price ex GST</th><th>Tax</th><th>Amount</th></tr></thead><tbody>
+      ${ls.map(l => l.LineKind === "Text" ? `<tr class="txt"><td colspan="6"><b>${esc(l.Description)}</b></td></tr>`
+        : `<tr><td>${esc(l.Description)}${l.LineKind === "Labour" && l.LabourRateCode ? ` <span class="count">${esc(l.LabourRateCode)}</span>` : ""}</td><td class="mono">${esc(l.Qty)}</td><td>${esc(l.Unit || "")}</td><td class="mono">${k2(l.UnitPriceEx)}</td><td>${esc(l.TaxCode || "GST")}</td><td class="mono">${k2(lineAmount(l))}</td></tr>`).join("")}
+      </tbody></table>${ls.length ? "" : `<div class="empty">No lines</div>`}</div>${totalsHtml(ls, true)}`}`;
+}
+
+function newLine(kind){
+  const base = { LineKind:kind, TaxCode:"GST", _new:true };
+  if (kind === "Text") return base;
+  return { ...base, Qty:1, Unit: kind === "Labour" ? "hr" : "each" };
+}
+function refreshLines(no){
+  const QE = S.qe[no], tb = $("#qlines tbody"); if (!tb) return render();
+  tb.innerHTML = linesBody(QE.lines); $("#qtot").innerHTML = totalsHtml(QE.lines, true); markDirty(no);
+}
+function markDirty(no){
+  S.qe[no].dirty = true;
+  if ($("#qDirty")) { $("#qDirty").textContent = "Unsaved changes"; $("#qSave").disabled = false; $("#qDiscard").disabled = false; }
+}
+function bindQuotes(){
+  document.querySelectorAll("[data-newq]").forEach(b => b.onclick = () => { const [c, si] = b.dataset.newq.split("|"); openForm("quote", null, c ? { CustomerCode:c, SiteCode:si || "",
+    ContactName: si ? (D.sites.find(x => x.SiteCode === si)?.ContactName || "") : (D.customers.find(x => x.CustomerCode === c)?.AccountsContact || ""),
+    ContactEmail: si ? (D.sites.find(x => x.SiteCode === si)?.ContactEmail || D.customers.find(x => x.CustomerCode === c)?.Email || "") : (D.customers.find(x => x.CustomerCode === c)?.Email || "") } : {}); });
+  if (S.route !== "quotes") return;
+  document.querySelectorAll("[data-qf]").forEach(b => { const fn = () => { S.qf.status = b.dataset.qf; render(); }; b.onclick = fn; b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } }; });
+  const qq = $("#qq"); if (qq) qq.oninput = () => { S.qf.q = qq.value; const pos = qq.selectionStart; render(); const n = $("#qq"); n.focus(); n.setSelectionRange(pos, pos); };
+  const q = D.quotes.find(x => x.Title === S.param); if (!q) return;
+  const no = q.Title, QE = S.qe[no];
+  document.querySelectorAll("[data-qact]").forEach(b => b.onclick = () => quoteAction(q, b.dataset.qact));
+  document.querySelectorAll("[data-addl]").forEach(b => b.onclick = () => { QE.lines.push(newLine(b.dataset.addl)); refreshLines(no);
+    const last = $("#qlines tbody tr:last-child"); (last?.querySelector('[data-f="LabourRateCode"]') || last?.querySelector('[data-f="Description"]'))?.focus(); });
+  const tbl = $("#qlines"); if (!tbl) return;
+  tbl.oninput = e => {
+    const el = e.target, tr = el.closest("tr[data-i]"), k = el.dataset.f; if (!tr || !k) return;
+    const l = QE.lines[+tr.dataset.i]; l[k] = el.value; markDirty(no);
+    if (k === "LineKind"){ const n = { ...newLine(el.value), id:l.id, Description:l.Description }; QE.lines[+tr.dataset.i] = n; return refreshLines(no); }
+    if (k === "LabourRateCode"){ const r = (D.rates || []).find(x => x.RateCode === el.value);
+      if (r){ if (!l.Description || l.Description === l._rateTitle) l.Description = r.Title; l._rateTitle = r.Title; l.Unit = UNIT_OF[r.RateUnit] || "hr"; l.UnitPriceEx = num(r.RateEx);
+        if (r.RateUnit === "Hour" && num(r.MinChargeHours) > num(l.Qty)) l.Qty = num(r.MinChargeHours); }
+      return refreshLines(no); }
+    if (k === "UnitPriceEx") l._priceSet = true;
+    if (k === "UnitCost" && !l._priceSet && el.value !== ""){ l.UnitPriceEx = r2(num(el.value) * (1 + markupPct() / 100)); tr.querySelector('[data-f="UnitPriceEx"]').value = l.UnitPriceEx; }
+    const lt = tr.querySelector(".lt"); if (lt) lt.textContent = k2(lineAmount(l));
+    $("#qtot").innerHTML = totalsHtml(QE.lines, true);
+  };
+  tbl.onclick = e => {
+    const rm = e.target.closest("[data-rm]"), mv = e.target.closest("[data-mv]");
+    if (rm){ const [l] = QE.lines.splice(+rm.dataset.rm, 1); if (l.id) QE.removed.push(l.id); refreshLines(no); }
+    if (mv){ const [i, d] = mv.dataset.mv.split("|").map(Number), j = i + d; if (j < 0 || j >= QE.lines.length) return; [QE.lines[i], QE.lines[j]] = [QE.lines[j], QE.lines[i]]; refreshLines(no); }
+  };
+  $("#qDiscard").onclick = () => { delete S.qe[no]; render(); toast("Changes discarded"); };
+  $("#qSave").onclick = () => saveQuoteLines(q);
+}
+// Save the line editor: update changed lines, add new ones, delete removed ones, then store the totals on the quote.
+// Progress is kept line by line, so if the connection drops, Save again carries on where it stopped.
+async function saveQuoteLines(q){
+  const QE = S.qe[q.Title];
+  const bad = QE.lines.findIndex(l => l.LineKind !== "Text" && (!String(l.Description || "").trim() || l.Qty === "" || l.Qty == null || l.UnitPriceEx === "" || l.UnitPriceEx == null));
+  if (bad >= 0) return toast(`Line ${bad + 1} needs a description, quantity and unit price`);
+  const LIST = CONFIG.LISTS.qlines, txt = l => l.LineKind === "Text";
+  const fieldsOf = (l, i) => ({ Title:q.Title, LineNo:i + 1, LineKind:l.LineKind, LabourRateCode: l.LineKind === "Labour" ? (l.LabourRateCode || null) : null,
+    Description: String(l.Description || "").trim(), Qty: txt(l) ? null : num(l.Qty), Unit: txt(l) ? null : (l.Unit || null),
+    UnitCost: l.LineKind === "Parts" && l.UnitCost !== "" && l.UnitCost != null ? num(l.UnitCost) : null, UnitPriceEx: txt(l) ? null : r2(l.UnitPriceEx),
+    TaxCode: txt(l) ? null : (l.TaxCode || "GST"), LineTotalEx: txt(l) ? null : lineAmount(l) });
+  const same = (a, b) => (a ?? "") === (b ?? "") || (typeof b === "number" && num(a) === b && a !== "" && a != null);
+  $("#qSave").disabled = true;
+  try {
+    while (QE.removed.length){ const id = QE.removed[0]; if (!DEMO) await graph(`/sites/${siteId}/lists/${LIST}/items/${id}`, { method:"DELETE" }); QE.removed.shift(); D.qlines = D.qlines.filter(x => x.id !== id); }
+    for (const [i, l] of QE.lines.entries()){
+      const f = fieldsOf(l, i), orig = l.id ? D.qlines.find(x => x.id === l.id) : null;
+      if (orig && Object.keys(f).every(k => same(orig[k], f[k]))) continue;
+      const saved = DEMO ? { id: l.id || "demo" + Date.now() + i, ...f } : await saveListItem(LIST, l.id || null, f);
+      const row = { ...(orig || {}), ...f, id: l.id || saved.id };
+      l.id = row.id; delete l._new;
+      D.qlines = D.qlines.filter(x => x.id !== row.id); D.qlines.push(row);
+    }
+    const t = totalsOf(QE.lines), tf = { SubtotalEx:t.sub, GST:t.gst, TotalInc:t.inc };
+    if (!DEMO) await saveListItem(CONFIG.LISTS.quotes, q.id, tf);
+    Object.assign(q, tf); delete S.qe[q.Title]; render(); toast(`Saved ${q.Title} — ${k2(t.inc)} inc GST`);
+  } catch(e){ console.error(e); toast((isForbidden(e) ? NO_PERMISSION : "Save stopped: " + e.message) + " — click Save lines again to finish."); $("#qSave").disabled = false; }
+}
+async function setQuote(q, f, msg){
+  try { if (!DEMO) await saveListItem(CONFIG.LISTS.quotes, q.id, f); Object.assign(q, f); render(); toast(msg); return true; }
+  catch(e){ toast(isForbidden(e) ? "You don't have permission to change quotes — they're for the MJE office." : "Couldn't save: " + e.message); return false; }
+}
+function quoteReady(q){
+  if (S.qe[q.Title]?.dirty){ toast("Save the lines first"); return false; }
+  if (!quoteLines(q.Title).some(l => l.LineKind !== "Text")){ toast("Add at least one priced line first"); return false; }
+  return true;
+}
+function quoteAction(q, act){
+  if (act === "edit") return openForm("quote", q);
+  if (act === "print"){ if (S.qe[q.Title]?.dirty) return toast("Save the lines first"); return printDoc(quotePrintHtml(q), q.Title); }
+  if (act === "email"){ if (quoteReady(q)) openEmail(q); return; }
+  if (act === "sent"){ if (quoteReady(q)) setQuote(q, sentFields(), `${q.Title} marked as sent — follow up on ${fmtDate(addDays(TODAY, followDays()))}`); return; }
+  if (act === "accepted") return setQuote(q, { QuoteStatus:"Accepted" }, `${q.Title} accepted — use Convert to job to start the work`);
+  if (act === "redraft") return setQuote(q, { QuoteStatus:"Draft", ...(quoteState(q) === "Expired" ? { ValidUntil: addDays(TODAY, num(setting("QuoteValidityDays", 30))) } : {}) }, `${q.Title} is back in draft`);
+  if (act === "declined") return openDialog({ cls:"f-quo", kind:"Quotes · Declined", title:`${q.Title} declined`, save:"Mark as declined",
+    body:`<fieldset><legend>Why was it declined?</legend><div class="fg"><label class="fld w3"><span>Reason (helps with future quotes)</span><textarea name="reason" placeholder="e.g. went with another contractor, price, timing, project cancelled"></textarea></label></div></fieldset>`,
+    onSubmit: async () => { $("#dlg").close(); await setQuote(q, { QuoteStatus:"Declined", DeclineReason: val("reason") || null }, `${q.Title} marked as declined`); } });
+  if (act === "follow") return openDialog({ cls:"f-quo", kind:"Quotes · Follow-up", title:`Followed up ${q.Title}`, save:"Save",
+    body:`<fieldset><legend>Follow-up</legend><div class="fg"><label class="fld w2"><span>What did they say?</span><input name="note" placeholder="e.g. Still deciding, call back next week"></label>
+      <label class="fld"><span class="req">Next follow-up</span><input type="date" name="next" required value="${addDays(TODAY, followDays())}"></label></div></fieldset>`,
+    onSubmit: async () => { const who = S.me?.Title || account?.name || "", note = `${fmtDate(TODAY)} — followed up by ${who}${val("note") ? ": " + val("note") : ""}`;
+      $("#dlg").close(); await setQuote(q, { FollowUpDate: val("next"), Notes: q.Notes ? q.Notes + "\n" + note : note }, `Next follow-up ${fmtDate(val("next"))}`); } });
+  if (act === "convert") return openConvert(q);
+}
+
+// ---- convert an accepted quote into a job
+function openConvert(q){
+  if (!quoteReady(q)) return;
+  const ls = quoteLines(q.Title), t = totalsOf(ls);
+  openDialog({ cls:"f-job", kind:"Quotes · Convert to job", title:`Convert ${q.Title} to a job`, save:"Create job",
+    body:`<fieldset><legend>New job</legend><div class="fg">
+      <label class="fld w2"><span class="req">Bill this job as</span><select name="basis" required><option value="Fixed price (quoted)">Fixed price — the quoted ${k2(t.sub)} ex GST</option><option value="Do & charge">Do &amp; charge — time and materials used</option></select></label>
+      <label class="fld"><span>Priority</span><select name="pri">${PRIORITIES.map(p => `<option ${p === "Normal" ? "selected" : ""}>${p}</option>`).join("")}</select></label>
+      <label class="fld"><span>Due date</span><input type="date" name="due"></label>
+      <label class="fld"><span>Customer order no.</span><input name="po"></label></div></fieldset>
+      <p class="count">The job gets this quote's customer, site, contact, job type and scope of work, and the quote is marked Accepted.</p>`,
+    onSubmit: async () => {
+      const no = await takeNumber(`J-${YEAR}`, `J-${YEAR}-`, 3, (D.jobs || []).map(j => j.Title));
+      const hrs = ls.filter(l => l.LineKind === "Labour" && (l.Unit || "hr") === "hr").reduce((a, l) => a + num(l.Qty), 0);
+      const job = { Title:no, JobType: q.JobType || "Service / Break-fix", Priority: val("pri") || "Normal", JobStatus:"New", CustomerCode:q.CustomerCode, CustomerName:q.CustomerName,
+        SiteCode:q.SiteCode, SiteName:q.SiteName, QuoteNo:q.Title, Description:q.Scope, CustomerOrderNo: val("po"), ContactName:q.ContactName, DateReceived:TODAY,
+        DueDate: val("due"), EstimatedHours: hrs || null, BillingBasis: val("basis"), QuotedAmountEx: t.sub };
+      Object.keys(job).forEach(k => { if (job[k] === "" || job[k] == null) delete job[k]; });
+      const saved = DEMO ? { id:"demo" + Date.now(), ...job } : await saveListItem(CONFIG.LISTS.jobs, null, job);
+      D.jobs.push({ ...job, ...saved }); $("#dlg").close();
+      if (await setQuote(q, { QuoteStatus:"Accepted", JobNo:no }, `Created job ${no} from ${q.Title}`)) go("jobs", no);
+    } });
+}
+
+// ---- print and PDF (same layout for both)
+function quotePrintHtml(q){
+  const ls = quoteLines(q.Title), t = totalsOf(ls), c = D.customers.find(x => x.CustomerCode === q.CustomerCode), site = D.sites.find(x => x.SiteCode === q.SiteCode);
+  const co = setting("CompanyName", "MJ Electrical"), det = setting("CompanyDetails", "");
+  return `<div class="pq"><style>
+  .pq{font:12px/1.45 "Segoe UI",Arial,sans-serif;color:#111;background:#fff;padding:6px 4px;width:100%}
+  .pq-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:3px solid #f15838;padding-bottom:10px;margin-bottom:14px}
+  .pq-head img{height:76px;width:auto}
+  .pq-co{text-align:right;font-size:11px;color:#333}.pq-co b{font-size:15px;color:#111}
+  .pq h1{font-size:22px;letter-spacing:3px;margin:0 0 10px;color:#231f20}
+  .pq-meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .pq-box{border:1px solid #ddd;border-radius:6px;padding:8px 10px}
+  .pq-box h4{margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#777}
+  .pq table{width:100%;min-width:0;border-collapse:collapse;margin-top:4px}
+  .pq th{position:static;background:#231f20;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;text-align:left;cursor:default}
+  .pq td{padding:6px 8px;border-bottom:1px solid #e5e5e5;vertical-align:top;color:#111}
+  .pq .n{text-align:right;white-space:nowrap}
+  .pq tr.h td{background:#f3f3f3;font-weight:700}
+  .pq tr{page-break-inside:avoid}
+  .pq-tot{margin:10px 0 0 auto;width:290px}.pq-tot div{display:flex;justify-content:space-between;padding:4px 8px}
+  .pq-tot .g{border-top:2px solid #231f20;font-weight:700;font-size:14px}
+  .pq-terms{margin-top:16px;font-size:10.5px;color:#333;page-break-inside:avoid}
+  .pq-foot{margin-top:14px;font-size:10px;color:#777;text-align:center}
+  </style>
+  <div class="pq-head"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div class="pq-co"><b>${esc(co)}</b>${det ? "<br>" + lines(det) : ""}</div></div>
+  <h1>QUOTATION</h1>
+  <div class="pq-meta">
+    <div class="pq-box"><h4>Quote for</h4><b>${esc(q.CustomerName || c?.Title || "")}</b>${c?.BillingAddress ? "<br>" + lines(c.BillingAddress) : ""}${q.ContactName ? `<br>Attention: ${esc(q.ContactName)}` : ""}</div>
+    <div class="pq-box"><h4>Details</h4>Quote no.: <b>${esc(q.Title)}</b><br>Date: ${fmtDate(q.QuoteDate)}<br>Valid until: ${fmtDate(q.ValidUntil)}${site || q.SiteName ? `<br>Site: ${esc(site?.Title || q.SiteName)}${site?.Town ? ", " + esc(site.Town) : ""}` : ""}${q.PreparedBy ? `<br>Prepared by: ${esc(q.PreparedBy)}` : ""}</div>
+  </div>
+  ${q.Scope ? `<div class="pq-box" style="margin-bottom:12px"><h4>Scope of work</h4>${lines(q.Scope)}</div>` : ""}
+  <table><thead><tr><th>Description</th><th class="n">Qty</th><th>Unit</th><th class="n">Unit price</th><th class="n">Amount</th></tr></thead><tbody>
+  ${ls.map(l => l.LineKind === "Text" ? `<tr class="h"><td colspan="5">${esc(l.Description)}</td></tr>`
+    : `<tr><td>${esc(l.Description)}${l.TaxCode === "FRE" ? " <small>(GST-free)</small>" : ""}</td><td class="n">${esc(l.Qty)}</td><td>${esc(l.Unit || "")}</td><td class="n">${k2(l.UnitPriceEx)}</td><td class="n">${k2(lineAmount(l))}</td></tr>`).join("")}
+  </tbody></table>
+  <div class="pq-tot"><div><span>Subtotal (ex GST)</span><span>${k2(t.sub)}</span></div><div><span>GST ${gstPct()}%</span><span>${k2(t.gst)}</span></div><div class="g"><span>Total (inc GST)</span><span>${k2(t.inc)}</span></div></div>
+  ${q.Terms ? `<div class="pq-terms"><b>Terms</b><br>${lines(q.Terms)}</div>` : ""}
+  <div class="pq-foot">All prices in Papua New Guinea Kina (PGK). Thank you for the opportunity to quote.</div></div>`;
+}
+function printDoc(html, title){
+  let a = $("#printArea"); if (!a){ a = document.createElement("div"); a.id = "printArea"; document.body.appendChild(a); }
+  a.innerHTML = html; const t = document.title; document.title = title;
+  const img = a.querySelector("img"), go = () => { window.print(); document.title = t; };
+  img && !img.complete ? (img.onload = img.onerror = go) : go();
+}
+let H2P;
+const loadPdfMaker = () => H2P ||= new Promise((res, rej) => { const sc = document.createElement("script");
+  sc.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"; sc.onload = res; sc.onerror = () => { H2P = null; rej(new Error("couldn't load the PDF maker — check the connection")); }; document.head.appendChild(sc); });
+async function pdfBase64(html, name){
+  await loadPdfMaker();
+  const host = document.createElement("div"); host.style.cssText = "position:fixed;left:-10000px;top:0;width:760px;background:#fff"; host.innerHTML = html; document.body.appendChild(host);
+  try {
+    await Promise.all([...host.querySelectorAll("img")].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+    const uri = await html2pdf().set({ margin:[10,10,12,10], filename:name, image:{ type:"jpeg", quality:0.92 }, html2canvas:{ scale:2, backgroundColor:"#ffffff" },
+      jsPDF:{ unit:"mm", format:"a4", orientation:"portrait" }, pagebreak:{ mode:["css","legacy"] } }).from(host.firstElementChild).outputPdf("datauristring");
+    return uri.split(",")[1];
+  } finally { host.remove(); }
+}
+
+// ---- email (from the shared accounts mailbox when it's set in Settings)
+async function sendMail(message){
+  const box = setting("AccountsMailbox", "").trim(), scope = box ? "Mail.Send.Shared" : "Mail.Send";
+  let tk; try { tk = (await msalApp.acquireTokenSilent({ scopes:[scope], account })).accessToken; } catch(e){ tk = (await msalApp.acquireTokenPopup({ scopes:[scope], account })).accessToken; }
+  const r = await fetch(`https://graph.microsoft.com/v1.0/${box ? "users/" + encodeURIComponent(box) : "me"}/sendMail`,
+    { method:"POST", headers:{ Authorization:"Bearer " + tk, "Content-Type":"application/json" }, body: JSON.stringify({ message, saveToSentItems:true }) });
+  if (!r.ok){ let m = String(r.status); try { m = (await r.json()).error.message; } catch {}
+    throw new Error(r.status === 403 || /denied|not have permission/i.test(m) ? (box ? `Your account isn't allowed to send as ${box}. Ask for "Send As" on that mailbox (Exchange admin centre).` : "Your account isn't allowed to send mail from the Hub.") : "Email not sent: " + m); }
+}
+function openEmail(q){
+  const box = setting("AccountsMailbox", "").trim(), c = D.customers.find(x => x.CustomerCode === q.CustomerCode), co = setting("CompanyName", "MJ Electrical");
+  const first = String(q.ContactName || "").trim().split(/\s+/)[0];
+  const msg = `Dear ${first || "Sir/Madam"},\n\nPlease find attached our quote ${q.Title}${q.SiteName ? " for work at " + q.SiteName : ""}, totalling ${k2(q.TotalInc)} including GST.\n\nThe quote is valid until ${fmtDate(q.ValidUntil)}. Please let us know if you have any questions or would like to go ahead.\n\nKind regards,\n${S.me?.Title || account?.name || ""}\n${co}`;
+  openDialog({ cls:"f-quo", kind:"Quotes · Email", title:`Email ${q.Title}`, save:"Send",
+    body:`<fieldset><legend>Email</legend><div class="fg">
+      <label class="fld w3"><span>From</span><input readonly tabindex=-1 value="${esc(box || `${account?.username || ""} — your own mailbox (set the shared accounts mailbox in Settings)`)}"></label>
+      <label class="fld w2"><span class="req">To (separate several with ;)</span><input name="to" required value="${esc(q.ContactEmail || c?.Email || "")}"></label>
+      <label class="fld"><span>Cc</span><input name="cc" value=""></label>
+      <label class="fld w3"><span class="req">Subject</span><input name="subject" required value="${esc(`Quote ${q.Title} from ${co}`)}"></label>
+      <label class="fld w3"><span>Message</span><textarea name="body" style="min-height:190px">${esc(msg)}</textarea></label>
+      <label class="fld w3 chk"><span><input type="checkbox" id="attachPdf" checked> Attach the quote as a PDF (${esc(q.Title)}.pdf)</span></label></div></fieldset>
+      ${q.QuoteStatus === "Draft" ? `<p class="count">Sending marks the quote as sent and sets a follow-up for ${followDays()} days' time.</p>` : ""}`,
+    onSubmit: async () => {
+      const split = v => v.split(/[;,]/).map(x => x.trim()).filter(Boolean), to = split(val("to")), cc = split(val("cc"));
+      const bad = [...to, ...cc].find(a => !EMAIL_RE.test(a)); if (bad) return toast(`"${bad}" doesn't look like an email address`);
+      let pdf = null;
+      if ($("#attachPdf").checked){ toast("Making the PDF…"); pdf = await pdfBase64(quotePrintHtml(q), `${q.Title}.pdf`); }
+      const message = { subject: val("subject"), body:{ contentType:"HTML", content: esc($("#dlgBody [name=body]").value).replace(/\n/g, "<br>") },
+        toRecipients: to.map(a => ({ emailAddress:{ address:a } })), ccRecipients: cc.map(a => ({ emailAddress:{ address:a } })),
+        attachments: pdf ? [{ "@odata.type":"#microsoft.graph.fileAttachment", name:`${q.Title}.pdf`, contentType:"application/pdf", contentBytes:pdf }] : [] };
+      if (!DEMO) await sendMail(message);
+      $("#dlg").close();
+      if (q.QuoteStatus === "Draft") await setQuote(q, sentFields(), `Emailed ${q.Title} to ${to.join(", ")} and marked it as sent`); else toast(`Emailed ${q.Title} to ${to.join(", ")}`);
+    } });
+}
+
+/* =====================================================================
+   SETTINGS: company & quote defaults, labour rates
+   ===================================================================== */
+const COMPANY_KEYS = [
+  ["CompanyName","Company name (printed on quotes and invoices)","text",2], ["AccountsMailbox","Shared accounts mailbox — quotes and invoices are emailed from it","email",1],
+  ["CompanyDetails","Address, phone, email, TIN and bank details (printed under the name)","textarea",3],
+  ["GSTRatePct","GST %","number",1], ["MaterialMarkupPct","Default material markup %","number",1], ["QuoteValidityDays","Quotes valid for (days)","number",1],
+  ["QuoteFollowUpDays","Follow up sent quotes after (days)","number",1], ["PaymentTermsDays","Default payment terms (days)","number",1],
+  ["QuoteTerms","Standard quote terms (copied onto each new quote; can be changed per quote)","textarea",3] ];
+const isAdmin = () => S.role === "Admin";
+function companySettings(){
+  const v = k => setting(k, ""), show = (k, d = "—") => v(k) ? esc(v(k)) : `<span class="count">${d}</span>`;
+  return `<div class="bar" style="margin-top:22px"><h2>Company &amp; quotes</h2><span class="grow"></span>${isAdmin() ? `<button class="btn" id="editCompany">Edit</button>` : ""}</div>
+  <div class="grid two">
+    <div class="card"><h3>Printed on quotes and invoices</h3><dl class="kv"><dt>Company</dt><dd>${show("CompanyName")}</dd><dt>Details</dt><dd>${v("CompanyDetails") ? lines(v("CompanyDetails")) : `<span class="count">not set — add address, TIN and bank details</span>`}</dd>
+      <dt>Emailed from</dt><dd>${v("AccountsMailbox") ? esc(v("AccountsMailbox")) : `<span class="pill p-warn">not set</span> <span class="count">quotes go from each person's own mailbox</span>`}</dd></dl></div>
+    <div class="card"><h3>Defaults</h3><dl class="kv"><dt>GST</dt><dd>${show("GSTRatePct", "10")}%</dd><dt>Material markup</dt><dd>${show("MaterialMarkupPct", "0")}%</dd>
+      <dt>Quotes valid for</dt><dd>${show("QuoteValidityDays", "30")} days</dd><dt>Follow up after</dt><dd>${show("QuoteFollowUpDays", "7")} days</dd><dt>Payment terms</dt><dd>${show("PaymentTermsDays", "30")} days</dd>
+      <dt>Quote terms</dt><dd>${v("QuoteTerms") ? `<span class="count">${lines(v("QuoteTerms"))}</span>` : `<span class="count">none</span>`}</dd></dl></div>
+  </div>`;
+}
+function ratesTable(){
+  const rs = [...(D.rates || [])].sort((a, b) => (a.RateStatus === "Retired") - (b.RateStatus === "Retired") || num(a.SortOrder) - num(b.SortOrder) || String(a.Title).localeCompare(String(b.Title)));
+  return `<div class="bar" style="margin-top:22px"><h2>Labour rates</h2><span class="grow"></span>${isAdmin() ? `<button class="btn primary" data-new="rate">+ New rate</button>` : ""}</div>
+  <div class="tablewrap"><table class="setup"><thead><tr><th>Code</th><th>Labour type</th><th>Rate ex GST</th><th>Per</th><th>Minimum charge</th><th>Status</th></tr></thead><tbody>
+  ${rs.map(r => `<tr ${isAdmin() ? `data-edit="rate|${esc(r.id)}" tabindex="0"` : ""}><td class="mono"><b>${esc(r.RateCode || "")}</b></td><td>${esc(r.Title)}</td><td class="mono">${k2(r.RateEx)}</td>
+    <td>${esc(UNIT_OF[r.RateUnit] || "hr")}</td><td class="mono">${r.MinChargeHours ? esc(r.MinChargeHours) + " h" : ""}</td><td>${r.RateStatus === "Retired" ? `<span class="pill p-grey">Retired</span>` : `<span class="pill p-ok">Active</span>`}</td></tr>`).join("")}
+  </tbody></table>${rs.length ? "" : `<div class="empty">No labour rates yet${isAdmin() ? " — add normal time, overtime, apprentice, call-out and so on with <b>+ New rate</b>" : ""}</div>`}</div>
+  ${isAdmin() ? "" : `<p class="count">Only Admins can change rates and company details.</p>`}`;
+}
+function bindSettings(){
+  const b = $("#editCompany"); if (!b) return;
+  b.onclick = () => openDialog({ kind:"Settings · Company & quotes", title:"Company & quote defaults",
+    body:`<fieldset><legend>Company &amp; quotes</legend><div class="fg">${COMPANY_KEYS.map(([k, l, t, w]) =>
+      t === "textarea" ? `<label class="fld w3"><span>${l}</span><textarea name="${k}">${esc(setting(k, ""))}</textarea></label>`
+      : `<label class="fld ${w === 2 ? "w2" : ""}"><span>${l}</span><input name="${k}" type="${t}" ${t === "number" ? 'step="any" min="0"' : ""} value="${esc(setting(k, ""))}"></label>`).join("")}</div></fieldset>
+      <p class="count">Only MJE site owners can save these.</p>`,
+    onSubmit: async () => {
+      const box = val("AccountsMailbox"); if (box && !EMAIL_RE.test(box)) return toast(`"${box}" doesn't look like an email address`);
+      let n = 0;
+      for (const [k] of COMPANY_KEYS){
+        const nv = $(`#dlgBody [name="${k}"]`).value.trim(), row = D.settings.find(r => r.Title === k);
+        if ((row?.SettingValue ?? "") === nv || (!row && nv === "")) continue;
+        if (DEMO) { if (row) row.SettingValue = nv; else D.settings.push({ id:"demo" + k, Title:k, SettingValue:nv }); n++; continue; }
+        const saved = await saveListItem(CONFIG.LISTS.settings, row?.id || null, row ? { SettingValue: nv || null } : { Title:k, SettingValue:nv });
+        if (row) row.SettingValue = nv; else D.settings.push({ ...saved, Title:k, SettingValue:nv }); n++;
+      }
+      $("#dlg").close(); render(); toast(n ? `Saved ${n} setting${n === 1 ? "" : "s"}` : "Nothing changed");
+    } });
 }
 
 /* ---------------- boot ---------------- */
