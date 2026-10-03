@@ -22,6 +22,8 @@
 .kv dt{color:var(--muted)}.kv dd{margin:0}
 table.setup{min-width:0}
 main.tech{max-width:640px}
+.list li > .pill{align-self:flex-start}
+.list li > .mono{text-align:right}
 nav button{white-space:nowrap}
 a.btn{color:inherit;text-decoration:none;display:inline-block}
 @media (max-width:720px){ .who .nm{display:none} }
@@ -80,7 +82,7 @@ const SAFETY_KEYS = ["staff","trn","course","tt","risk","inc"];
 /* ---------------- screens & who sees them ---------------- */
 const OFFICE = ["Admin","Office"], TECH = ["Technician"];
 const ROUTES = {
-  dash:      { label:"Dashboard",         roles:OFFICE, lists:["jobs","assign","quotes","inv"], step:"Dashboard — jobs by status, today's schedule, unscheduled jobs, quotes awaiting reply, completed-not-invoiced value, overdue jobs" },
+  dash:      { label:"Dashboard",         roles:OFFICE, lists:["jobs","assign","quotes","inv","comp","time","mat","rates"], load:["jobs","assign","quotes","inv","comp","time","mat","rates"], step:"Dashboard — jobs by status, today's schedule, unscheduled jobs, quotes awaiting reply, completed-not-invoiced value, overdue jobs" },
   customers: { label:"Customers & Sites", roles:OFFICE, lists:["customers","sites","assets"],   step:"Customers & Sites — search, create and edit; each site shows its equipment and full job history" },
   quotes:    { label:"Quotes",            roles:OFFICE, lists:["quotes","qlines","rates","numbers"], step:"Quotes — labour and parts lines, GST, print/PDF, email, follow-up list, Convert to Job" },
   jobs:      { label:"Job Centre",        roles:OFFICE, lists:["jobs","assign","time","mat","notes","comp","numbers"], step:"Job Centre — filterable job grid and the job page (Details, Schedule, Time, Materials, Notes & Photos, Checklists, Safety, Invoice)" },
@@ -109,6 +111,76 @@ const effRole = () => S.viewAs ? "Technician" : S.role;
 const techName = () => S.viewAs || S.me?.Title || account?.name || "";
 const technicians = () => S.staff.filter(s => s.StaffStatus !== "Left" && (s.HubRole === "Technician" || s.Department === "Service"))
   .map(s => s.Title).sort((a,b) => a.localeCompare(b));
+
+/* ---------------- data: each list is read once, then kept until Refresh ---------------- */
+const D = {}, LOADING = {};
+async function need(keys){
+  await Promise.all(keys.map(k => {
+    if (D[k]) return null;
+    if (DEMO || !S.have.has(CONFIG.LISTS[k])) { D[k] = []; return null; }       // not set up yet: treat as empty
+    return LOADING[k] ||= listItems(CONFIG.LISTS[k]).then(r => { D[k] = r; delete LOADING[k]; }, e => { delete LOADING[k]; throw e; });
+  }));
+}
+function refreshData(){ Object.keys(D).forEach(k => delete D[k]); statusSyncDone = false; render(); }
+
+/* ---------------- job rules (every screen uses these) ----------------
+   Technicians never edit MJE_Jobs. A job's status is worked out from what has happened:
+   valid completion record -> Completed; any time logged -> In Progress; any booking -> Scheduled; else New.
+   On Hold, Invoiced and Cancelled are set by the office and always win.                              */
+const JOB_STATUS = ["New","Scheduled","In Progress","On Hold","Completed","Invoiced","Cancelled"];
+const OFFICE_STATUS = ["On Hold","Invoiced","Cancelled"];
+const CLOSED = ["Completed","Invoiced","Cancelled"];
+const PRIORITIES = ["Urgent","High","Normal","Low"];
+const priRank = p => { const i = PRIORITIES.indexOf(p); return i < 0 ? 2 : i; };
+const byUrgency = (a, b) => priRank(a.Priority) - priRank(b.Priority) || (a.DueDate || "9999").localeCompare(b.DueDate || "9999") || String(a.Title).localeCompare(String(b.Title), undefined, { numeric:true });
+// A completion counts once it has a signature (or signed-by name) or a "customer not present" reason, and the office hasn't returned it
+const validCompletion = c => c.ReviewStatus !== "Returned" && (!!(c.SignatureFile || c.SignedByName) || (c.CustomerNotPresent === "Yes" && !!c.NotPresentReason));
+function jobFacts(){
+  const f = new Map(), get = n => { if (!f.has(n)) f.set(n, { comp:null, time:false, booked:false }); return f.get(n); };
+  (D.comp || []).filter(validCompletion).forEach(c => { const x = get(c.Title); if (!x.comp || (c.CompletedDate || "") > (x.comp.CompletedDate || "")) x.comp = c; });
+  (D.time || []).forEach(t => { if (t.JobNo) get(t.JobNo).time = true; });
+  (D.assign || []).forEach(a => { if (a.AssignStatus !== "Cancelled") get(a.Title).booked = true; });
+  return f;
+}
+function jobState(j, facts){
+  if (OFFICE_STATUS.includes(j.JobStatus)) return j.JobStatus;
+  const x = facts.get(j.Title) || {};
+  return x.comp ? "Completed" : x.time ? "In Progress" : x.booked ? "Scheduled" : "New";
+}
+// Office/Admin only: write the worked-out status back to MJE_Jobs so SharePoint views and exports stay true
+let statusSyncDone = false;
+async function syncJobStatuses(){
+  if (DEMO || statusSyncDone || S.viewAs || !OFFICE.includes(S.role) || !D.jobs || !D.comp || !D.time || !D.assign) return;
+  statusSyncDone = true;
+  const facts = jobFacts();
+  for (const j of D.jobs.filter(j => jobState(j, facts) !== (j.JobStatus || "New")).slice(0, 50)){
+    const st = jobState(j, facts), f = { JobStatus: st };
+    if (st === "Completed" && !j.CompletedDate) f.CompletedDate = facts.get(j.Title)?.comp?.CompletedDate || TODAY;
+    if (st !== "Completed" && st !== "Invoiced" && j.CompletedDate) f.CompletedDate = null;
+    try { await saveListItem(CONFIG.LISTS.jobs, j.id, f); Object.assign(j, f); }
+    catch(e){ console.warn("Couldn't update the status of", j.Title, e.message); if (isForbidden(e)) break; }
+  }
+}
+// Work done but not yet invoiced (ex GST). Fixed-price jobs: quoted amount; do & charge: billable time x rate + billable materials.
+// Deposit and progress invoices already raised for the job are taken off.
+const rateFor = code => (D.rates || []).find(r => r.RateCode && r.RateCode === code);
+function unbilledValue(j){
+  const no = j.Title;
+  const billed = (D.inv || []).filter(i => i.JobNo === no && i.InvoiceStatus !== "Void" && ["Deposit","Progress"].includes(i.InvoiceType)).reduce((a, i) => a + num(i.SubtotalEx), 0);
+  if (j.BillingBasis === "Fixed price (quoted)") return { value: Math.max(0, num(j.QuotedAmountEx) - billed), noRate: 0 };
+  let value = 0, noRate = 0;
+  (D.time || []).filter(t => t.JobNo === no && t.Billable !== "No" && !t.InvoiceNo).forEach(t => {
+    const r = rateFor(t.LabourRateCode), h = num(t.BillableHours ?? t.ActualHours);
+    if (!r) { noRate += h; return; }
+    value += (!r.RateUnit || r.RateUnit === "Hour") ? h * num(r.RateEx) : num(r.RateEx);
+  });
+  (D.mat || []).filter(m => m.Title === no && m.Billable !== "No" && !m.InvoiceNo).forEach(m => value += num(m.Qty) * num(m.UnitSell));
+  return { value: Math.max(0, value - billed), noRate };
+}
+const JOB_PILL = { New:"p-info", Scheduled:"p-grey", "In Progress":"p-warn", "On Hold":"p-bad", Completed:"p-ok", Invoiced:"p-grey", Cancelled:"p-grey" };
+const jobPill = s => s ? `<span class="pill ${JOB_PILL[s] || "p-grey"}">${esc(s)}</span>` : "";
+const PRI_PILL = { Urgent:"p-crit", High:"p-bad", Normal:"p-grey", Low:"p-grey" };
+const priPill = p => p ? `<span class="pill ${PRI_PILL[p] || "p-grey"}">${esc(p)}</span>` : "";
 
 /* ---------------- routing: #/route/param ---------------- */
 function defaultRoute(){ const r = effRole(); return r === "Technician" ? "my" : OFFICE.includes(r) ? "dash" : ""; }
@@ -157,28 +229,93 @@ function render(){
   let banner = DEMO ? `<div class="banner">Demo mode — nothing is read from or saved to SharePoint. Add <code>?role=Office</code> or <code>?role=Technician</code> to the address to try other roles.</div>` : "";
   if (S.roleSource === "setup" && !S.viewAs) banner += `<div class="banner">First-run set-up: nobody has a Service Hub role yet, so you have the Admin view. In <b>MJE_Staff</b> (Safety Hub → Training → Staff, or the list itself) fill in each person's <b>M365 Email</b> and <b>Service Hub Role</b> — see Settings.</div>`;
   if (S.viewAs) banner += `<div class="banner viewas"><span>Showing the technician view for <b>${esc(S.viewAs)}</b>. SharePoint still saves as you.</span><span class="grow"></span><button class="btn" id="backOffice">← Back to office view</button></div>`;
+  const keys = ROUTES[S.route]?.load;
+  if (keys && keys.some(k => !D[k])){
+    const route = S.route;
+    $("#main").innerHTML = banner + `<div class="empty">Loading…</div>`;
+    need(keys).then(() => { if (S.route === route) render(); })
+      .catch(e => { $("#main").innerHTML = banner + `<div class="banner err">${isForbidden(e) ? "You don't have access to some of the Service Hub lists. Ask an MJE site owner to add you to the MJE Office group." : "Couldn't load data from SharePoint: " + esc(e.message)}</div>`; });
+    return;
+  }
   const view = { dash:viewDash, customers:viewTodo, quotes:viewTodo, jobs:viewTodo, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
   $("#main").innerHTML = banner + view();
   if ($("#backOffice")) $("#backOffice").onclick = () => { S.viewAs = ""; go("dash"); };
   bindView();
+  if (S.route === "dash") syncJobStatuses();
 }
 function bindView(){
-  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go(b.dataset.go);
+    b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(b.dataset.go); } }; });
+  if ($("#refresh")) $("#refresh").onclick = refreshData;
   const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
 }
 
 function viewTodo(){
   const r = ROUTES[S.route];
   return `<div class="bar"><h2>${r.label}</h2></div>${notSetUp(r.lists)}
+    ${S.param ? `<div class="banner">You opened <b>${esc(S.param)}</b> — it will show here once ${esc(r.label)} is built.</div>` : ""}
     <div class="todo"><b>${esc(r.label)}</b> is the next thing to be built.<br>${esc(r.step)}</div>`;
 }
 function viewDash(){
-  return `<div class="bar"><h2>Service Hub</h2></div>${notSetUp(ROUTES.dash.lists)}
-    <div class="grid kpis dash">
-      ${[["k-job","Jobs open"],["k-job","Scheduled today"],["k-job","Unscheduled"],["k-quo","Quotes awaiting reply"],["k-inv","Completed, not invoiced"],["k-job","Overdue jobs"]]
-        .map(([k, l]) => `<div class="card kpi ${k}"><div class="l">${l}</div><div class="v">—</div><div class="s">coming next</div></div>`).join("")}
-    </div>
-    <div class="todo"><b>Dashboard</b> figures arrive with the first screen review.<br>${esc(ROUTES.dash.step)}</div>`;
+  const facts = jobFacts();
+  const jobs = D.jobs.map(j => ({ ...j, _st: jobState(j, facts) }));
+  const byNo = new Map(jobs.map(j => [j.Title, j]));
+  const open = jobs.filter(j => !CLOSED.includes(j._st));
+  const inProg = open.filter(j => j._st === "In Progress").length;
+  const overdue = open.filter(j => j.DueDate && j.DueDate < TODAY).sort((a, b) => a.DueDate.localeCompare(b.DueDate));
+  const unsched = jobs.filter(j => j._st === "New").sort(byUrgency);
+  const hot = unsched.filter(j => priRank(j.Priority) <= 1).length;
+  const today = D.assign.filter(a => a.AssignDate === TODAY && a.AssignStatus !== "Cancelled")
+    .sort((a, b) => (a.StartTime || "").localeCompare(b.StartTime || "") || (a.Technician || "").localeCompare(b.Technician || ""));
+  const techs = new Set(today.map(a => a.Technician).filter(Boolean)).size;
+  const awaiting = D.quotes.filter(q => q.QuoteStatus === "Sent").sort((a, b) => (a.FollowUpDate || "9999").localeCompare(b.FollowUpDate || "9999"));
+  const followDue = awaiting.filter(q => q.FollowUpDate && q.FollowUpDate <= TODAY).length;
+  const awaitVal = awaiting.reduce((a, q) => a + num(q.SubtotalEx), 0);
+  const ready = jobs.filter(j => j._st === "Completed").map(j => ({ ...j, _v: unbilledValue(j) })).sort((a, b) => b._v.value - a._v.value);
+  const readyVal = ready.reduce((a, j) => a + j._v.value, 0), noRate = ready.reduce((a, j) => a + j._v.noRate, 0);
+  const invY = jobs.filter(j => j._st === "Invoiced" && (j.CompletedDate || "").startsWith(YEAR)).length;
+  const STC = { New:"var(--info)", Scheduled:"var(--c-job)", "In Progress":"var(--warn)", "On Hold":"var(--bad)", Completed:"var(--ok)" };
+  const pipe = ["New","Scheduled","In Progress","On Hold","Completed"].map(s => ({ s, n: jobs.filter(j => j._st === s).length })), pmax = Math.max(1, ...pipe.map(p => p.n));
+  const tile = (go, k, l, v, sub, alert) => `<div role="button" tabindex="0" data-go="${go}" title="Open the matching list" class="card kpi ${k} ${alert ? "alert" : ""}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
+  const jobLi = (j, right) => `<li data-go="jobs/${encodeURIComponent(j.Title)}"><span class="id">${esc(j.Title)}</span><span class="x">${esc(j.CustomerName || "")}${j.SiteName ? " · " + esc(j.SiteName) : ""}${j.Description ? `<br><span class="count">${esc(String(j.Description).slice(0, 90))}</span>` : ""}</span>${right}</li>`;
+  const more = (n, shown, go, what) => n > shown ? `<p class="count"><a href="#/${go}">+${n - shown} more — see ${what}</a></p>` : "";
+  const empty = !jobs.length && !D.quotes.length;
+  return `
+  <div class="bar"><h2>Service Hub</h2><span class="grow"></span><span class="count">${fmtDate(TODAY)}</span><button class="btn" id="refresh" title="Read the latest from SharePoint">↻ Refresh</button></div>
+  ${notSetUp(ROUTES.dash.lists)}
+  <div class="grid kpis dash">
+    ${tile("jobs/open", "k-job", "Jobs open", open.length, `${inProg} in progress`)}
+    ${tile("schedule", "k-job", "Booked today", today.length, `${techs} technician${techs === 1 ? "" : "s"}`)}
+    ${tile("jobs/unscheduled", "k-job", "Unscheduled", unsched.length, hot ? `${hot} urgent or high` : "not booked yet", hot)}
+    ${tile("jobs/overdue", "k-job", "Overdue jobs", overdue.length, "past due date", overdue.length)}
+    ${tile("quotes/awaiting", "k-quo", "Quotes awaiting reply", awaiting.length, followDue ? `${followDue} follow-up${followDue === 1 ? "" : "s"} due` : `${kina(awaitVal)} ex GST`, followDue)}
+    ${tile("invoices/ready", "k-inv", "Ready to invoice", kina(readyVal), `${ready.length} completed job${ready.length === 1 ? "" : "s"} · ex GST`)}
+  </div>
+  ${noRate ? `<div class="banner">${Math.round(noRate * 10) / 10} billable hour${noRate === 1 ? "" : "s"} on completed jobs ha${noRate === 1 ? "s" : "ve"} no matching labour rate, so ${noRate === 1 ? "it isn't" : "they aren't"} in the "Ready to invoice" value. Check the labour rate codes in Settings.</div>` : ""}
+  ${empty ? `<div class="card" style="margin-bottom:14px"><h3>Getting started</h3><ol style="margin:0;padding-left:20px;line-height:1.8">
+      <li>Fill in each person's <b>M365 Email</b> and <b>Service Hub Role</b> in MJE_Staff, and put office staff in the <b>MJE Office</b> group.</li>
+      <li>Add labour rates, markup and company details in <b>Settings</b>.</li>
+      <li>Add customers and their sites in <b>Customers &amp; Sites</b>.</li>
+      <li>Raise a <b>quote</b>, or create a <b>job</b> straight away, then book it in the <b>Scheduler</b>.</li></ol>
+      <p class="count" style="margin-top:8px">This dashboard fills in as jobs, bookings, quotes and invoices are added.</p></div>` : ""}
+  <div class="grid two">
+    <div class="card"><h3>Today's schedule</h3>
+      ${today.length ? `<ul class="list">${today.slice(0, 12).map(a => { const j = byNo.get(a.Title);
+        return `<li data-go="jobs/${encodeURIComponent(a.Title)}"><span class="id mono">${esc(a.StartTime || "")}${a.EndTime ? "–" + esc(a.EndTime) : ""}</span><span class="x"><b>${esc(a.Technician || "Unassigned")}</b> · ${esc(a.Title)}${j?.SiteName ? " · " + esc(j.SiteName) : ""}</span>${jobPill(j?._st)}</li>`; }).join("")}</ul>${more(today.length, 12, "schedule", "the Scheduler")}`
+        : `<div class="empty">Nothing booked for today</div>`}</div>
+    <div class="card"><h3>Jobs by status</h3>
+      ${pipe.map(p => `<div class="hb"><span>${p.s}</span><span class="t"><i style="width:${p.n / pmax * 100}%;background:${STC[p.s]}"></i></span><span class="n">${p.n}</span></div>`).join("")}
+      <p class="count" style="margin-top:10px">${invY} job${invY === 1 ? "" : "s"} invoiced in ${YEAR}. In progress = time has been logged; completed = signed off by the technician.</p></div>
+    <div class="card"><h3>Unscheduled jobs</h3>
+      ${unsched.length ? `<ul class="list">${unsched.slice(0, 8).map(j => jobLi(j, `${priPill(j.Priority)}${j.DueDate ? ` <span class="mono count">${fmtDate(j.DueDate)}</span>` : ""}`)).join("")}</ul>${more(unsched.length, 8, "jobs/unscheduled", "Job Centre")}` : `<div class="empty">No unscheduled jobs</div>`}</div>
+    <div class="card"><h3>Overdue jobs</h3>
+      ${overdue.length ? `<ul class="list">${overdue.slice(0, 8).map(j => jobLi(j, `${jobPill(j._st)} <span class="mono" style="color:var(--crit)">${fmtDate(j.DueDate)}</span>`)).join("")}</ul>${more(overdue.length, 8, "jobs/overdue", "Job Centre")}` : `<div class="empty">Nothing overdue</div>`}</div>
+    <div class="card"><h3>Quotes awaiting reply</h3>
+      ${awaiting.length ? `<ul class="list">${awaiting.slice(0, 8).map(q => { const due = q.FollowUpDate && q.FollowUpDate <= TODAY, exp = q.ValidUntil && q.ValidUntil < TODAY;
+        return `<li data-go="quotes/${encodeURIComponent(q.Title)}"><span class="id">${esc(q.Title)}</span><span class="x">${esc(q.CustomerName || "")}${q.SiteName ? " · " + esc(q.SiteName) : ""}<br><span class="count">${q.SentDate ? "sent " + fmtDate(q.SentDate) : ""}${exp ? " · <b>expired " + fmtDate(q.ValidUntil) + "</b>" : ""}</span></span><span class="mono">${money(q.SubtotalEx)}${q.FollowUpDate ? `<br><span class="${due ? "pill p-warn" : "count"}">${due ? "follow up" : "follow up " + fmtDate(q.FollowUpDate)}</span>` : ""}</span></li>`; }).join("")}</ul>${more(awaiting.length, 8, "quotes/awaiting", "Quotes")}` : `<div class="empty">No quotes waiting on a reply</div>`}</div>
+    <div class="card"><h3>Ready to invoice</h3>
+      ${ready.length ? `<ul class="list">${ready.slice(0, 8).map(j => jobLi(j, `<span class="mono">${kina(j._v.value)}${j._v.noRate ? ` <span class="flag" title="${j._v.noRate} h with no labour rate">rate?</span>` : ""}${j.CompletedDate ? `<br><span class="count">done ${fmtDate(j.CompletedDate)}</span>` : ""}</span>`)).join("")}</ul>${more(ready.length, 8, "invoices/ready", "Invoicing")}` : `<div class="empty">No completed jobs waiting for an invoice</div>`}</div>
+  </div>`;
 }
 function viewMy(){
   const n = techName();
