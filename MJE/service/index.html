@@ -24,6 +24,7 @@ table.setup{min-width:0}
 main.tech{max-width:640px}
 .list li > .pill{align-self:flex-start}
 .kpi.k-cust{--kc:var(--muted)}
+.gpscell{justify-content:flex-end}.gpscell .btn{padding:8px 12px;white-space:nowrap}
 .crumbs{font-size:13px;color:var(--muted);margin-bottom:6px}.crumbs a{color:inherit}
 tr[data-go],tr[data-edit]{cursor:pointer}
 .kv a{color:var(--info)}
@@ -387,8 +388,8 @@ const FORMS = {
     ["Notes", [["Notes","Notes","textarea",{w:3}]]] ] },
   site: { list:"sites", name:"Site", kind:"Customers & Sites · Site", counter:"S", code:"SiteCode", prefix:"S-", width:4, sections:[
     ["Site", [["Title","Site name","text",{req:1,w:2}], ["SiteCode","Site code","text",{ro:1}], ["CustomerCode","Customer","select",{req:1,w:2,opts:custOpts}], ["SiteStatus","Status","select",{opts:["Active","Inactive"]}] ]],
-    ["Location", [["Address","Street address / directions","textarea",{w:3}], ["Town","Town","text"], ["Province","Province","select",{opts:PROVINCES}],
-      ["Latitude","Latitude (e.g. -9.4438)","number"], ["Longitude","Longitude (e.g. 147.1803)","number"] ]],
+    ["Location", [["Address","Street address / directions","textarea",{w:3}], ["Town","Town","text"], ["Province","Province","select",{opts:PROVINCES,w:2}],
+      ["Latitude","Latitude (e.g. -9.4438)","number"], ["Longitude","Longitude (e.g. 147.1803)","number"], ["_gps","","gps"] ]],
     ["Site contact", [["ContactName","Name","text"], ["ContactPhone","Phone","tel"], ["ContactEmail","Email","email"] ]],
     ["For the technician", [["AccessNotes","Access notes (gate, keys, escort, hours)","textarea",{w:3}], ["SiteHazards","Site hazards","textarea",{w:3}] ]] ] },
   asset: { list:"assets", name:"Equipment", kind:"Customers & Sites · Customer equipment", counter:"A", code:"Title", prefix:"A-", width:4, sections:[
@@ -403,6 +404,7 @@ function fieldHtml([name, label, type, o = {}], v){
   const cls = `fld ${o.w === 3 ? "w3" : o.w === 2 ? "w2" : ""}`, lab = `<span class="${o.req ? "req" : ""}">${label}</span>`;
   const attrs = `name="${name}" ${o.req ? "required" : ""} ${o.ro ? "readonly tabindex=-1" : ""}`;
   if (type === "textarea") return `<label class="${cls}">${lab}<textarea ${attrs}>${esc(v)}</textarea></label>`;
+  if (type === "gps") return `<div class="fld gpscell"><button type="button" class="btn" id="gpsHere">📍 Use my current location</button></div>`;
   if (type === "select"){
     let opts = (typeof o.opts === "function" ? o.opts() : o.opts).map(x => Array.isArray(x) ? x : [x, x]);
     if (v && !opts.some(([val]) => val === v)) opts.push([v, v]);      // keep a value that isn't in the list any more
@@ -426,7 +428,7 @@ function openForm(kind, item, prefill = {}){
   $("#dlgKind").textContent = F.kind;
   $("#dlgTitle").textContent = item ? `${item.Title}${F.code !== "Title" && item[F.code] ? " · " + item[F.code] : ""}` : `New ${F.name.toLowerCase()}`;
   $("#dlgBody").innerHTML = F.sections.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div>
-      ${kind === "site" && leg === "Location" ? `<button type="button" class="btn" id="gpsHere" style="margin-top:10px">📍 Use my current location</button>` : ""}</fieldset>`).join("")
+</fieldset>`).join("")
     + (item ? "" : `<p class="count">The ${F.name.toLowerCase()} code is given when you save.</p>`);
   if ($("#gpsHere")) $("#gpsHere").onclick = () => {
     if (!navigator.geolocation) return toast("This device can't share its location");
