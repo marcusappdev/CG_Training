@@ -23,6 +23,10 @@
 table.setup{min-width:0}
 main.tech{max-width:640px}
 .list li > .pill{align-self:flex-start}
+.kpi.k-cust{--kc:var(--muted)}
+.crumbs{font-size:13px;color:var(--muted);margin-bottom:6px}.crumbs a{color:inherit}
+tr[data-go],tr[data-edit]{cursor:pointer}
+.kv a{color:var(--info)}
 .list li > .mono{text-align:right}
 nav button{white-space:nowrap}
 a.btn{color:inherit;text-decoration:none;display:inline-block}
@@ -81,14 +85,16 @@ const SAFETY_KEYS = ["staff","trn","course","tt","risk","inc"];
 
 /* ---------------- screens & who sees them ---------------- */
 const OFFICE = ["Admin","Office"], TECH = ["Technician"];
+const CUST_LOAD = ["customers","sites","assets","jobs","quotes","sync","settings","comp","time","assign"];
 const ROUTES = {
   dash:      { label:"Dashboard",         roles:OFFICE, lists:["jobs","assign","quotes","inv","comp","time","mat","rates"], load:["jobs","assign","quotes","inv","comp","time","mat","rates"], step:"Dashboard — jobs by status, today's schedule, unscheduled jobs, quotes awaiting reply, completed-not-invoiced value, overdue jobs" },
-  customers: { label:"Customers & Sites", roles:OFFICE, lists:["customers","sites","assets"],   step:"Customers & Sites — search, create and edit; each site shows its equipment and full job history" },
+  customers: { label:"Customers & Sites", roles:OFFICE, lists:["customers","sites","assets"], load:CUST_LOAD, step:"Customers & Sites — search, create and edit; each site shows its equipment and full job history" },
   quotes:    { label:"Quotes",            roles:OFFICE, lists:["quotes","qlines","rates","numbers"], step:"Quotes — labour and parts lines, GST, print/PDF, email, follow-up list, Convert to Job" },
   jobs:      { label:"Job Centre",        roles:OFFICE, lists:["jobs","assign","time","mat","notes","comp","numbers"], step:"Job Centre — filterable job grid and the job page (Details, Schedule, Time, Materials, Notes & Photos, Checklists, Safety, Invoice)" },
   schedule:  { label:"Scheduler",         roles:OFFICE, lists:["jobs","assign","staff"],         step:"Scheduler — one row per technician, day and week views, drag and drop, clash warnings" },
   invoices:  { label:"Invoicing",         roles:OFFICE, lists:["inv","iline","pay","sync","numbers"], step:"Invoicing — invoices from completed jobs, deposits, progress, credit notes, payments, Send to MYOB" },
   settings:  { label:"Settings",          roles:OFFICE, lists:["settings","rates","numbers","chk"], step:"" },
+  site:      { label:"Site",              roles:OFFICE, nav:false, lists:["customers","sites","assets"], load:CUST_LOAD, step:"" },
   my:        { label:"My Jobs",           roles:TECH,   lists:["jobs","assign","time","mat","notes","comp","resp"], step:"My Jobs — today and upcoming, site map link, timer with GPS, materials, notes, photos, checklists, signature, mark complete — works offline" },
 };
 
@@ -195,8 +201,9 @@ window.addEventListener("hashchange", () => { readHash(); render(); window.scrol
 /* ---------------- header ---------------- */
 function renderHeader(){
   const nav = $("#nav"), r = effRole();
-  const items = Object.entries(ROUTES).filter(([, v]) => v.roles.includes(r));
-  nav.innerHTML = items.map(([k, v]) => `<button data-route="${k}" class="${k === S.route ? "on" : ""}">${v.label}</button>`).join("");
+  const items = Object.entries(ROUTES).filter(([, v]) => v.roles.includes(r) && v.nav !== false);
+  const lit = S.route === "site" ? "customers" : S.route;
+  nav.innerHTML = items.map(([k, v]) => `<button data-route="${k}" class="${k === lit ? "on" : ""}">${v.label}</button>`).join("");
   nav.hidden = !items.length;
   nav.querySelectorAll("[data-route]").forEach(b => b.onclick = () => go(b.dataset.route));
   $("#who").innerHTML = `<span class="sync" id="sync"></span><span class="nm">${esc(account?.name || account?.username || "")}</span>`
@@ -237,7 +244,7 @@ function render(){
       .catch(e => { $("#main").innerHTML = banner + `<div class="banner err">${isForbidden(e) ? "You don't have access to some of the Service Hub lists. Ask an MJE site owner to add you to the MJE Office group." : "Couldn't load data from SharePoint: " + esc(e.message)}</div>`; });
     return;
   }
-  const view = { dash:viewDash, customers:viewTodo, quotes:viewTodo, jobs:viewTodo, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
+  const view = { dash:viewDash, customers:viewCustomers, site:viewSite, quotes:viewTodo, jobs:viewTodo, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
   $("#main").innerHTML = banner + view();
   if ($("#backOffice")) $("#backOffice").onclick = () => { S.viewAs = ""; go("dash"); };
   bindView();
@@ -247,6 +254,7 @@ function bindView(){
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go(b.dataset.go);
     b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(b.dataset.go); } }; });
   if ($("#refresh")) $("#refresh").onclick = refreshData;
+  bindCustomers();
   const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
 }
 
@@ -347,7 +355,7 @@ function viewSettings(){
       ${S.role === "Admin" || S.role === "Office" ? `<div class="bar" style="margin:14px 0 0"><select class="f" id="viewAsName"><option value="">Pick a technician…</option>${techs.map(t => `<option>${esc(t)}</option>`).join("")}</select>
         <button class="btn" id="viewAs">See the technician view</button></div>` : ""}</div>
     <div class="card"><h3>Staff roles</h3><dl class="kv">
-      <dt>Active staff</dt><dd>${staff.length}</dd><dt>With M365 email</dt><dd>${withEmail} <span class="count">blank = no account; the office enters for them</span></dd>
+      <dt>Active staff</dt><dd>${staff.length}</dd><dt>With M365 email</dt><dd>${withEmail} of ${staff.length} <span class="count">· leave it blank for staff with no Microsoft 365 account — the office enters their work</span></dd>
       <dt>With a Service Hub role</dt><dd>${withRole}</dd><dt>Technicians</dt><dd>${techs.length}</dd></dl>
       <p class="count" style="margin-top:12px">Set <b>M365 Email</b> and <b>Service Hub Role</b> on each person in MJE_Staff. The role only picks which screens open — SharePoint groups (Owners, MJE Office, Visitors) still decide what each person can change.</p></div>
   </div>
@@ -358,6 +366,314 @@ function viewSettings(){
     <div class="tablewrap" style="align-self:start"><table class="setup"><thead><tr><th>Safety Hub list</th><th>Used for</th><th>Status</th></tr></thead><tbody>${SAFETY_KEYS.map(row).join("")}</tbody></table></div>
   </div>
   <div class="todo" style="margin-top:20px">Labour rates, rounding, markup, GST, numbering, checklist templates, job type → course mapping and company details are added with the Settings screen.</div>`;
+}
+
+/* =====================================================================
+   FORMS — same look as the Safety Hub forms (dialog, coloured header, fieldsets)
+   ===================================================================== */
+const PROVINCES = ["National Capital District","Central","Gulf","Western","Milne Bay","Oro (Northern)","Southern Highlands","Hela","Enga","Western Highlands","Jiwaka","Simbu","Eastern Highlands","Morobe","Madang","East Sepik","West Sepik (Sandaun)","Manus","New Ireland","East New Britain","West New Britain","Bougainville"];
+const CUST_TYPES = ["Commercial","Government","Residential","Internal"];
+const ASSET_TYPES = ["Switchboard","Distribution board","Generator","UPS","Air conditioning","Lighting","Solar / Inverter","Motor / Pump","Other"];
+const setting = (key, dflt = "") => { const r = (D.settings || []).find(x => x.Title === key); return r && r.SettingValue != null && r.SettingValue !== "" ? r.SettingValue : dflt; };
+const custOpts = () => [...(D.customers || [])].filter(c => c.CustomerStatus !== "Inactive").sort((a, b) => a.Title.localeCompare(b.Title)).map(c => [c.CustomerCode, `${c.Title} (${c.CustomerCode})`]);
+const siteOpts = () => [...(D.sites || [])].filter(x => x.SiteStatus !== "Inactive").sort((a, b) => (a.CustomerName || "").localeCompare(b.CustomerName || "") || a.Title.localeCompare(b.Title))
+  .map(x => [x.SiteCode, `${x.Title} — ${x.CustomerName || x.CustomerCode} (${x.SiteCode})`]);
+const FORMS = {
+  cust: { list:"customers", name:"Customer", kind:"Customers & Sites · Customer", counter:"C", code:"CustomerCode", prefix:"C-", width:4, sections:[
+    ["Customer", [["Title","Customer name (billing entity)","text",{req:1,w:2}], ["CustomerCode","Customer code","text",{ro:1}], ["TradingName","Trading name","text"],
+      ["CustomerType","Type","select",{opts:CUST_TYPES,req:1}], ["CustomerStatus","Status","select",{opts:["Active","On hold","Inactive"],req:1}] ]],
+    ["Accounts", [["AccountsContact","Accounts contact","text"], ["Email","Accounts email (invoices go here)","email"], ["Phone","Phone","tel"],
+      ["PaymentTermsDays","Payment terms (days)","number",{min0:1}], ["TIN","TIN","text"], ["BillingAddress","Billing address","textarea",{w:3}] ]],
+    ["Notes", [["Notes","Notes","textarea",{w:3}]]] ] },
+  site: { list:"sites", name:"Site", kind:"Customers & Sites · Site", counter:"S", code:"SiteCode", prefix:"S-", width:4, sections:[
+    ["Site", [["Title","Site name","text",{req:1,w:2}], ["SiteCode","Site code","text",{ro:1}], ["CustomerCode","Customer","select",{req:1,w:2,opts:custOpts}], ["SiteStatus","Status","select",{opts:["Active","Inactive"]}] ]],
+    ["Location", [["Address","Street address / directions","textarea",{w:3}], ["Town","Town","text"], ["Province","Province","select",{opts:PROVINCES}],
+      ["Latitude","Latitude (e.g. -9.4438)","number"], ["Longitude","Longitude (e.g. 147.1803)","number"] ]],
+    ["Site contact", [["ContactName","Name","text"], ["ContactPhone","Phone","tel"], ["ContactEmail","Email","email"] ]],
+    ["For the technician", [["AccessNotes","Access notes (gate, keys, escort, hours)","textarea",{w:3}], ["SiteHazards","Site hazards","textarea",{w:3}] ]] ] },
+  asset: { list:"assets", name:"Equipment", kind:"Customers & Sites · Customer equipment", counter:"A", code:"Title", prefix:"A-", width:4, sections:[
+    ["Equipment", [["Title","Asset code","text",{ro:1}], ["SiteCode","Site","select",{req:1,w:2,opts:siteOpts}], ["AssetType","Type","select",{opts:ASSET_TYPES,req:1}],
+      ["Description","Description","text",{w:2}], ["AssetStatus","Status","select",{opts:["In service","Faulty","Decommissioned"]}] ]],
+    ["Details", [["Make","Make","text"], ["Model","Model","text"], ["SerialNo","Serial no.","text"], ["RatingSize","Rating / size (e.g. 400 A, 60 kVA)","text"],
+      ["LocationOnSite","Location on site","text"], ["InstallDate","Install date","date"], ["WarrantyEnd","Warranty end","date"] ]],
+    ["Notes", [["Notes","Notes","textarea",{w:3}]]] ] },
+};
+const NO_PERMISSION = "You don't have permission to change this. Customers, sites, equipment and jobs are edited by the MJE office (the MJE Office group) and the site owners.";
+function fieldHtml([name, label, type, o = {}], v){
+  const cls = `fld ${o.w === 3 ? "w3" : o.w === 2 ? "w2" : ""}`, lab = `<span class="${o.req ? "req" : ""}">${label}</span>`;
+  const attrs = `name="${name}" ${o.req ? "required" : ""} ${o.ro ? "readonly tabindex=-1" : ""}`;
+  if (type === "textarea") return `<label class="${cls}">${lab}<textarea ${attrs}>${esc(v)}</textarea></label>`;
+  if (type === "select"){
+    let opts = (typeof o.opts === "function" ? o.opts() : o.opts).map(x => Array.isArray(x) ? x : [x, x]);
+    if (v && !opts.some(([val]) => val === v)) opts.push([v, v]);      // keep a value that isn't in the list any more
+    return `<label class="${cls}">${lab}<select ${attrs}><option value=""></option>${opts.map(([val, txt]) => `<option value="${esc(val)}" ${val === v ? "selected" : ""}>${esc(txt)}</option>`).join("")}</select></label>`;
+  }
+  const extra = type === "number" ? `step="any" ${o.min0 ? 'min="0"' : ""}` : "";
+  return `<label class="${cls}">${lab}<input type="${type}" ${extra} ${attrs} value="${esc(v ?? "")}"></label>`;
+}
+function readForm(){ const o = {}; $("#dlgBody").querySelectorAll("[name]").forEach(el => { o[el.name] = el.value.trim(); }); return o; }
+const numericFields = kind => new Set(FORMS[kind].sections.flatMap(s => s[1]).filter(f => f[2] === "number").map(f => f[0]));
+function formDefaults(kind){
+  if (kind === "cust") return { CustomerType:"Commercial", CustomerStatus:"Active", PaymentTermsDays: num(setting("PaymentTermsDays", 30)) };
+  if (kind === "site") return { SiteStatus:"Active", Province:"National Capital District" };
+  return { AssetStatus:"In service" };
+}
+let EDIT = null;
+function openForm(kind, item, prefill = {}){
+  const F = FORMS[kind]; EDIT = { kind, item, warned:"" };
+  const v = item ? { ...item } : { ...formDefaults(kind), ...prefill };
+  $("#dlg").className = "f-" + kind;
+  $("#dlgKind").textContent = F.kind;
+  $("#dlgTitle").textContent = item ? `${item.Title}${F.code !== "Title" && item[F.code] ? " · " + item[F.code] : ""}` : `New ${F.name.toLowerCase()}`;
+  $("#dlgBody").innerHTML = F.sections.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div>
+      ${kind === "site" && leg === "Location" ? `<button type="button" class="btn" id="gpsHere" style="margin-top:10px">📍 Use my current location</button>` : ""}</fieldset>`).join("")
+    + (item ? "" : `<p class="count">The ${F.name.toLowerCase()} code is given when you save.</p>`);
+  if ($("#gpsHere")) $("#gpsHere").onclick = () => {
+    if (!navigator.geolocation) return toast("This device can't share its location");
+    toast("Finding your location…");
+    navigator.geolocation.getCurrentPosition(p => { $("[name=Latitude]").value = p.coords.latitude.toFixed(6); $("[name=Longitude]").value = p.coords.longitude.toFixed(6);
+      toast(`Location set (accurate to about ${Math.round(p.coords.accuracy)} m)`); }, e => toast("Couldn't get your location: " + e.message), { enableHighAccuracy:true, timeout:15000 });
+  };
+  $("#dlg").showModal();
+}
+// Next number from MJE_ServiceNumbers: read, add one, write back only if nobody else changed it (If-Match); retry on a clash.
+async function takeNumber(counter, prefix, width, existing){
+  const fmt = n => prefix + String(n).padStart(width, "0"), re = new RegExp("^" + prefix.replace(/[-]/g, "\\-") + "(\\d+)$");
+  const maxExisting = existing.reduce((m, v) => { const r = re.exec(v || ""); return r ? Math.max(m, +r[1]) : m; }, 0);
+  if (DEMO) return fmt(maxExisting + 1);
+  const base = `/sites/${siteId}/lists/${CONFIG.LISTS.numbers}/items`;
+  for (let i = 0; i < 6; i++){
+    const j = await graph(`${base}?expand=fields&$filter=fields/Title eq '${counter}'`, { headers:{ Prefer:"HonorNonIndexedQueriesWarningMayFailRandomly" } });
+    const row = j.value[0];
+    if (!row){ const n = maxExisting + 1; await graph(base, { method:"POST", body: JSON.stringify({ fields:{ Title:counter, LastNumber:n } }) }); return fmt(n); }
+    const n = Math.max(num(row.fields.LastNumber), maxExisting) + 1;
+    try { await graph(`${base}/${row.id}/fields`, { method:"PATCH", headers:{ "If-Match": row.eTag || row["@odata.etag"] }, body: JSON.stringify({ LastNumber:n }) }); return fmt(n); }
+    catch(e){ if (e.status === 412 || e.status === 409){ await new Promise(r => setTimeout(r, 300 + Math.random() * 700)); continue; } throw e; }
+  }
+  throw new Error("couldn't get the next number because others were saving at the same time — please try again");
+}
+const norm = v => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+async function submitForm(e){
+  e.preventDefault();
+  const { kind, item } = EDIT, F = FORMS[kind], list = D[F.list];
+  const missing = [...$("#dlgBody").querySelectorAll("[required]")].filter(el => !el.value.trim());
+  if (missing.length){ missing[0].focus(); toast("Please fill in: " + missing.map(m => m.closest("label").innerText.replace(" *", "").trim()).join(", ")); return; }
+  const f = readForm();
+  // Probably a duplicate? Warn once; a second Save goes ahead.
+  const dup = kind === "cust" ? D.customers.find(c => c !== item && norm(c.Title) === norm(f.Title))
+            : kind === "site" ? D.sites.find(x => x !== item && x.CustomerCode === f.CustomerCode && norm(x.Title) === norm(f.Title))
+            : (f.SerialNo ? D.assets.find(a => a !== item && norm(a.SerialNo) === norm(f.SerialNo) && norm(a.Make) === norm(f.Make)) : null);
+  if (dup && EDIT.warned !== dup.id){ EDIT.warned = dup.id; toast(`There's already ${kind === "asset" ? "equipment with this make and serial no." : `a ${F.name.toLowerCase()} called "${dup.Title}"`} (${dup[F.code]}). Click Save again to add it anyway.`); return; }
+  // copies kept beside the codes so SharePoint views and exports read well
+  if (kind === "site") f.CustomerName = D.customers.find(c => c.CustomerCode === f.CustomerCode)?.Title || "";
+  if (kind === "asset") f.CustomerCode = D.sites.find(x => x.SiteCode === f.SiteCode)?.CustomerCode || "";
+  const nums = numericFields(kind), out = {};
+  for (const [k, val] of Object.entries(f)){
+    if (nums.has(k)) { const n = val === "" ? null : +val; if (n !== null || item) out[k] = n; }
+    else if (val !== "" || item) out[k] = val === "" ? null : val;
+  }
+  if (item) delete out[F.code];
+  $("#dlgSave").disabled = true;
+  try {
+    if (!item) out[F.code] = await takeNumber(F.counter, F.prefix, F.width, list.map(r => r[F.code]));
+    const saved = DEMO ? { ...(item || { id:"demo" + Date.now() }), ...out } : { ...(item || {}), ...(await saveListItem(CONFIG.LISTS[F.list], item?.id, out)) };
+    const before = item ? { ...item } : null;
+    const i = list.findIndex(r => r.id === saved.id); i >= 0 ? list.splice(i, 1, saved) : list.push(saved);
+    $("#dlg").close();
+    toast(`Saved ${saved[F.code]}${kind === "asset" ? "" : " · " + saved.Title}`);
+    if (!item && kind === "cust") go("customers", saved.CustomerCode);
+    else if (!item && kind === "site" && S.route !== "customers") go("site", saved.SiteCode);
+    else render();
+    if (before) updateCopies(kind, before, saved);
+  } catch(err){ console.error(err); toast(isForbidden(err) ? NO_PERMISSION : "Save failed: " + err.message); }
+  finally { $("#dlgSave").disabled = false; }
+}
+// After a rename, update the name copies on linked records still in use (issued invoices keep the name they were issued with)
+async function updateCopies(kind, before, after){
+  const live = j => !["Invoiced","Cancelled"].includes(j.JobStatus), liveQ = q => ["Draft","Sent"].includes(q.QuoteStatus), todo = [];
+  if (kind === "cust" && before.Title !== after.Title){
+    const c = after.CustomerCode, n = { CustomerName: after.Title };
+    D.sites.filter(x => x.CustomerCode === c).forEach(r => todo.push(["sites", r, n]));
+    D.jobs.filter(j => j.CustomerCode === c && live(j)).forEach(r => todo.push(["jobs", r, n]));
+    D.quotes.filter(q => q.CustomerCode === c && liveQ(q)).forEach(r => todo.push(["quotes", r, n]));
+  }
+  if (kind === "site"){
+    const c = after.SiteCode;
+    if (before.Title !== after.Title){ const n = { SiteName: after.Title };
+      D.jobs.filter(j => j.SiteCode === c && live(j)).forEach(r => todo.push(["jobs", r, n]));
+      D.quotes.filter(q => q.SiteCode === c && liveQ(q)).forEach(r => todo.push(["quotes", r, n])); }
+    if (before.CustomerCode !== after.CustomerCode) D.assets.filter(a => a.SiteCode === c).forEach(r => todo.push(["assets", r, { CustomerCode: after.CustomerCode }]));
+  }
+  if (!todo.length) return;
+  let ok = 0;
+  for (const [key, r, f] of todo){ try { if (!DEMO) await saveListItem(CONFIG.LISTS[key], r.id, f); Object.assign(r, f); ok++; } catch(e){ console.warn("Couldn't update", key, r.Title, e.message); } }
+  toast(`Updated the name on ${ok} linked record${ok === 1 ? "" : "s"}${ok < todo.length ? ` (${todo.length - ok} couldn't be changed)` : ""}`);
+  render();
+}
+
+/* =====================================================================
+   CUSTOMERS & SITES
+   ===================================================================== */
+S.cf = { q:"", status:"live", sort:["Title", 1] };
+const custStatusPill = s => s ? `<span class="pill ${{ Active:"p-ok", "On hold":"p-warn", Inactive:"p-grey" }[s] || "p-grey"}">${esc(s)}</span>` : "";
+const assetPill = s => s ? `<span class="pill ${{ "In service":"p-ok", Faulty:"p-crit", Decommissioned:"p-grey" }[s] || "p-grey"}">${esc(s)}</span>` : "";
+const warrantyPill = d => !d ? "" : d < TODAY ? `<span class="pill p-grey">Expired ${fmtDate(d)}</span>` : d <= addDays(TODAY, 60) ? `<span class="pill p-warn">Ends ${fmtDate(d)}</span>` : `<span class="pill p-ok">To ${fmtDate(d)}</span>`;
+function myobState(c){
+  if (c.MyobCardUID) return { cls:"p-ok", label:"Linked", note:`MYOB card ${c.MyobDisplayID || c.MyobCardUID}` };
+  const q = (D.sync || []).filter(x => x.EntityType === "Customer" && x.EntityRef === c.CustomerCode).sort((a, b) => String(b.id).localeCompare(String(a.id), undefined, { numeric:true }))[0];
+  if (q && q.SyncStatus === "Failed") return { cls:"p-crit", label:"MYOB error", note: q.ErrorMessage || "The last attempt failed", q };
+  if (q && q.SyncStatus !== "Done") return { cls:"p-warn", label:"Awaiting MYOB", note:`${q.SyncAction} requested${q.RequestedBy ? " by " + q.RequestedBy : ""}`, q };
+  return { cls:"p-grey", label:"Not linked", note:"" };
+}
+const mapUrl = x => (x.Latitude != null && x.Longitude != null && x.Latitude !== "" ) ? `https://www.google.com/maps/search/?api=1&query=${x.Latitude},${x.Longitude}`
+  : (x.Address || x.Town) ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([x.Address, x.Town, x.Province, "Papua New Guinea"].filter(Boolean).join(", "))}` : "";
+const lines = v => esc(v || "").replace(/\n/g, "<br>");
+const sortBy = (rows, [col, dir]) => [...rows].sort((a, b) => { const x = a[col] ?? "", y = b[col] ?? ""; return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), undefined, { numeric:true })) * dir; });
+const thS = (col, label) => { const [c, d] = S.cf.sort; return `<th data-csort="${col}">${label}${c === col ? (d > 0 ? " ▲" : " ▼") : ""}</th>`; };
+
+function viewCustomers(){
+  if (S.param) return viewCustomer(S.param);
+  const f = S.cf, q = norm(f.q), facts = jobFacts();
+  const openJobs = new Map(); D.jobs.forEach(j => { if (!CLOSED.includes(jobState(j, facts))) openJobs.set(j.CustomerCode, (openJobs.get(j.CustomerCode) || 0) + 1); });
+  const siteCount = new Map(); D.sites.forEach(x => siteCount.set(x.CustomerCode, (siteCount.get(x.CustomerCode) || 0) + 1));
+  const sitesText = new Map(); D.sites.forEach(x => sitesText.set(x.CustomerCode, (sitesText.get(x.CustomerCode) || "") + " " + [x.Title, x.SiteCode, x.Town, x.Address].join(" ")));
+  const rows = sortBy(D.customers.map(c => ({ ...c, _sites: siteCount.get(c.CustomerCode) || 0, _open: openJobs.get(c.CustomerCode) || 0, _myob: myobState(c).label }))
+    .filter(c => (f.status === "all" || (f.status === "live" ? c.CustomerStatus !== "Inactive" : c.CustomerStatus === f.status)) &&
+      (!q || norm([c.Title, c.CustomerCode, c.TradingName, c.Phone, c.Email, c.AccountsContact, sitesText.get(c.CustomerCode)].join(" ")).includes(q))), f.sort);
+  const active = D.customers.filter(c => c.CustomerStatus !== "Inactive");
+  const notLinked = active.filter(c => !c.MyobCardUID).length;
+  const chips = [["live","Active & on hold"],["Active","Active"],["On hold","On hold"],["Inactive","Inactive"],["all","All"]]
+    .map(([v, l]) => `<button class="chip ${f.status === v ? "on" : ""}" data-cstat="${v}">${l}</button>`).join("");
+  return `
+  <div class="bar"><h2>Customers &amp; Sites</h2><span class="grow"></span><button class="btn" id="refresh">↻ Refresh</button>
+    <button class="btn" data-new="site">+ New site</button><button class="btn primary" data-new="cust">+ New customer</button></div>
+  ${notSetUp(ROUTES.customers.lists)}
+  <div class="grid kpis">
+    <div class="card kpi k-cust"><div class="l">Customers</div><div class="v">${active.length}</div><div class="s">active &amp; on hold</div></div>
+    <div class="card kpi k-cust"><div class="l">Service sites</div><div class="v">${D.sites.filter(x => x.SiteStatus !== "Inactive").length}</div><div class="s">active</div></div>
+    <div class="card kpi k-cust"><div class="l">Customer equipment</div><div class="v">${D.assets.filter(a => a.AssetStatus !== "Decommissioned").length}</div><div class="s">${D.assets.filter(a => a.AssetStatus === "Faulty").length} faulty</div></div>
+    <div class="card kpi k-cust"><div class="l">Not linked to MYOB</div><div class="v">${notLinked}</div><div class="s">of ${active.length} customers</div></div>
+  </div>
+  <div class="bar"><input type="search" id="cq" placeholder="Search customer, site, town, phone, email…" value="${esc(f.q)}"><span class="chips" style="display:flex;flex-wrap:wrap">${chips}</span>
+    <span class="count">${rows.length} of ${D.customers.length}</span></div>
+  <div class="tablewrap"><table><thead><tr>${thS("CustomerCode","Code")}${thS("Title","Customer")}${thS("CustomerType","Type")}${thS("_sites","Sites")}${thS("_open","Open jobs")}<th>Contact</th>${thS("_myob","MYOB")}${thS("CustomerStatus","Status")}</tr></thead><tbody>
+  ${rows.map(c => `<tr data-go="customers/${encodeURIComponent(c.CustomerCode)}" tabindex="0"><td class="mono"><b>${esc(c.CustomerCode)}</b></td>
+    <td><b>${esc(c.Title)}</b>${c.TradingName ? `<br><span class="count">t/a ${esc(c.TradingName)}</span>` : ""}</td><td>${esc(c.CustomerType)}</td>
+    <td class="mono">${c._sites}</td><td class="mono">${c._open || ""}</td>
+    <td>${[c.AccountsContact && esc(c.AccountsContact), c.Phone && `<span class="count">${esc(c.Phone)}</span>`, c.Email && `<span class="count">${esc(c.Email)}</span>`].filter(Boolean).join("<br>")}</td>
+    <td><span class="pill ${myobState(c).cls}">${esc(c._myob)}</span></td><td>${custStatusPill(c.CustomerStatus)}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">${D.customers.length ? "No customers match" : "No customers yet — click <b>+ New customer</b> to add the first one"}</div>`}</div>`;
+}
+
+function jobsTable(jobs, showSite){
+  const facts = jobFacts();
+  const rows = jobs.map(j => ({ ...j, _st: jobState(j, facts) })).sort((a, b) => (b.DateReceived || "").localeCompare(a.DateReceived || "") || String(b.Title).localeCompare(String(a.Title), undefined, { numeric:true }));
+  return `<div class="tablewrap"><table><thead><tr><th>Job</th><th>Type</th>${showSite ? "<th>Site</th>" : ""}<th>Description</th><th>Received</th><th>Completed</th><th>Status</th><th>Invoice</th></tr></thead><tbody>
+  ${rows.map(j => `<tr data-go="jobs/${encodeURIComponent(j.Title)}" tabindex="0"><td class="mono"><b>${esc(j.Title)}</b></td><td>${esc(j.JobType || "")}</td>${showSite ? `<td>${esc(j.SiteName || "")}</td>` : ""}
+    <td class="clip"><div>${esc(j.Description || "")}</div></td><td class="mono">${fmtDate(j.DateReceived)}</td><td class="mono">${fmtDate(j.CompletedDate)}</td><td>${jobPill(j._st)}</td><td class="mono">${esc(j.InvoiceNo || "")}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No jobs yet</div>`}</div>`;
+}
+function quotesTable(quotes, showSite){
+  const rows = [...quotes].sort((a, b) => String(b.Title).localeCompare(String(a.Title), undefined, { numeric:true }));
+  const pill = s => s ? `<span class="pill ${{ Draft:"p-grey", Sent:"p-info", Accepted:"p-ok", Declined:"p-bad", Expired:"p-grey" }[s] || "p-grey"}">${esc(s)}</span>` : "";
+  return `<div class="tablewrap"><table><thead><tr><th>Quote</th>${showSite ? "<th>Site</th>" : ""}<th>Date</th><th>Valid until</th><th>Total ex GST</th><th>Status</th><th>Job</th></tr></thead><tbody>
+  ${rows.map(q => `<tr data-go="quotes/${encodeURIComponent(q.Title)}" tabindex="0"><td class="mono"><b>${esc(q.Title)}</b></td>${showSite ? `<td>${esc(q.SiteName || "")}</td>` : ""}<td class="mono">${fmtDate(q.QuoteDate)}</td>
+    <td class="mono">${fmtDate(q.ValidUntil)}</td><td class="mono">${money(q.SubtotalEx)}</td><td>${pill(q.QuoteStatus)}</td><td class="mono">${esc(q.JobNo || "")}</td></tr>`).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No quotes yet</div>`}</div>`;
+}
+const notFound = (what, code) => `<div class="bar"><a class="btn" href="#/customers">← Customers</a></div><div class="banner err">${what} <b>${esc(code)}</b> wasn't found. It may have been removed — try ↻ Refresh on the Customers page.</div>`;
+
+function viewCustomer(code){
+  const c = D.customers.find(x => x.CustomerCode === code); if (!c) return notFound("Customer", code);
+  const facts = jobFacts(), sites = D.sites.filter(x => x.CustomerCode === code).sort((a, b) => a.Title.localeCompare(b.Title));
+  const jobs = D.jobs.filter(j => j.CustomerCode === code), quotes = D.quotes.filter(q => q.CustomerCode === code);
+  const openBySite = new Map(); jobs.forEach(j => { if (!CLOSED.includes(jobState(j, facts))) openBySite.set(j.SiteCode, (openBySite.get(j.SiteCode) || 0) + 1); });
+  const m = myobState(c), mode = setting("MyobMode", "Not connected");
+  return `
+  <div class="crumbs"><a href="#/customers">Customers</a> › ${esc(c.Title)}</div>
+  <div class="bar"><h2>${esc(c.Title)}</h2>${custStatusPill(c.CustomerStatus)}<span class="grow"></span>
+    <button class="btn" data-edit="cust|${esc(c.id)}">Edit customer</button><button class="btn primary" data-new="site|${esc(code)}">+ New site</button></div>
+  <div class="grid two">
+    <div class="card"><h3>Customer</h3><dl class="kv">
+      <dt>Code</dt><dd class="mono">${esc(c.CustomerCode)}</dd>
+      ${c.TradingName ? `<dt>Trading as</dt><dd>${esc(c.TradingName)}</dd>` : ""}
+      <dt>Type</dt><dd>${esc(c.CustomerType || "")}</dd>
+      <dt>Accounts contact</dt><dd>${esc(c.AccountsContact || "—")}</dd>
+      <dt>Accounts email</dt><dd>${c.Email ? `<a href="mailto:${esc(c.Email)}">${esc(c.Email)}</a>` : "—"}</dd>
+      <dt>Phone</dt><dd>${c.Phone ? `<a href="tel:${esc(c.Phone)}">${esc(c.Phone)}</a>` : "—"}</dd>
+      <dt>Payment terms</dt><dd>${c.PaymentTermsDays != null && c.PaymentTermsDays !== "" ? esc(c.PaymentTermsDays) + " days" : "—"}</dd>
+      ${c.TIN ? `<dt>TIN</dt><dd class="mono">${esc(c.TIN)}</dd>` : ""}
+      <dt>Billing address</dt><dd>${lines(c.BillingAddress) || "—"}</dd>
+      ${c.Notes ? `<dt>Notes</dt><dd>${lines(c.Notes)}</dd>` : ""}</dl></div>
+    <div class="card"><h3>MYOB</h3>
+      <p><span class="pill ${m.cls}">${esc(m.label)}</span> ${m.note ? `<span class="count">${esc(m.note)}</span>` : ""}</p>
+      ${c.MyobCardUID ? `<p class="count">Invoices for this customer go to this MYOB card.</p>`
+        : m.q ? `<p class="count">${mode === "Not connected" ? "MYOB isn't connected to the Hub yet, so this request is waiting in the MYOB queue. It goes through automatically once the connection is set up." : "The request is in the MYOB queue."}</p>`
+        : `<p class="count">Link this customer to their MYOB customer card so invoices can be sent to MYOB. If there's no card yet, one is created from these details.</p>
+           <button class="btn" id="myobLink" data-code="${esc(code)}">Link to MYOB card</button>
+           ${mode === "Not connected" ? `<p class="count" style="margin-top:8px">MYOB isn't connected yet — the request will wait in the queue until it is.</p>` : ""}`}
+      <h3 style="margin-top:18px">At a glance</h3><dl class="kv">
+      <dt>Sites</dt><dd>${sites.length}</dd><dt>Open jobs</dt><dd>${[...openBySite.values()].reduce((a, b) => a + b, 0)}</dd>
+      <dt>Quotes awaiting reply</dt><dd>${quotes.filter(q => q.QuoteStatus === "Sent").length}</dd><dt>Jobs all time</dt><dd>${jobs.length}</dd></dl></div>
+  </div>
+  <div class="bar" style="margin-top:22px"><h2>Sites</h2><span class="count">${sites.length}</span></div>
+  <div class="tablewrap"><table><thead><tr><th>Code</th><th>Site</th><th>Town / province</th><th>Site contact</th><th>Equipment</th><th>Open jobs</th><th>Status</th></tr></thead><tbody>
+  ${sites.map(x => `<tr data-go="site/${encodeURIComponent(x.SiteCode)}" tabindex="0"><td class="mono"><b>${esc(x.SiteCode)}</b></td><td><b>${esc(x.Title)}</b></td>
+    <td>${esc([x.Town, x.Province].filter(Boolean).join(", "))}</td><td>${esc(x.ContactName || "")}${x.ContactPhone ? `<br><span class="count">${esc(x.ContactPhone)}</span>` : ""}</td>
+    <td class="mono">${D.assets.filter(a => a.SiteCode === x.SiteCode && a.AssetStatus !== "Decommissioned").length}</td><td class="mono">${openBySite.get(x.SiteCode) || ""}</td>
+    <td>${x.SiteStatus === "Inactive" ? `<span class="pill p-grey">Inactive</span>` : `<span class="pill p-ok">Active</span>`}</td></tr>`).join("")}
+  </tbody></table>${sites.length ? "" : `<div class="empty">No sites yet — add the places MJE works for this customer with <b>+ New site</b></div>`}</div>
+  <div class="bar" style="margin-top:22px"><h2>Job history</h2><span class="count">${jobs.length}</span></div>${jobsTable(jobs, true)}
+  <div class="bar" style="margin-top:22px"><h2>Quotes</h2><span class="count">${quotes.length}</span></div>${quotesTable(quotes, true)}`;
+}
+
+function viewSite(){
+  const code = S.param, x = D.sites.find(r => r.SiteCode === code); if (!x) return notFound("Site", code);
+  const c = D.customers.find(r => r.CustomerCode === x.CustomerCode);
+  const assets = D.assets.filter(a => a.SiteCode === code).sort((a, b) => (a.AssetStatus === "Decommissioned") - (b.AssetStatus === "Decommissioned") || (a.AssetType || "").localeCompare(b.AssetType || "") || String(a.Title).localeCompare(String(b.Title), undefined, { numeric:true }));
+  const jobs = D.jobs.filter(j => j.SiteCode === code), quotes = D.quotes.filter(q => q.SiteCode === code), map = mapUrl(x);
+  return `
+  <div class="crumbs"><a href="#/customers">Customers</a> › ${c ? `<a href="#/customers/${encodeURIComponent(c.CustomerCode)}">${esc(c.Title)}</a>` : esc(x.CustomerName || x.CustomerCode || "")} › ${esc(x.Title)}</div>
+  <div class="bar"><h2>${esc(x.Title)}</h2>${x.SiteStatus === "Inactive" ? `<span class="pill p-grey">Inactive</span>` : ""}<span class="grow"></span>
+    ${map ? `<a class="btn" href="${esc(map)}" target="_blank" rel="noopener">🗺 Map</a>` : ""}<button class="btn" data-edit="site|${esc(x.id)}">Edit site</button><button class="btn primary" data-new="asset|${esc(code)}">+ Add equipment</button></div>
+  <div class="grid two">
+    <div class="card"><h3>Site</h3><dl class="kv">
+      <dt>Code</dt><dd class="mono">${esc(x.SiteCode)}</dd><dt>Customer</dt><dd>${c ? `<a href="#/customers/${encodeURIComponent(c.CustomerCode)}">${esc(c.Title)}</a>` : esc(x.CustomerName || "")}</dd>
+      <dt>Address</dt><dd>${[lines(x.Address), esc([x.Town, x.Province].filter(Boolean).join(", "))].filter(Boolean).join("<br>") || "—"}</dd>
+      <dt>GPS</dt><dd class="mono">${x.Latitude != null && x.Latitude !== "" ? `${esc(x.Latitude)}, ${esc(x.Longitude)}` : `<span class="count">not recorded — use 📍 in Edit site when you're there</span>`}</dd>
+      <dt>Site contact</dt><dd>${esc(x.ContactName || "—")}${x.ContactPhone ? ` · <a href="tel:${esc(x.ContactPhone)}">${esc(x.ContactPhone)}</a>` : ""}${x.ContactEmail ? `<br><a href="mailto:${esc(x.ContactEmail)}">${esc(x.ContactEmail)}</a>` : ""}</dd></dl></div>
+    <div class="card"><h3>For the technician</h3>
+      ${x.SiteHazards ? `<div class="banner err" style="margin-bottom:10px"><b>Site hazards</b><br>${lines(x.SiteHazards)}</div>` : ""}
+      <dl class="kv"><dt>Access</dt><dd>${lines(x.AccessNotes) || "—"}</dd>${x.SiteHazards ? "" : `<dt>Hazards</dt><dd>None recorded</dd>`}</dl>
+      <p class="count" style="margin-top:10px">Technicians see these notes and the equipment list on their phone before they start.</p></div>
+  </div>
+  <div class="bar" style="margin-top:22px"><h2>Equipment</h2><span class="count">${assets.length}</span></div>
+  <div class="tablewrap"><table><thead><tr><th>Code</th><th>Type</th><th>Description</th><th>Make / model</th><th>Serial no.</th><th>Rating</th><th>Location</th><th>Installed</th><th>Warranty</th><th>Status</th></tr></thead><tbody>
+  ${assets.map(a => `<tr data-edit="asset|${esc(a.id)}" tabindex="0"><td class="mono"><b>${esc(a.Title)}</b></td><td>${esc(a.AssetType || "")}</td><td>${esc(a.Description || "")}</td>
+    <td>${esc([a.Make, a.Model].filter(Boolean).join(" "))}</td><td class="mono">${esc(a.SerialNo || "")}</td><td>${esc(a.RatingSize || "")}</td><td>${esc(a.LocationOnSite || "")}</td>
+    <td class="mono">${fmtDate(a.InstallDate)}</td><td>${warrantyPill(a.WarrantyEnd)}</td><td>${assetPill(a.AssetStatus)}</td></tr>`).join("")}
+  </tbody></table>${assets.length ? "" : `<div class="empty">No equipment recorded — add switchboards, generators, UPS, A/C units and so on with <b>+ Add equipment</b></div>`}</div>
+  <div class="bar" style="margin-top:22px"><h2>Job history</h2><span class="count">${jobs.length}</span></div>${jobsTable(jobs, false)}
+  <div class="bar" style="margin-top:22px"><h2>Quotes</h2><span class="count">${quotes.length}</span></div>${quotesTable(quotes, false)}`;
+}
+
+function bindCustomers(){
+  document.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { const [kind, code] = b.dataset.new.split("|");
+    openForm(kind, null, kind === "site" && code ? { CustomerCode: code } : kind === "asset" && code ? { SiteCode: code } : {}); });
+  document.querySelectorAll("[data-edit]").forEach(b => { const open = () => { const [kind, id] = b.dataset.edit.split("|"); openForm(kind, D[FORMS[kind].list].find(r => String(r.id) === id)); };
+    b.onclick = open; b.onkeydown = e => { if (e.key === "Enter") open(); }; });
+  document.querySelectorAll("[data-cstat]").forEach(b => b.onclick = () => { S.cf.status = b.dataset.cstat; render(); });
+  document.querySelectorAll("[data-csort]").forEach(h => h.onclick = () => { const c = h.dataset.csort, cur = S.cf.sort; S.cf.sort = [c, cur[0] === c ? -cur[1] : 1]; render(); });
+  const cq = $("#cq"); if (cq) cq.oninput = () => { S.cf.q = cq.value; const pos = cq.selectionStart; render(); const n = $("#cq"); n.focus(); n.setSelectionRange(pos, pos); };
+  const ml = $("#myobLink"); if (ml) ml.onclick = () => queueMyobLink(ml.dataset.code);
+}
+// MYOB: the request is queued in MJE_MyobSync; the connector (built later) picks it up. Nothing is sent from the browser.
+async function queueMyobLink(code){
+  const c = D.customers.find(x => x.CustomerCode === code); if (!c) return;
+  const item = { Title:`${code}-${Date.now().toString(36).toUpperCase()}`, EntityType:"Customer", EntityRef:code, SyncAction:"Link card", SyncStatus:"Awaiting MYOB", Attempts:0,
+    RequestedBy: S.me?.Title || account?.name || "", Payload: JSON.stringify({ name:c.Title, email:c.Email || "", phone:c.Phone || "", address:c.BillingAddress || "", tin:c.TIN || "" }) };
+  try { const saved = DEMO ? { id:"demo" + Date.now(), ...item } : await saveListItem(CONFIG.LISTS.sync, null, item); D.sync.push(saved); toast("Added to the MYOB queue"); render(); }
+  catch(e){ toast(isForbidden(e) ? "You don't have permission to use the MYOB queue — it's for the MJE office." : "Couldn't queue it: " + e.message); }
 }
 
 /* ---------------- boot ---------------- */
@@ -376,6 +692,7 @@ async function start(){
   $("#apps").outerHTML = mjeAppSwitcher("service");
   $("#dlgLogo").src = $(".logo .chip img").src;
   $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
+  $("#frm").onsubmit = submitForm;
   if (DEMO){
     account = { name:"Demo user", username:"demo@example.com" };
     Object.values(CONFIG.LISTS).forEach(n => S.have.add(n));
