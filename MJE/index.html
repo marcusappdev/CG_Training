@@ -436,7 +436,10 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 const DEPTS = ["Administration","Service","Projects","Other"];
 const STAFF_FORM = [["Staff member", [
   ["Title","Full name","text",{req:1}], ["EmployeeNo","Employee no.","text"], ["Position","Position","text",{req:1}],
-  ["Department","Department","select",{opts:DEPTS,req:1}], ["StaffStatus","Status","select",{opts:["Active","Left"]}], ["Notes","Notes","textarea",{w:3}] ]]];
+  ["Department","Department","select",{opts:DEPTS,req:1}], ["StaffStatus","Status","select",{opts:["Active","Left"]}], ["Notes","Notes","textarea",{w:3}] ]],
+  ["Service Hub access", [
+  ["Email","M365 email (sign-in) — leave blank if no account","email",{w:2}], ["HubRole","Service Hub role","select",{opts:["Technician","Office","Admin","None"]}],
+  ["Initials","Initials","text"], ["Mobile","Mobile","tel"] ]]];
 const COURSE_FORM = [["Course", [
   ["Title","Course name","text",{req:1}], ["Category","Category","text"], ["RefresherMonths","Refresher every (months)","number"], ["Notes","Notes","textarea",{w:3}] ]]];
 const TRN_FORM = [
@@ -469,7 +472,7 @@ function viewTraining(){
   const sub = S.filt.training.sub;
   const tabs = `<div class="bar chips"><button class="chip ${sub==="matrix"?"on":""}" data-tsub="matrix">Competency matrix</button><button class="chip ${sub==="staff"?"on":""}" data-tsub="staff">Staff <span>${activeStaff().length}</span></button><button class="chip ${sub==="course"?"on":""}" data-tsub="course">Courses <span>${S.course.length}</span></button></div>`;
   if (S.missing.includes("trn") || S.missing.includes("staff")) return `<div class="bar"><h2>Training & Competency</h2></div>${tabs}<div class="banner err">The training lists haven't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
-  if (sub === "staff") return viewSimpleList("staff", "Staff", tabs, [["Title","Name"],["EmployeeNo","Emp no."],["Position","Position"],["Department","Department"],["StaffStatus","Status"]], "+ New staff member");
+  if (sub === "staff") return viewSimpleList("staff", "Staff", tabs, [["Title","Name"],["EmployeeNo","Emp no."],["Position","Position"],["Department","Department"],["HubRole","Service Hub role"],["StaffStatus","Status"]], "+ New staff member");
   if (sub === "course") return viewSimpleList("course", "Courses", tabs, [["Title","Course"],["Category","Category"],["RefresherMonths","Refresher (months)"]], "+ New course");
   const f = S.filt.trn, q = f.q.toLowerCase();
   const staff = activeStaff().filter(s => (!f.dept || s.Department === f.dept) && (!f.gaps || S.trn.some(r => r.StaffName === s.Title && r.Requirement === "Mandatory" && ["missing","expired"].includes(trnState(r)))) && (!q || [s.Title,s.Position,s.EmployeeNo].join(" ").toLowerCase().includes(q)))

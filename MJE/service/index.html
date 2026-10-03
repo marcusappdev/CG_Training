@@ -24,6 +24,10 @@ table.setup{min-width:0}
 main.tech{max-width:640px}
 .list li > .pill{align-self:flex-start}
 .kpi.k-cust{--kc:var(--muted)}
+table.roles input,table.roles select{width:100%;min-width:170px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--text)}
+table.roles tr.dirty td{background:var(--warn-bg)}
+table.roles tbody tr{cursor:default}
+.banner a{color:inherit}
 .gpscell{justify-content:flex-end}.gpscell .btn{padding:8px 12px;white-space:nowrap}
 .crumbs{font-size:13px;color:var(--muted);margin-bottom:6px}.crumbs a{color:inherit}
 tr[data-go],tr[data-edit]{cursor:pointer}
@@ -235,7 +239,7 @@ function render(){
   renderHeader();
   $("#main").className = effRole() === "Technician" ? "tech" : "";
   let banner = DEMO ? `<div class="banner">Demo mode — nothing is read from or saved to SharePoint. Add <code>?role=Office</code> or <code>?role=Technician</code> to the address to try other roles.</div>` : "";
-  if (S.roleSource === "setup" && !S.viewAs) banner += `<div class="banner">First-run set-up: nobody has a Service Hub role yet, so you have the Admin view. In <b>MJE_Staff</b> (Safety Hub → Training → Staff, or the list itself) fill in each person's <b>M365 Email</b> and <b>Service Hub Role</b> — see Settings.</div>`;
+  if (S.roleSource === "setup" && !S.viewAs) banner += `<div class="banner">First-run set-up: nobody has an Office or Admin role yet, so you have the Admin view. Go to <a href="#/settings/roles"><b>Settings → Staff &amp; roles</b></a>, set your own role to <b>Admin</b>, then set everyone else's.</div>`;
   if (S.viewAs) banner += `<div class="banner viewas"><span>Showing the technician view for <b>${esc(S.viewAs)}</b>. SharePoint still saves as you.</span><span class="grow"></span><button class="btn" id="backOffice">← Back to office view</button></div>`;
   const keys = ROUTES[S.route]?.load;
   if (keys && keys.some(k => !D[k])){
@@ -255,7 +259,7 @@ function bindView(){
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go(b.dataset.go);
     b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(b.dataset.go); } }; });
   if ($("#refresh")) $("#refresh").onclick = refreshData;
-  bindCustomers();
+  bindCustomers(); bindRoles();
   const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
 }
 
@@ -302,7 +306,7 @@ function viewDash(){
   </div>
   ${noRate ? `<div class="banner">${Math.round(noRate * 10) / 10} billable hour${noRate === 1 ? "" : "s"} on completed jobs ha${noRate === 1 ? "s" : "ve"} no matching labour rate, so ${noRate === 1 ? "it isn't" : "they aren't"} in the "Ready to invoice" value. Check the labour rate codes in Settings.</div>` : ""}
   ${empty ? `<div class="card" style="margin-bottom:14px"><h3>Getting started</h3><ol style="margin:0;padding-left:20px;line-height:1.8">
-      <li>Fill in each person's <b>M365 Email</b> and <b>Service Hub Role</b> in MJE_Staff, and put office staff in the <b>MJE Office</b> group.</li>
+      <li>In <a href="#/settings/roles"><b>Settings → Staff &amp; roles</b></a>, set each person's M365 email and Service Hub role, and put office staff in the <b>MJE Office</b> group.</li>
       <li>Add labour rates, markup and company details in <b>Settings</b>.</li>
       <li>Add customers and their sites in <b>Customers &amp; Sites</b>.</li>
       <li>Raise a <b>quote</b>, or create a <b>job</b> straight away, then book it in the <b>Scheduler</b>.</li></ol>
@@ -358,8 +362,9 @@ function viewSettings(){
     <div class="card"><h3>Staff roles</h3><dl class="kv">
       <dt>Active staff</dt><dd>${staff.length}</dd><dt>With M365 email</dt><dd>${withEmail} of ${staff.length} <span class="count">· leave it blank for staff with no Microsoft 365 account — the office enters their work</span></dd>
       <dt>With a Service Hub role</dt><dd>${withRole}</dd><dt>Technicians</dt><dd>${techs.length}</dd></dl>
-      <p class="count" style="margin-top:12px">Set <b>M365 Email</b> and <b>Service Hub Role</b> on each person in MJE_Staff. The role only picks which screens open — SharePoint groups (Owners, MJE Office, Visitors) still decide what each person can change.</p></div>
+      <p class="count" style="margin-top:12px">Set these in <b>Staff &amp; roles</b> below. The role only picks which screens open — SharePoint groups (Owners, MJE Office, Visitors) still decide what each person can change.</p></div>
   </div>
+  ${rolesEditor()}
   <div class="bar" style="margin-top:22px"><h2>SharePoint set-up</h2><span class="grow"></span><span class="count">${ready} of ${service.length} Service Hub lists ready</span></div>
   ${ready < service.length ? `<div class="banner">Run Setup-MJE-Hub.ps1 (steps 10–16) on ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} to create the missing lists, then refresh.</div>` : ""}
   <div class="grid two">
@@ -367,6 +372,52 @@ function viewSettings(){
     <div class="tablewrap" style="align-self:start"><table class="setup"><thead><tr><th>Safety Hub list</th><th>Used for</th><th>Status</th></tr></thead><tbody>${SAFETY_KEYS.map(row).join("")}</tbody></table></div>
   </div>
   <div class="todo" style="margin-top:20px">Labour rates, rounding, markup, GST, numbering, checklist templates, job type → course mapping and company details are added with the Settings screen.</div>`;
+}
+
+/* ---------------- Settings → Staff & roles (edits MJE_Staff: Email, HubRole) ---------------- */
+const HUB_ROLES = [["", "Not set"], ["Technician","Technician"], ["Office","Office"], ["Admin","Admin"], ["None","None (no access)"]];
+function rolesEditor(){
+  const staff = [...S.staff].filter(s => s.StaffStatus !== "Left").sort((a, b) => (a.Department || "").localeCompare(b.Department || "") || a.Title.localeCompare(b.Title));
+  return `<div class="bar" id="roles" style="margin-top:22px"><h2>Staff &amp; roles</h2><span class="grow"></span><span class="count" id="rolesDirty"></span><button class="btn primary" id="saveRoles" disabled>Save changes</button></div>
+  <p class="count" style="margin:-6px 0 12px"><b>M365 email</b> is the address the person signs in with — leave it blank for staff without a Microsoft 365 account (the office enters their time and sign-offs).
+    <b>Technician</b> opens My Jobs on the phone; <b>Office</b> and <b>Admin</b> open the office screens (Admin will also edit Settings). Only MJE site owners can save changes here.
+    Staff are added in the Safety Hub (Training → Staff), which has the same fields.</p>
+  <div class="tablewrap"><table class="setup roles"><thead><tr><th>Name</th><th>Position</th><th>Department</th><th>M365 email (sign-in)</th><th>Service Hub role</th></tr></thead><tbody>
+  ${staff.map(s => `<tr data-sid="${esc(s.id)}"${s === S.me ? ' class="me"' : ""}><td><b>${esc(s.Title)}</b>${s === S.me ? ` <span class="pill p-info">you</span>` : ""}</td><td>${esc(s.Position || "")}</td><td>${esc(s.Department || "")}</td>
+    <td><input type="email" data-k="Email" value="${esc(s.Email || "")}" placeholder="name@company" autocomplete="off"></td>
+    <td><select data-k="HubRole">${HUB_ROLES.map(([v, l]) => `<option value="${v}" ${(s.HubRole || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></td></tr>`).join("")}
+  </tbody></table>${staff.length ? "" : `<div class="empty">No active staff in MJE_Staff</div>`}</div>`;
+}
+let rolesWarned = false;
+function bindRoles(){
+  const tbl = $("table.roles"); if (!tbl) return;
+  if (S.param === "roles") $("#roles").scrollIntoView({ block:"start" });
+  const changed = () => [...tbl.querySelectorAll("tr[data-sid]")].map(tr => {
+    const s = S.staff.find(x => String(x.id) === tr.dataset.sid), f = {};
+    tr.querySelectorAll("[data-k]").forEach(el => { const v = el.value.trim(); if (v !== (s[el.dataset.k] || "")) f[el.dataset.k] = v; });
+    tr.classList.toggle("dirty", Object.keys(f).length > 0);
+    return Object.keys(f).length ? { s, f } : null;
+  }).filter(Boolean);
+  tbl.oninput = tbl.onchange = () => { const n = changed().length; $("#saveRoles").disabled = !n; $("#rolesDirty").textContent = n ? `${n} unsaved change${n === 1 ? "" : "s"}` : ""; rolesWarned = false; };
+  $("#saveRoles").onclick = async () => {
+    const todo = changed(); if (!todo.length) return;
+    const bad = todo.find(({ f }) => f.Email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.Email));
+    if (bad) return toast(`"${bad.f.Email}" doesn't look like an email address (${bad.s.Title})`);
+    const emails = new Map();
+    for (const s of S.staff){ const t = todo.find(x => x.s === s), e = norm(t && "Email" in t.f ? t.f.Email : s.Email); if (!e) continue;
+      if (emails.has(e)) return toast(`${emails.get(e)} and ${s.Title} have the same email — each person needs their own`); emails.set(e, s.Title); }
+    const mine = todo.find(x => x.s === S.me && "HubRole" in x.f && !OFFICE.includes(x.f.HubRole));
+    if (mine && !rolesWarned){ rolesWarned = true; return toast("You're removing your own office access — you'll lose these screens. Click Save changes again if you're sure."); }
+    $("#saveRoles").disabled = true;
+    let ok = 0, denied = false;
+    for (const { s, f } of todo){
+      const out = {}; Object.entries(f).forEach(([k, v]) => out[k] = v === "" ? null : v);
+      try { if (!DEMO) await saveListItem(CONFIG.LISTS.staff, s.id, out); Object.assign(s, f); ok++; }
+      catch(e){ console.warn("Couldn't save", s.Title, e.message); if (isForbidden(e)) { denied = true; break; } }
+    }
+    [S.role, S.roleSource] = resolveRole(); readHash(); render();
+    toast(denied ? "Only MJE site owners can change staff roles — ask an owner, or add you to the site Owners group." : `Saved ${ok} change${ok === 1 ? "" : "s"}${ok < todo.length ? ` — ${todo.length - ok} couldn't be saved` : ""}`);
+  };
 }
 
 /* =====================================================================
