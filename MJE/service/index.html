@@ -58,6 +58,46 @@ label.apick{display:flex;gap:6px;align-items:center;color:var(--text);font-size:
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .ph img{width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--grey-bg)}
 #dlgBody > .btn.danger{margin-top:4px}
+.seg button{font-size:13px;padding:6px 12px}
+.stitle{font-size:14px;margin-left:4px}
+#sdate{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color-scheme:light dark}
+.sched{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px;align-items:start}
+.sgrid{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:0 0 4px}
+.shelp{margin-top:8px}
+.sname{font-weight:600;font-size:13px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--line);background:var(--surface);color:var(--text)}
+.sname span{font-weight:400;color:var(--muted);font-size:11px}
+.dv{min-width:980px}
+.dv-row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid var(--line)}
+.dv-head{position:sticky;top:0;z-index:2;background:var(--surface2)}
+.dv-hours{position:relative;height:28px}
+.dv-hours span{position:absolute;top:7px;transform:translateX(-50%);font-size:11px;color:var(--muted)}
+.dv-hours span:first-child{transform:none}.dv-hours span:last-child{transform:translateX(-100%)}
+.dv-lane{position:relative;cursor:copy;background-image:repeating-linear-gradient(to right,var(--line) 0 1px,transparent 1px calc(100% / 14))}
+.dv-lane .now{position:absolute;top:0;bottom:0;width:2px;background:var(--crit);z-index:1;pointer-events:none}
+.blk,.wblk{background:var(--surface2);border:1px solid var(--c-job);border-left:4px solid var(--c-job);border-radius:6px;font-size:11.5px;line-height:1.3;color:var(--text);cursor:grab;overflow:hidden}
+.blk{position:absolute;padding:3px 9px 3px 6px;white-space:nowrap;text-overflow:ellipsis;z-index:1}
+.blk .t,.wblk .t{color:var(--muted)}
+.blk .rz{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;background:linear-gradient(to right,transparent,rgba(127,127,127,.25))}
+.blk.p-high,.wblk.p-high,.ucard.p-high{border-left-color:var(--bad)}
+.blk.p-urgent,.wblk.p-urgent,.ucard.p-urgent{border-left-color:var(--crit)}
+.blk.warn,.wblk.warn{background:var(--warn-bg)}
+.blk.clash,.wblk.clash{border-color:var(--crit);box-shadow:inset 0 0 0 1px var(--crit)}
+.wv{display:grid;grid-template-columns:140px repeat(7,minmax(100px,1fr));min-width:840px}
+.wh{position:sticky;top:0;z-index:2;background:var(--surface2);font-size:12px;font-weight:600;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}
+.wh.today{color:var(--info)}
+.wcell{min-height:74px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);padding:4px;display:flex;flex-direction:column;gap:4px;cursor:copy}
+.wcell.today{background:var(--info-bg)}.wcell.wkend,.wh.wkend{background:var(--grey-bg)}
+.wblk{padding:3px 6px}
+.over{outline:2px dashed var(--c-job);outline-offset:-2px;background-color:var(--info-bg) !important}
+.upanel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:12px;position:sticky;top:70px;max-height:calc(100vh - 90px);display:flex;flex-direction:column}
+.upanel input[type=search]{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.ulist{overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.ucard{border:1px solid var(--line);border-left:4px solid var(--c-job);border-radius:8px;padding:8px 10px;background:var(--surface2);cursor:grab;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.ucard:active,.blk:active,.wblk:active{cursor:grabbing}
+.ucard .clip div{-webkit-line-clamp:2}
+.lg{display:inline-block;width:14px;height:10px;border-radius:2px;border:1px solid var(--c-job);border-left:4px solid var(--c-job)}
+.lg.p-high{border-left-color:var(--bad)}.lg.p-urgent{border-left-color:var(--crit)}.lg.clash{border-color:var(--crit)}.lg.warn{background:var(--warn-bg)}
+@media (max-width:1000px){.sched{grid-template-columns:1fr}.upanel{position:static;max-height:none}}
 #printArea{display:none}
 @media print{ body > *:not(#printArea){display:none !important} #printArea{display:block} body{background:#fff} @page{size:A4;margin:12mm} }
 .gpscell{justify-content:flex-end}.gpscell .btn{padding:8px 12px;white-space:nowrap}
@@ -128,7 +168,7 @@ const ROUTES = {
   customers: { label:"Customers & Sites", roles:OFFICE, lists:["customers","sites","assets"], load:CUST_LOAD, step:"Customers & Sites — search, create and edit; each site shows its equipment and full job history" },
   quotes:    { label:"Quotes",            roles:OFFICE, lists:["quotes","qlines","rates","numbers"], load:["quotes","qlines","rates","settings","customers","sites","jobs"], step:"Quotes — labour and parts lines, GST, print/PDF, email, follow-up list, Convert to Job" },
   jobs:      { label:"Job Centre",        roles:OFFICE, lists:["jobs","assign","time","mat","notes","comp","resp","numbers"], load:["jobs","assign","time","mat","notes","comp","resp","chk","inv","customers","sites","assets","rates","settings","quotes","trn","tt","inc"], step:"Job Centre — filterable job grid and the job page (Details, Schedule, Time, Materials, Notes & Photos, Checklists, Safety, Invoice)" },
-  schedule:  { label:"Scheduler",         roles:OFFICE, lists:["jobs","assign","staff"],         step:"Scheduler — one row per technician, day and week views, drag and drop, clash warnings" },
+  schedule:  { label:"Scheduler",         roles:OFFICE, lists:["jobs","assign","staff"], load:["jobs","assign","time","comp","customers","sites","settings","trn","tt"], step:"Scheduler — one row per technician, day and week views, drag and drop, clash warnings" },
   invoices:  { label:"Invoicing",         roles:OFFICE, lists:["inv","iline","pay","sync","numbers"], step:"Invoicing — invoices from completed jobs, deposits, progress, credit notes, payments, Send to MYOB" },
   settings:  { label:"Settings",          roles:OFFICE, lists:["settings","rates","numbers","chk"], load:["settings","rates"], step:"" },
   site:      { label:"Site",              roles:OFFICE, nav:false, lists:["customers","sites","assets"], load:CUST_LOAD, step:"" },
@@ -281,7 +321,7 @@ function render(){
       .catch(e => { $("#main").innerHTML = banner + `<div class="banner err">${isForbidden(e) ? "You don't have access to some of the Service Hub lists. Ask an MJE site owner to add you to the MJE Office group." : "Couldn't load data from SharePoint: " + esc(e.message)}</div>`; });
     return;
   }
-  const view = { dash:viewDash, customers:viewCustomers, site:viewSite, quotes:viewQuotes, jobs:viewJobs, schedule:viewTodo, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
+  const view = { dash:viewDash, customers:viewCustomers, site:viewSite, quotes:viewQuotes, jobs:viewJobs, schedule:viewSchedule, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
   $("#main").innerHTML = banner + view();
   if ($("#backOffice")) $("#backOffice").onclick = () => { S.viewAs = ""; go("dash"); };
   bindView();
@@ -291,7 +331,7 @@ function bindView(){
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go(b.dataset.go);
     b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(b.dataset.go); } }; });
   if ($("#refresh")) $("#refresh").onclick = refreshData;
-  bindCustomers(); bindRoles(); bindQuotes(); bindSettings(); bindJobs();
+  bindCustomers(); bindRoles(); bindQuotes(); bindSettings(); bindJobs(); bindSchedule();
   const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
 }
 
@@ -330,7 +370,7 @@ function viewDash(){
   ${notSetUp(ROUTES.dash.lists)}
   <div class="grid kpis dash">
     ${tile("jobs/open", "k-job", "Jobs open", open.length, `${inProg} in progress`)}
-    ${tile("schedule", "k-job", "Booked today", today.length, `${techs} technician${techs === 1 ? "" : "s"}`)}
+    ${tile("schedule/day", "k-job", "Booked today", today.length, `${techs} technician${techs === 1 ? "" : "s"}`)}
     ${tile("jobs/unscheduled", "k-job", "Unscheduled", unsched.length, hot ? `${hot} urgent or high` : "not booked yet", hot)}
     ${tile("jobs/overdue", "k-job", "Overdue jobs", overdue.length, "past due date", overdue.length)}
     ${tile("quotes/awaiting", "k-quo", "Quotes awaiting reply", awaiting.length, followDue ? `${followDue} follow-up${followDue === 1 ? "" : "s"} due` : `${kina(awaitVal)} ex GST`, followDue)}
@@ -346,7 +386,7 @@ function viewDash(){
   <div class="grid two">
     <div class="card"><h3>Today's schedule</h3>
       ${today.length ? `<ul class="list">${today.slice(0, 12).map(a => { const j = byNo.get(a.Title);
-        return `<li data-go="jobs/${encodeURIComponent(a.Title)}"><span class="id mono">${esc(a.StartTime || "")}${a.EndTime ? "–" + esc(a.EndTime) : ""}</span><span class="x"><b>${esc(a.Technician || "Unassigned")}</b> · ${esc(a.Title)}${j?.SiteName ? " · " + esc(j.SiteName) : ""}</span>${jobPill(j?._st)}</li>`; }).join("")}</ul>${more(today.length, 12, "schedule", "the Scheduler")}`
+        return `<li data-go="jobs/${encodeURIComponent(a.Title)}"><span class="id mono">${esc(a.StartTime || "")}${a.EndTime ? "–" + esc(a.EndTime) : ""}</span><span class="x"><b>${esc(a.Technician || "Unassigned")}</b> · ${esc(a.Title)}${j?.SiteName ? " · " + esc(j.SiteName) : ""}</span>${jobPill(j?._st)}</li>`; }).join("")}</ul>${more(today.length, 12, "schedule/day", "the Scheduler")}`
         : `<div class="empty">Nothing booked for today</div>`}</div>
     <div class="card"><h3>Jobs by status</h3>
       ${pipe.map(p => `<div class="hb"><span>${p.s}</span><span class="t"><i style="width:${p.n / pmax * 100}%;background:${STC[p.s]}"></i></span><span class="n">${p.n}</span></div>`).join("")}
@@ -1420,26 +1460,41 @@ function jobSchedule(j){
     <td>${a.CompetencyWarning ? `<span class="pill p-warn" title="${esc(a.CompetencyWarning)}">competency</span>` : ""}${a.AssignStatus !== "Cancelled" && clashes({ ...a, item:a }).length ? ` <span class="pill p-crit">clash</span>` : ""}</td>
     <td class="clip"><div>${esc(a.Notes || "")}</div></td></tr>`).join("")}
   </tbody></table>${rows.length ? "" : `<div class="empty">Not booked yet — click <b>+ Book a technician</b>. Book several people or several days as separate bookings.</div>`}</div>
-  <p class="count">The Scheduler screen (next to be built) shows every technician's week with drag and drop.</p>`;
+  <p class="count">The <a href="#/schedule">Scheduler</a> shows every technician's day and week, with drag and drop.</p>`;
 }
-function openBooking(j, a){
-  const v = a ? { ...a } : { AssignDate:TODAY, StartTime:"08:00", EndTime: num(j.EstimatedHours) && num(j.EstimatedHours) < 8 ? `${String(8 + Math.ceil(num(j.EstimatedHours))).padStart(2, "0")}:00` : "16:00", AssignStatus:"Planned" };
-  openDialog({ cls:"f-assign", kind:"Job Centre · Booking", title: a ? `Booking for ${j.Title}` : `Book a technician on ${j.Title}`, save: a ? "Save" : "Book",
-    body: formBody([["Booking", [["Technician","Technician","select",{req:1,w:2,opts:staffOpts}], ["AssignStatus","Status","select",{opts:["Planned","Confirmed","Cancelled"]}],
-      ["AssignDate","Date","date",{req:1}], ["StartTime","Start","time",{req:1}], ["EndTime","Finish","time",{req:1}], ["Notes","Notes for the technician","textarea",{w:3}] ]]], v)
+// Booking form, used by the job page and the Scheduler. With no job given, a job picker is shown (booking from an empty slot).
+const nextWorkday = d => { let x = addDays(d, 1); while ([0, 6].includes(new Date(...x.split("-").map((n, i) => i === 1 ? n - 1 : +n)).getDay())) x = addDays(x, 1); return x; };
+const defaultEnd = (j, start = "08:00") => { const h = num(j?.EstimatedHours), [sh, sm] = start.split(":").map(Number), mins = Math.min(sh * 60 + sm + (h && h < 8 ? Math.ceil(h * 4) * 15 : 480), 23 * 60 + 45); return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`; };
+function openBooking(j, a, preset = {}){
+  const pick = !j && !a, jobFor = () => j || jobByNo(pick ? val("Title") : a?.Title);
+  const v = a ? { ...a } : { AssignDate:TODAY, StartTime:"08:00", AssignStatus:"Planned", ...preset };
+  if (!a) v.EndTime = preset.EndTime || defaultEnd(j, v.StartTime);
+  const openJobs = () => { const f = jobFacts(); return D.jobs.filter(x => !CLOSED.includes(jobState(x, f))).sort(byUrgency).map(x => [x.Title, `${x.Title} — ${x.CustomerName || ""}${x.SiteName ? " · " + x.SiteName : ""}`]); };
+  openDialog({ cls:"f-assign", kind:"Booking", title: a ? `Booking for ${a.Title}` : j ? `Book a technician on ${j.Title}` : "New booking", save: a ? "Save" : "Book",
+    body: formBody([["Booking", [...(pick ? [["Title","Job","select",{req:1,w:3,opts:openJobs}]] : []),
+      ["Technician","Technician","select",{req:1,w:2,opts:staffOpts}], ["AssignStatus","Status","select",{opts:["Planned","Confirmed","Cancelled"]}],
+      ["AssignDate","Date","date",{req:1}], ["StartTime","Start","time",{req:1}], ["EndTime","Finish","time",{req:1}],
+      ...(a ? [] : [["_repeat","Also book the next … working days (multi-day jobs)","number",{min0:1}]]), ["Notes","Notes for the technician","textarea",{w:3}] ]]], v)
       + `<div id="bookWarn"></div>${a ? `<button type="button" class="btn danger" id="delBooking">Delete this booking</button>` : ""}`,
     onSubmit: async () => {
-      const f = readForm(); if (f.EndTime <= f.StartTime) return toast("Finish must be after start");
-      const gaps = competencyGaps(f.Technician, j.JobType, f.AssignDate);
-      await saveRow("assign", a, { Title:j.Title, ...f, CompetencyWarning: gaps.join("; ") });
-      $("#dlg").close(); toast(`${f.Technician} booked ${fmtDate(f.AssignDate)} ${f.StartTime}–${f.EndTime}${gaps.length ? " — competency warning noted" : ""}`); render();
+      const { _repeat, ...f } = readForm(), job = jobFor(); if (!job) return toast("Pick a job");
+      if (f.EndTime <= f.StartTime) return toast("Finish must be after start");
+      const n = Math.min(Math.max(0, Math.floor(num(_repeat))), 30); let date = f.AssignDate, warned = false;
+      for (let i = 0; i <= n; i++){
+        const gaps = competencyGaps(f.Technician, job.JobType, date); warned ||= gaps.length > 0;
+        await saveRow("assign", i === 0 ? a : null, { ...f, Title:job.Title, AssignDate:date, CompetencyWarning: gaps.join("; ") });
+        date = nextWorkday(date);
+      }
+      $("#dlg").close(); toast(`${f.Technician} booked on ${job.Title}${n ? ` for ${n + 1} days from ${fmtDate(f.AssignDate)}` : ` ${fmtDate(f.AssignDate)} ${f.StartTime}–${f.EndTime}`}${warned ? " — competency warning noted" : ""}`); render();
     } });
-  const warn = () => { const f = readForm(); if (!f.Technician) return $("#bookWarn").innerHTML = "";
-    const gaps = competencyGaps(f.Technician, j.JobType, f.AssignDate || TODAY), cl = clashes({ ...f, item:a }), tags = overdueTags(f.Technician), mapped = (courseMap()[j.JobType] || []).length;
-    $("#bookWarn").innerHTML = (gaps.length ? `<div class="banner">⚠ <b>Competency:</b> ${esc(f.Technician)} — ${gaps.map(esc).join("; ")}. You can still book; the warning is saved with the booking.</div>` : mapped ? `<div class="banner ok">✓ ${esc(f.Technician)} has the training this job type needs.</div>` : `<p class="count">No required training is set for ${esc(j.JobType || "this job type")} (Settings → job type → courses).</p>`)
+  const warn = () => { const f = readForm(), job = jobFor(); if (!f.Technician || !job) return $("#bookWarn").innerHTML = "";
+    const gaps = competencyGaps(f.Technician, job.JobType, f.AssignDate || TODAY), cl = clashes({ ...f, item:a }), tags = overdueTags(f.Technician), mapped = (courseMap()[job.JobType] || []).length;
+    $("#bookWarn").innerHTML = (gaps.length ? `<div class="banner">⚠ <b>Competency:</b> ${esc(f.Technician)} — ${gaps.map(esc).join("; ")}. You can still book; the warning is saved with the booking.</div>` : mapped ? `<div class="banner ok">✓ ${esc(f.Technician)} has the training ${esc(job.JobType)} needs.</div>` : `<p class="count">No required training is set for ${esc(job.JobType || "this job type")} (Settings → job type → courses).</p>`)
       + (cl.length ? `<div class="banner err">Clash: ${esc(f.Technician)} is already booked ${cl.map(x => `${esc(x.Title)} ${esc(x.StartTime || "")}–${esc(x.EndTime || "")}`).join(", ")} that day.</div>` : "")
       + (tags.length ? `<div class="banner">${esc(f.Technician)} has ${tags.length} test &amp; tag item${tags.length === 1 ? "" : "s"} overdue or failed: ${tags.map(t => esc(t.PlantID || t.Description || t.Title)).join(", ")}.</div>` : ""); };
-  $("#dlgBody").oninput = warn; warn();
+  $("#dlgBody").oninput = e => { if (pick && e.target.name === "Title" && !$("[name=EndTime]").dataset.touched) $("[name=EndTime]").value = defaultEnd(jobFor(), $("[name=StartTime]").value);
+    if (e.target.name === "EndTime") e.target.dataset.touched = "1"; warn(); };
+  warn();
   if ($("#delBooking")) $("#delBooking").onclick = async () => { try { await deleteRow("assign", a); $("#dlg").close(); toast("Booking deleted"); render(); } catch(e){ toast(isForbidden(e) ? NO_PERMISSION : e.message); } };
 }
 
@@ -1654,6 +1709,164 @@ function bindJobs(){
   const pin = $("#jobPhotoIn"); if (pin) pin.onchange = e => { const fs = [...e.target.files]; e.target.value = ""; uploadJobPhotos(j, fs); };
   if (jobTabOf() === "notes") loadJobPhotos(j.Title);
 }
+
+/* =====================================================================
+   SCHEDULER — one row per technician; day view (time line) and week view
+   Drag an unscheduled job onto a person, drag a booking to move it,
+   drag its right edge to change the finish time (day view). Clashes are flagged.
+   ===================================================================== */
+const DAY_START = 6 * 60, DAY_END = 20 * 60, DAY_SPAN = DAY_END - DAY_START, SNAP = 15;
+const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+S.sf = { view:"week", date:TODAY, q:"", all:false };
+const toMin = t => { if (!t) return null; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const toHHMM = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const dowOf = d => { const [y, m, dd] = d.split("-").map(Number); return (new Date(y, m - 1, dd).getDay() + 6) % 7; };   // Mon = 0
+const weekStart = d => addDays(d, -dowOf(d));
+const dayLabel = d => { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd).toLocaleDateString("en-AU", { weekday:"short", day:"numeric", month:"short" }); };
+const liveBookings = () => D.assign.filter(a => a.AssignStatus !== "Cancelled");
+function schedRows(from, to){
+  const names = technicians(), inRange = liveBookings().filter(a => a.AssignDate >= from && a.AssignDate <= to).map(a => a.Technician).filter(Boolean);
+  return [...names, ...[...new Set(inRange)].filter(n => !names.includes(n)).sort((a, b) => a.localeCompare(b))];
+}
+const blockLabel = (a, j) => `<b>${esc(a.Title)}</b> ${esc(j?.SiteName || j?.CustomerName || "")}`;
+const blockTitle = (a, j, cl) => `${a.Title} — ${j?.CustomerName || ""}${j?.SiteName ? " · " + j.SiteName : ""}\n${a.Technician} ${fmtDate(a.AssignDate)} ${a.StartTime || ""}–${a.EndTime || ""}${a.CompetencyWarning ? "\n⚠ " + a.CompetencyWarning : ""}${cl ? "\n⛔ clashes with another booking" : ""}\nClick to edit · drag to move`;
+const priClass = j => j ? ({ Urgent:"p-urgent", High:"p-high" }[j.Priority] || "") : "";
+
+function viewSchedule(){
+  const pv = { day:"day", week:"week", today:"day" }[S.param]; if (pv){ S.sf.view = pv; if (S.param !== "week") S.sf.date = TODAY; history.replaceState(null, "", "#/schedule"); S.param = ""; }
+  const f = S.sf, day = f.view === "day", from = day ? f.date : weekStart(f.date), to = day ? f.date : addDays(from, 6);
+  const rows = schedRows(from, to), jobs = new Map(D.jobs.map(j => [j.Title, j])), facts = jobFacts();
+  const book = liveBookings().filter(a => a.AssignDate >= from && a.AssignDate <= to);
+  const hrs = n => Math.round(book.filter(a => a.Technician === n).reduce((t, a) => t + hoursBetween(a.StartTime, a.EndTime), 0) * 10) / 10;
+  const title = day ? dayLabel(f.date) + (f.date === TODAY ? " · today" : "") : `${dayLabel(from)} – ${dayLabel(to)}`;
+  const grid = !rows.length ? `<div class="empty">No technicians yet — set people's Service Hub role to Technician in Settings → Staff &amp; roles</div>`
+    : day ? dayGrid(rows, f.date, book, jobs, hrs) : weekGrid(rows, from, book, jobs, hrs);
+  // jobs waiting to be booked
+  const q = norm(f.q), cand = D.jobs.map(j => ({ ...j, _st: jobState(j, facts) }))
+    .filter(j => (f.all ? !CLOSED.includes(j._st) && j._st !== "On Hold" : j._st === "New") && (!q || norm([j.Title, j.CustomerName, j.SiteName, j.Description].join(" ")).includes(q))).sort(byUrgency);
+  return `
+  <div class="bar"><h2>Scheduler</h2><span class="seg"><button class="${day ? "on" : ""}" data-sv="day">Day</button><button class="${day ? "" : "on"}" data-sv="week">Week</button></span>
+    <button class="btn" data-sn="-1" aria-label="Previous">‹</button><button class="btn" data-sn="0">Today</button><button class="btn" data-sn="1" aria-label="Next">›</button>
+    <input type="date" class="f" id="sdate" value="${f.date}" aria-label="Go to date"><b class="stitle">${esc(title)}</b><span class="grow"></span>
+    <button class="btn" id="refresh">↻ Refresh</button><button class="btn primary" data-snew="">+ Booking</button></div>
+  ${notSetUp(ROUTES.schedule.lists)}
+  <div class="sched">
+    <div><div class="sgrid">${grid}</div>
+      <p class="count shelp">${day ? "Drag a job from the list onto a person and time. Drag a booking to move it; drag its right edge to change the finish. Click to edit." : "Drag a job onto a person and day (08:00 start; length from the job's estimate). Drag a booking to another person or day. Click to edit, or use the Day view to change times."}
+        <span class="legend" style="display:inline-flex;margin-left:8px"><span><i class="lg p-high"></i>High</span><span><i class="lg p-urgent"></i>Urgent</span><span><i class="lg clash"></i>Clash</span><span><i class="lg warn"></i>Competency warning</span></span></p></div>
+    <aside class="upanel">
+      <div class="bar" style="margin-bottom:8px"><h3 style="margin:0">${f.all ? "Open jobs" : "Unscheduled jobs"}</h3><span class="grow"></span><span class="count">${cand.length}</span></div>
+      <input type="search" id="sq" placeholder="Search jobs…" value="${esc(f.q)}" style="width:100%">
+      <label class="chk" style="margin:8px 0"><span><input type="checkbox" id="sall" ${f.all ? "checked" : ""}> Show all open jobs (for extra days)</span></label>
+      <div class="ulist">${cand.map(j => `<div class="ucard ${priClass(j)}" draggable="true" data-djob="${esc(j.Title)}" title="Drag onto the schedule">
+        <div><b class="mono">${esc(j.Title)}</b> ${priPill(j.Priority)} ${j._st !== "New" ? jobPill(j._st) : ""}</div>
+        <div class="count">${esc(j.CustomerName || "")}${j.SiteName ? " · " + esc(j.SiteName) : ""}</div>
+        <div class="clip"><div>${esc(j.Description || "")}</div></div>
+        <div class="count">${j.EstimatedHours ? esc(j.EstimatedHours) + " h est." : "no estimate"}${j.DueDate ? ` · due <span ${j.DueDate < TODAY ? 'style="color:var(--crit)"' : ""}>${fmtDate(j.DueDate)}</span>` : ""}</div></div>`).join("")
+        || `<div class="empty">${f.all ? "No open jobs" : "Every job is booked"}</div>`}</div>
+    </aside>
+  </div>`;
+}
+function dayGrid(rows, date, book, jobs, hrs){
+  const pct = m => (Math.min(Math.max(m, DAY_START), DAY_END) - DAY_START) / DAY_SPAN * 100;
+  const hours = []; for (let h = DAY_START / 60; h <= DAY_END / 60; h++) hours.push(h);
+  const nowM = date === TODAY ? (new Date().getHours() * 60 + new Date().getMinutes()) : null;
+  const rowHtml = n => {
+    const bs = book.filter(a => a.Technician === n).sort((a, b) => (a.StartTime || "").localeCompare(b.StartTime || ""));
+    const lanes = []; bs.forEach(a => { const s = toMin(a.StartTime) ?? DAY_START; let i = lanes.findIndex(end => end <= s); if (i < 0) { i = lanes.length; lanes.push(0); } lanes[i] = toMin(a.EndTime) ?? DAY_END; a._lane = i; });
+    const L = Math.max(1, lanes.length);
+    return `<div class="dv-row"><div class="sname">${esc(n)}<span>${hrs(n)} h</span></div>
+      <div class="dv-lane" data-drop="${esc(n)}|${date}" style="min-height:${Math.max(56, L * 44)}px">
+      ${nowM != null && nowM >= DAY_START && nowM <= DAY_END ? `<i class="now" style="left:${pct(nowM)}%"></i>` : ""}
+      ${bs.map(a => { const j = jobs.get(a.Title), s = toMin(a.StartTime) ?? DAY_START, e = toMin(a.EndTime) ?? s + 60, cl = clashes({ ...a, item:a }).length > 0;
+        return `<div class="blk ${priClass(j)} ${cl ? "clash" : ""} ${a.CompetencyWarning ? "warn" : ""}" draggable="true" data-dbook="${esc(a.id)}" title="${esc(blockTitle(a, j, cl))}"
+          style="left:${pct(s)}%;width:calc(${pct(e) - pct(s)}% - 2px);top:calc(${a._lane} * (100% / ${L}) + 4px);height:calc(100% / ${L} - 8px)">
+          <span class="t mono">${esc(a.StartTime || "")}–${esc(a.EndTime || "")}</span> ${blockLabel(a, j)}<i class="rz" data-rz="${esc(a.id)}" title="Drag to change the finish time"></i></div>`; }).join("")}
+      </div></div>`;
+  };
+  return `<div class="dv"><div class="dv-row dv-head"><div class="sname"></div><div class="dv-hours">${hours.map(h => `<span style="left:${pct(h * 60)}%">${pad(h)}:00</span>`).join("")}</div></div>${rows.map(rowHtml).join("")}</div>`;
+}
+function weekGrid(rows, from, book, jobs, hrs){
+  const days = [...Array(7)].map((_, i) => addDays(from, i));
+  return `<div class="wv"><div class="wh"></div>${days.map((d, i) => `<div class="wh ${d === TODAY ? "today" : ""} ${i > 4 ? "wkend" : ""}">${dayLabel(d)}</div>`).join("")}
+    ${rows.map(n => `<div class="sname">${esc(n)}<span>${hrs(n)} h</span></div>${days.map((d, i) => {
+      const bs = book.filter(a => a.Technician === n && a.AssignDate === d).sort((a, b) => (a.StartTime || "").localeCompare(b.StartTime || ""));
+      return `<div class="wcell ${d === TODAY ? "today" : ""} ${i > 4 ? "wkend" : ""}" data-drop="${esc(n)}|${d}">${bs.map(a => { const j = jobs.get(a.Title), cl = clashes({ ...a, item:a }).length > 0;
+        return `<div class="wblk ${priClass(j)} ${cl ? "clash" : ""} ${a.CompetencyWarning ? "warn" : ""}" draggable="true" data-dbook="${esc(a.id)}" title="${esc(blockTitle(a, j, cl))}"><span class="t mono">${esc(a.StartTime || "")}–${esc(a.EndTime || "")}</span><br>${blockLabel(a, j)}</div>`; }).join("")}</div>`; }).join("")}`).join("")}</div>`;
+}
+
+// ---- drag and drop
+let DRAG = null;
+async function dropBooking(tech, date, startMin){
+  const d = DRAG; DRAG = null; if (!d) return;
+  try {
+    if (d.job){
+      const j = jobByNo(d.job), start = startMin != null ? startMin : 8 * 60, startT = toHHMM(start), endT = defaultEnd(j, startT);
+      const gaps = competencyGaps(tech, j.JobType, date);
+      await saveRow("assign", null, { Title:j.Title, Technician:tech, AssignDate:date, StartTime:startT, EndTime:endT, AssignStatus:"Planned", CompetencyWarning: gaps.join("; ") });
+      const cl = clashes({ Technician:tech, AssignDate:date, StartTime:startT, EndTime:endT, item: D.assign[D.assign.length - 1] });
+      toast(`${j.Title} booked for ${tech} ${fmtDate(date)} ${startT}–${endT}${gaps.length ? " · ⚠ competency: " + gaps.join("; ") : ""}${cl.length ? " · ⛔ clashes with " + cl.map(x => x.Title).join(", ") : ""}`);
+    } else {
+      const a = D.assign.find(x => String(x.id) === d.book); if (!a) return;
+      const s = toMin(a.StartTime) ?? 8 * 60, e = toMin(a.EndTime) ?? s + 60, ns = startMin != null ? startMin : s;
+      const f = { Technician:tech, AssignDate:date, StartTime:toHHMM(ns), EndTime:toHHMM(Math.min(ns + (e - s), 23 * 60 + 45)) };
+      if (f.Technician === a.Technician && f.AssignDate === a.AssignDate && f.StartTime === a.StartTime) return;
+      const j = jobByNo(a.Title), gaps = competencyGaps(tech, j?.JobType, date);
+      await saveRow("assign", a, { ...f, CompetencyWarning: gaps.join("; ") });
+      const cl = clashes({ ...a, item:a });
+      toast(`Moved ${a.Title} to ${tech} ${fmtDate(date)} ${f.StartTime}–${f.EndTime}${gaps.length ? " · ⚠ competency" : ""}${cl.length ? " · ⛔ clash" : ""}`);
+    }
+  } catch(e){ toast(isForbidden(e) ? NO_PERMISSION : "Couldn't save the booking: " + e.message); }
+  render();
+}
+function laneMinute(lane, clientX){
+  const r = lane.getBoundingClientRect(), m = DAY_START + (clientX - r.left) / r.width * DAY_SPAN;
+  return Math.min(Math.max(Math.round(m / SNAP) * SNAP, DAY_START), DAY_END - SNAP);
+}
+function bindSchedule(){
+  if (S.route !== "schedule") return;
+  const f = S.sf;
+  document.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => { f.view = b.dataset.sv; render(); });
+  document.querySelectorAll("[data-sn]").forEach(b => b.onclick = () => { const n = +b.dataset.sn; f.date = n === 0 ? TODAY : addDays(f.date, n * (f.view === "day" ? 1 : 7)); render(); });
+  const sd = $("#sdate"); if (sd) sd.onchange = () => { if (sd.value) { f.date = sd.value; render(); } };
+  const sq = $("#sq"); if (sq) sq.oninput = () => { f.q = sq.value; const pos = sq.selectionStart; render(); const n = $("#sq"); n.focus(); n.setSelectionRange(pos, pos); };
+  const sa = $("#sall"); if (sa) sa.onchange = () => { f.all = sa.checked; render(); };
+  document.querySelectorAll("[data-snew]").forEach(b => b.onclick = () => openBooking(null, null, { AssignDate: f.date }));
+  // drag sources
+  document.querySelectorAll("[data-djob]").forEach(el => el.ondragstart = e => { DRAG = { job: el.dataset.djob }; e.dataTransfer.setData("text/plain", el.dataset.djob); e.dataTransfer.effectAllowed = "copy"; });
+  document.querySelectorAll("[data-dbook]").forEach(el => {
+    el.ondragstart = e => { if (RESIZING) { e.preventDefault(); return; } DRAG = { book: el.dataset.dbook, grabX: e.clientX - el.getBoundingClientRect().left }; e.dataTransfer.setData("text/plain", el.dataset.dbook); e.dataTransfer.effectAllowed = "move"; };
+    el.onclick = e => { if (RESIZING || e.target.closest(".rz")) return; const a = D.assign.find(x => String(x.id) === el.dataset.dbook); if (a) openBooking(jobByNo(a.Title), a); };
+  });
+  // drop targets
+  document.querySelectorAll("[data-drop]").forEach(z => {
+    z.ondragover = e => { if (!DRAG) return; e.preventDefault(); z.classList.add("over"); };
+    z.ondragleave = () => z.classList.remove("over");
+    z.ondrop = e => { e.preventDefault(); z.classList.remove("over"); const [tech, date] = z.dataset.drop.split("|");
+      let m = null;
+      if (z.classList.contains("dv-lane")){ m = laneMinute(z, e.clientX);
+        if (DRAG?.book && DRAG.grabX != null){ const el = document.querySelector(`[data-dbook="${CSS.escape(DRAG.book)}"]`); if (el) m = laneMinute(z, e.clientX - DRAG.grabX); } }
+      dropBooking(tech, date, m); };
+    // click an empty slot to book there
+    z.onclick = e => { if (RESIZING || e.target !== z) return; const [tech, date] = z.dataset.drop.split("|");
+      const m = z.classList.contains("dv-lane") ? laneMinute(z, e.clientX) : 8 * 60; openBooking(null, null, { Technician:tech, AssignDate:date, StartTime: toHHMM(m) }); };
+  });
+  // resize (day view): drag the right edge, snapped to 15 minutes
+  document.querySelectorAll("[data-rz]").forEach(h => h.onpointerdown = e => {
+    e.preventDefault(); e.stopPropagation(); RESIZING = true;
+    const blk = h.parentElement, lane = blk.parentElement, a = D.assign.find(x => String(x.id) === h.dataset.rz), s = toMin(a.StartTime) ?? DAY_START;
+    let endM = toMin(a.EndTime) ?? s + 60;
+    const move = ev => { endM = Math.max(s + SNAP, laneMinute(lane, ev.clientX)); const r = lane.getBoundingClientRect();
+      blk.style.width = `calc(${(endM - s) / DAY_SPAN * 100}% - 2px)`; blk.querySelector(".t").textContent = `${a.StartTime}–${toHHMM(endM)}`; };
+    const up = async () => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); setTimeout(() => RESIZING = false, 250);
+      const endT = toHHMM(endM); if (endT === a.EndTime) return;
+      try { await saveRow("assign", a, { EndTime:endT }); const cl = clashes({ ...a, item:a }); toast(`${a.Title}: ${a.Technician} now ${a.StartTime}–${endT}${cl.length ? " · ⛔ clash" : ""}`); }
+      catch(err){ toast(isForbidden(err) ? NO_PERMISSION : "Couldn't save: " + err.message); }
+      render(); };
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+  });
+}
+let RESIZING = false;
 
 /* ---------------- boot ---------------- */
 function showSignIn(msg){
