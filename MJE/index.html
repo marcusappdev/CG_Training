@@ -126,7 +126,7 @@ const INC_FORM = [
   ]],
   ["Reporting & follow-up", [
     ["ReportedToDivision","Reported to division","text"], ["ReportedBy","Reported by","text"],
-    ["IncidentStatus","Status","select",{opts:INC_STATUS,req:1}], ["LinkedImprovement","Linked improvement (IR no.)","text"],
+    ["IncidentStatus","Status","select",{opts:INC_STATUS,req:1}], ["LinkedImprovement","Linked improvement (IR no.)","text"], ["JobNo","Service Hub job no.","text"],
     ["CorrectiveAction","Corrective action taken","textarea",{w:3}],
   ]],
   ["Time lost & cost (PGK)", [
@@ -967,6 +967,19 @@ function exportCsv(key){
   a.download = `MJE_${FILE_NAMES[key]}_${TODAY}.csv`; a.click();
 }
 
+/* ---------------- link from the Service Hub: log an incident against a job ---------------- */
+function openIncidentFromLink(){
+  let link = /^#new-incident\?/.test(location.hash) ? location.hash : "";
+  try { link = link || sessionStorage.getItem("mjeIncidentLink") || ""; sessionStorage.removeItem("mjeIncidentLink"); } catch {}
+  const m = /^#new-incident\?(.*)$/.exec(link); if (!m) return;
+  const p = new URLSearchParams(m[1]); history.replaceState(null, "", location.pathname + location.search);
+  S.view = "inc"; render();
+  const job = p.get("job") || "";
+  openForm("inc", undefined, { IncidentDate: /^\d{4}-\d{2}-\d{2}$/.test(p.get("date") || "") ? p.get("date") : TODAY, Location: p.get("location") || "", JobNo: job,
+    ReportedBy: account?.name || "" });
+  if (job) toast(`Logging an incident for job ${job}`);
+}
+
 /* ---------------- boot ---------------- */
 function showSignIn(msg){
   $("#main").innerHTML = `<div class="card signin"><div class="full"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical — Electrical | Communications | Security | Fire"></div><h2>Safety Hub</h2><p>Safety incident and improvement registers for MJ Electrical.</p>
@@ -974,6 +987,8 @@ function showSignIn(msg){
   $("#si").onclick = signIn;
 }
 async function start(){
+  // keep a "log an incident for job …" link safe across a Microsoft sign-in redirect
+  if (/^#new-incident\?/.test(location.hash)) { try { sessionStorage.setItem("mjeIncidentLink", location.hash); } catch {} }
   $("#apps").outerHTML = mjeAppSwitcher("safety");
   $("#dlgLogo").src = $(".logo .chip img").src;
   $("#frm").onsubmit = submitForm;
@@ -987,7 +1002,7 @@ async function start(){
     S.eq = (SEED.eq || []).map((r,k) => toNum2({ id:"e"+k, ...r })); S.tt = (SEED.tt || []).map((r,k) => ({ id:"t"+k, ...r }));
     ["staff","course","trn","area","ins","leg"].forEach(k => S[k] = (SEED[k] || []).map((r,i) => ({ id:k+i, ...r })));
     S.course.forEach(c => { if (c.RefresherMonths) c.RefresherMonths = +c.RefresherMonths; });
-    $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); return;
+    $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); openIncidentFromLink(); return;
   }
   try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
   if (!account) return showSignIn();
@@ -997,7 +1012,7 @@ async function start(){
     await getSite();
     [S.inc, S.imp, S.risk, S.rev, S.eq, S.tt] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev"), loadListSafe("eq"), loadListSafe("tt")]);
     [S.staff, S.course, S.trn, S.area, S.ins, S.leg] = await Promise.all(["staff","course","trn","area","ins","leg"].map(loadListSafe));
-    $("#nav").hidden = false; render();
+    $("#nav").hidden = false; render(); openIncidentFromLink();
   } catch(e){
     $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists, the lists have been provisioned, and you have access.</div>`;
   }
