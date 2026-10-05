@@ -107,6 +107,16 @@ table.legt a{font-size:12px;color:var(--info)}
 .rpt .kv b.line{display:block;border-bottom:1px solid var(--rink);height:20px}
 .rpt .run td{height:26px}.rpt .run td:nth-child(n+6){border:1px solid #c9ced6}.rpt .run td.box{white-space:nowrap;font-size:12px}
 .rpt .leglog tr.act td{background:#f6f7f9}.rpt .leglog tr.act td:first-child{font-weight:600}
+.rpt .reg td{font-size:11.5px}.rpt .reg tr.desc td{border-top:0;padding-top:0;color:var(--rmut);font-size:11px}.rpt .reg tbody.incrow tr:first-child td{border-bottom:0}.rpt tbody.incrow{break-inside:avoid}.rpt .risk td.sm{font-size:11px;color:var(--rink)}
+.rpt .rrate{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.rpt .rhm{display:grid;grid-template-columns:16px 1fr;gap:3px}.rpt .rhm-y{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;color:var(--rmut);text-align:center;text-transform:uppercase;letter-spacing:.4px}
+.rpt .rhm-g{display:grid;grid-template-columns:78px repeat(5,minmax(0,1fr));gap:3px}.rpt .rhm-h{font-size:9.5px;color:var(--rmut);text-align:center;align-self:end;overflow:hidden;text-overflow:ellipsis}
+.rpt .rhm-r{font-size:10.5px;color:var(--rmut);text-align:right;padding-right:4px;align-self:center}.rpt .rhm-c{height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.rpt .rhm-x{grid-column:2;text-align:center;font-size:10px;color:var(--rmut);text-transform:uppercase;letter-spacing:.4px}
+.rpt .mxscroll{overflow-x:auto}.rpt .rmx{width:auto;min-width:100%}.rpt .rmx th.vh{height:120px;vertical-align:bottom;padding:4px 2px;text-align:center}.rpt .rmx th.vh span{writing-mode:vertical-rl;transform:rotate(180deg);text-transform:none;letter-spacing:0;font-size:10.5px;color:var(--rink);white-space:nowrap}
+.rpt .rmx td{padding:2px;text-align:center;border:1px solid #e3e6ea;font-size:10px;min-width:30px}.rpt .rmx td.nm,.rpt .rmx th.nm{text-align:left;padding:3px 6px;min-width:130px;font-size:11.5px}.rpt .rmx tr.grp td{text-align:left}
+.rpt .mc-done{background:#e7f5ed;color:#1f8a4c}.rpt .mc-expiring{background:#fdf3e1;color:#9a5b0b;font-weight:700}.rpt .mc-expired{background:#fdece4;color:#b91c1c;font-weight:700}.rpt .mc-missing{color:#b91c1c;font-weight:700}.rpt .mc-planned{color:var(--rmut)}
+.rpt .legend2{font-size:10.5px;color:var(--rmut);margin:8px 0 0}.rpt .legend2 .mc{display:inline-block;min-width:22px;padding:0 4px;border:1px solid #e3e6ea;text-align:center;margin:0 3px 0 8px}
 .rpt tbody tr[data-open]{cursor:pointer}.rpt tbody tr[data-open]:hover td{background:#f6f7f9}
 @media screen and (max-width:760px){.rpt{padding:16px}.rpt .rh{flex-wrap:wrap}.rpt .rh img{width:110px}.rpt .rts,.rpt .rts.six,.rpt .kvs.four{grid-template-columns:repeat(2,1fr)}.rpt .r2,.rpt .kvs{grid-template-columns:1fr}.rpt .rphotos img{height:110px}
   .rpt .ag thead{display:none}.rpt .ag tr:not(.grp){display:grid;grid-template-columns:92px 1fr;padding:4px 0;border-bottom:1px solid #eceef1}.rpt .ag tr:not(.grp) td{border:0;padding:2px 6px}.rpt .ag td:nth-child(n+3){grid-column:2}.rpt .ag tr.grp{display:block}.rpt .ag tr.grp td{display:block}}
@@ -307,14 +317,16 @@ function heatmap(rows, residual){
   return h;
 }
 
-function viewRisk(){
-  if (S.missing.includes("risk")) return `<div class="banner err">The risk lists haven't been set up on SharePoint yet. Run the Phase 2 provisioning script (Provision-MJE-Risks-Phase2.ps1), then refresh this page.</div>`;
-  const f = S.filt.risk, q = f.q.toLowerCase(), lk = f.residual ? "ResidualLikelihood" : "Likelihood", ck = f.residual ? "ResidualConsequence" : "Consequence";
-  const base = S.risk.filter(r => !f.reg || r.RegisterType === f.reg);
-  const rows = sortRows(base.filter(r =>
+function riskFiltered(){ const f = S.filt.risk, q = f.q.toLowerCase(), lk = f.residual ? "ResidualLikelihood" : "Likelihood", ck = f.residual ? "ResidualConsequence" : "Consequence";
+  return S.risk.filter(r => (!f.reg || r.RegisterType === f.reg) &&
     (!f.rating || (f.rating === "hi" ? openRisk(r) && ["High","Very High"].includes(f.residual ? r.ResidualRating : r.Rating) : (f.residual ? r.ResidualRating : r.Rating) === f.rating)) && (!f.status || r.RiskStatus === f.status) &&
     (!f.cell || (r[lk] + "|" + r[ck]) === f.cell) &&
-    (!q || [r.Title,r.ActivityArea,r.Task,r.Hazard,r.Impact,r.Controls,r.Responsible].join(" ").toLowerCase().includes(q))), "risk");
+    (!q || [r.Title,r.ActivityArea,r.Task,r.Hazard,r.Impact,r.Controls,r.Responsible].join(" ").toLowerCase().includes(q))); }
+function viewRisk(){
+  if (S.missing.includes("risk")) return `<div class="banner err">The risk lists haven't been set up on SharePoint yet. Run the Phase 2 provisioning script (Provision-MJE-Risks-Phase2.ps1), then refresh this page.</div>`;
+  const f = S.filt.risk;
+  const base = S.risk.filter(r => !f.reg || r.RegisterType === f.reg);
+  const rows = sortRows(riskFiltered(), "risk");
   const chips = [["", "All", S.risk.length], ...REGISTERS.map(g => [g, g, S.risk.filter(r => r.RegisterType === g).length])]
     .map(([v, l, n]) => `<button class="chip ${f.reg===v?"on":""}" data-reg="${esc(v)}">${esc(l)} <span>${n}</span></button>`).join("");
   const rc = RATINGS.map(rt => ({ label: rt, parts:[base.filter(r => (f.residual ? r.ResidualRating : r.Rating) === rt).length], total: 0 }));
@@ -325,7 +337,7 @@ function viewRisk(){
   const [cl, cc] = (f.cell || "|").split("|");
   return `
   <div class="bar"><h2>Risk Registers</h2><span class="grow"></span>
-    <button class="btn" data-act="csv:risk">Export CSV</button><button class="btn primary" data-act="new:risk">+ New risk</button></div>
+    <button class="btn" data-rpt="regrisk">🖨 Print</button><button class="btn" data-act="csv:risk">Export CSV</button><button class="btn primary" data-act="new:risk">+ New risk</button></div>
   <div class="bar chips">${chips}</div>
   <div class="grid two" style="margin-bottom:14px">
     <div class="card"><div class="bar" style="margin-bottom:8px"><h3 style="margin:0">Risk matrix</h3><span class="grow"></span>
@@ -548,16 +560,18 @@ const trnState = r => {
 const TRN_LABEL = { done:"Completed", expiring:"Expires within 60 days", expired:"Expired", missing:"Mandatory – not recorded", planned:"Extended – not yet done", na:"Not required" };
 const activeStaff = () => S.staff.filter(s => s.StaffStatus !== "Left");
 const trnFor = (name, course) => S.trn.find(r => r.StaffName === name && r.Course === course);
+function trnStaffFiltered(){ const f = S.filt.trn, q = f.q.toLowerCase();
+  return activeStaff().filter(s => (!f.dept || s.Department === f.dept) && (!f.gaps || S.trn.some(r => r.StaffName === s.Title && r.Requirement === "Mandatory" && ["missing","expired"].includes(trnState(r)))) && (!q || [s.Title,s.Position,s.EmployeeNo].join(" ").toLowerCase().includes(q)))
+    .sort((a,b) => DEPTS.indexOf(a.Department) - DEPTS.indexOf(b.Department) || a.Title.localeCompare(b.Title)); }
+const trnCourses = () => [...S.course].sort((a,b) => (a.Category||"").localeCompare(b.Category||"") || a.Title.localeCompare(b.Title));
 function viewTraining(){
   const sub = S.filt.training.sub;
   const tabs = `<div class="bar chips"><button class="chip ${sub==="matrix"?"on":""}" data-tsub="matrix">Competency matrix</button><button class="chip ${sub==="staff"?"on":""}" data-tsub="staff">Staff <span>${activeStaff().length}</span></button><button class="chip ${sub==="course"?"on":""}" data-tsub="course">Courses <span>${S.course.length}</span></button></div>`;
   if (S.missing.includes("trn") || S.missing.includes("staff")) return `<div class="bar"><h2>Training & Competency</h2></div>${tabs}<div class="banner err">The training lists haven't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
   if (sub === "staff") return viewSimpleList("staff", "Staff", tabs, [["Title","Name"],["EmployeeNo","Emp no."],["Position","Position"],["Department","Department"],["HubRole","Service Hub role"],["StaffStatus","Status"]], "+ New staff member");
   if (sub === "course") return viewSimpleList("course", "Courses", tabs, [["Title","Course"],["Category","Category"],["RefresherMonths","Refresher (months)"]], "+ New course");
-  const f = S.filt.trn, q = f.q.toLowerCase();
-  const staff = activeStaff().filter(s => (!f.dept || s.Department === f.dept) && (!f.gaps || S.trn.some(r => r.StaffName === s.Title && r.Requirement === "Mandatory" && ["missing","expired"].includes(trnState(r)))) && (!q || [s.Title,s.Position,s.EmployeeNo].join(" ").toLowerCase().includes(q)))
-    .sort((a,b) => DEPTS.indexOf(a.Department) - DEPTS.indexOf(b.Department) || a.Title.localeCompare(b.Title));
-  const courses = [...S.course].sort((a,b) => (a.Category||"").localeCompare(b.Category||"") || a.Title.localeCompare(b.Title));
+  const f = S.filt.trn;
+  const staff = trnStaffFiltered(), courses = trnCourses();
   const mand = S.trn.filter(r => r.Requirement === "Mandatory" && activeStaff().some(s => s.Title === r.StaffName));
   const ok = mand.filter(r => ["done","expiring"].includes(trnState(r))).length;
   const cnt = s => S.trn.filter(r => trnState(r) === s && activeStaff().some(x => x.Title === r.StaffName)).length;
@@ -572,7 +586,7 @@ function viewTraining(){
   }).join("");
   return `
   <div class="bar"><h2>Training & Competency</h2><span class="grow"></span>
-    <button class="btn" data-act="csv:trn">Export CSV</button><button class="btn primary" data-act="new:trn">+ Record training</button></div>
+    <button class="btn" data-rpt="regtrn">🖨 Print</button><button class="btn" data-act="csv:trn">Export CSV</button><button class="btn primary" data-act="new:trn">+ Record training</button></div>
   ${tabs}
   <div class="grid kpis">
     <div class="card kpi k-trn"><div class="l">Mandatory training compliance</div><div class="v">${pct}%</div><div class="s">${ok} of ${mand.length} requirements current</div></div>
@@ -767,12 +781,13 @@ function rptNote(ym){ try { return localStorage.getItem(rptNoteKey(ym)) || ""; }
 const RPT_GROUPS = [
   ["For the MD", [["hse","Monthly HSE report"],["trend","Incident trends"]]],
   ["Planning & follow-up", [["ahead","Lookahead"],["ca","Corrective actions"],["run","Test & tag run sheet"]]],
-  ["Records", [["inc","Incident report"],["trnrec","Training record"],["assets","Assets & fleet"],["leglog","Legislation log"]]]];
+  ["Records", [["inc","Incident report"],["trnrec","Training record"],["assets","Assets & fleet"],["leglog","Legislation log"]]],
+  ["Registers", [["reginc","Incident register"],["regimp","Improvement register"],["regrisk","Risk register"],["regtrn","Training matrix"]]]];
 function viewReports(){
   const f = S.filt.rpt;
   if (!f.month) f.month = defaultRptMonth();
   const tabs = `<div class="rgroups noprint">${RPT_GROUPS.map(([g, list]) => `<div class="rgroup"><span class="rgl">${g}</span><div class="chips">${list.map(([k, l]) => `<button class="chip ${f.sub === k ? "on" : ""}" data-rsub="${k}">${l}</button>`).join("")}</div></div>`).join("")}</div>`;
-  const other = { inc:viewIncReport, ahead:viewLookahead, ca:viewCaReport, trend:viewTrendReport, run:viewRunSheet, trnrec:viewTrainingRecord, assets:viewAssetReport, leglog:viewLegLog }[f.sub];
+  const other = { inc:viewIncReport, ahead:viewLookahead, ca:viewCaReport, trend:viewTrendReport, run:viewRunSheet, trnrec:viewTrainingRecord, assets:viewAssetReport, leglog:viewLegLog, reginc:viewRegInc, regimp:viewRegImp, regrisk:viewRegRisk, regtrn:viewRegTrn }[f.sub];
   if (other) return other(tabs);
   const months = []; let m = ymOf(TODAY); for (let k = 0; k < 24; k++){ months.push(m); m = prevYm(m); }
   return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
@@ -1194,6 +1209,88 @@ function viewLegLog(tabs){
   <footer class="rf">Source: Legislative Compliance register. The register keeps the latest review of each instrument (who, when, changes noted); earlier reviews aren't stored, so print or save this log after each monthly review to keep a dated trail for auditors.</footer></article>`;
 }
 
+/* ---------------- printable registers (same rows and filters as the register screens) ---------------- */
+const fdesc = parts => parts.filter(Boolean).join(" · ") || "all records";
+const landscapeTip = `<p class="count noprint">Tip: this register is wide — choose <b>Landscape</b> under Layout in the print window for more room.</p>`;
+const RATE_STYLE = { Low:"background:#e7f5ed;color:#1f8a4c", Medium:"background:#fdf3e1;color:#9a5b0b", High:"background:#fdece4;color:#c2410c", "Very High":"background:#b91c1c;color:#fff", Positive:"background:#e8effd;color:#2563eb" };
+const rrate = r => r ? `<span class="rrate" style="${RATE_STYLE[r] || ""}">${esc(r)}</span>` : "";
+
+function viewRegInc(tabs){
+  const f = S.filt.inc, rows = sortRows(incFiltered(), "inc");
+  const years = [...new Set(S.inc.map(i => (i.IncidentDate || "").slice(0, 4)).filter(Boolean).concat(YEAR))].sort().reverse();
+  const cost = rows.reduce((a, i) => a + num(i.TotalEstCost), 0);
+  return rptBar(`<select class="f" data-f="inc:year">${opt(years, f.year, "All years")}</select><select class="f" data-f="inc:status">${opt(INC_STATUS, f.status, "All statuses")}</select><select class="f" data-f="inc:sev">${opt(INC_SEV, f.sev, "All severities")}</select>${rptBack()}`, `MJE Safety Incident Register ${f.year || "all"}`) + tabs + `
+  <article class="rpt" id="rpt">${rptHead("Safety Incident Register", f.year ? `Incidents in ${esc(f.year)}` : "All incidents", fdesc([f.status, f.sev, f.q && `search "${esc(f.q)}"`]))}
+  <section><div class="rts">${rtile("Incidents", rows.length, `${rows.filter(i => i.IncidentStatus !== "Closed").length} not closed`)}${rtile("Lost time injuries", rows.filter(i => i.Severity === "Lost Time Injury").length, `${rows.reduce((a, i) => a + num(i.WorkersTimeLostHrs), 0)} working hours lost`)}
+    ${rtile("Near misses", rows.filter(i => i.Severity === "Near Miss").length, "")}${rtile("Est. cost", kina(cost), "direct + indirect + RTW")}</div></section>
+  <section>${rows.length ? `<table class="rtab reg"><thead><tr><th style="width:62px">Reg no.</th><th style="width:66px">Date</th><th>Person</th><th>Location</th><th>Agency / injury</th><th>Severity</th><th>Status</th><th class="n">Est. cost</th></tr></thead>
+    ${rows.map(i => `<tbody class="incrow"><tr data-open="inc:${esc(i.id)}"><td class="mono">${esc(i.Title)}</td><td class="mono">${fmtDate(i.IncidentDate)}</td><td>${esc(incName(i))}</td><td>${esc(i.Location)}</td>
+      <td>${esc(i.AgencyOfInjury)}${i.ActualInjury || i.BodyPart ? `<div class="sm">${esc([i.ActualInjury, i.BodyPart].filter(Boolean).join(" — "))}</div>` : ""}</td><td>${esc(i.Severity)}</td><td>${esc(i.IncidentStatus)}</td><td class="n">${num(i.TotalEstCost) ? kina(i.TotalEstCost) : ""}</td></tr>
+      ${i.Description ? `<tr class="desc" data-open="inc:${esc(i.id)}"><td></td><td colspan="7">${esc(i.Description)}</td></tr>` : ""}</tbody>`).join("")}
+    <tbody><tr class="tot"><td colspan="7">Total — ${rows.length} incident${rows.length === 1 ? "" : "s"}</td><td class="n">${kina(cost)}</td></tr></tbody></table>` : `<p class="rk">No incidents match these filters.</p>`}</section>
+  <footer class="rf">Source: Safety Incident Register, in the order shown on the Incidents tab. Contains personal information — share only with people who need it.</footer></article>${landscapeTip}`;
+}
+
+function viewRegImp(tabs){
+  const f = S.filt.imp, rows = sortRows(impFiltered(), "imp");
+  const stLbl = { "":"All statuses", open:"Not closed", overdue:"Overdue" }[f.status] ?? f.status;
+  const statusOpts = [["", "All statuses"], ["open", "Not closed"], ["overdue", "Overdue"], ...IMP_STATUS.map(x => [x, x])];
+  return rptBar(`<select class="f" data-f="imp:status">${statusOpts.map(([v, l]) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${l}</option>`).join("")}</select><select class="f" data-f="imp:cat">${opt(IMP_CAT, f.cat, "All categories")}</select><select class="f" data-f="imp:pri">${opt(IMP_PRI, f.pri, "All priorities")}</select>${rptBack()}`, `MJE Improvement Register ${TODAY}`) + tabs + `
+  <article class="rpt" id="rpt">${rptHead("Improvement Register", stLbl, fdesc([f.cat, f.pri && "priority " + f.pri, f.q && `search "${esc(f.q)}"`]))}
+  <section><div class="rts">${rtile("Improvements", rows.length, `${rows.filter(i => i.ImprovementStatus === "Closed").length} closed`)}${rtile("Overdue", rows.filter(isOverdue).length, "", rows.some(isOverdue) ? "bad" : "")}
+    ${rtile("High priority open", rows.filter(i => i.Priority === "H" && i.ImprovementStatus !== "Closed").length, "")}${rtile("Ongoing / recurring", rows.filter(i => (i.Recurrence || "One-off") !== "One-off").length, "")}</div></section>
+  <section>${rows.length ? `<table class="rtab reg"><thead><tr><th style="width:72px">Serial</th><th style="width:70px">Category</th><th style="width:28px">Pri.</th><th>Nature of improvement / proposed action</th><th style="width:84px">Originated</th><th style="width:76px">Actioned by</th><th style="width:70px">Due</th><th style="width:70px">Status</th></tr></thead><tbody>
+    ${rows.map(i => { const od = isOverdue(i); return `<tr data-open="imp:${esc(i.id)}"><td class="mono">${esc(i.Title)}</td><td>${esc(i.Category)}</td><td>${esc(i.Priority)}</td>
+      <td>${esc(i.NatureOfImprovement)}${i.ProposedAction ? `<div class="sm">${esc(i.ProposedAction)}</div>` : ""}</td><td>${esc(i.OriginatedBy)}<div class="sm">${fmtDate(i.DateIssued)}</div></td><td>${esc(i.ActionedBy)}</td>
+      <td class="mono">${i.TargetDate && (i.Recurrence || "One-off") === "One-off" ? `<span class="${od ? "late" : ""}">${fmtDate(i.TargetDate)}</span>` : esc(i.Recurrence || "")}</td>
+      <td>${esc(i.ImprovementStatus)}${i.ImprovementStatus === "Closed" && i.DateClosed ? `<div class="sm">${fmtDate(i.DateClosed)}</div>` : od ? `<div class="sm late">overdue</div>` : ""}</td></tr>`; }).join("")}</tbody></table>` : `<p class="rk">No improvements match these filters.</p>`}</section>
+  <footer class="rf">Source: Improvement Register, in the order shown on the Improvements tab.</footer></article>${landscapeTip}`;
+}
+
+// static 5x5 matrix for paper (counts per cell)
+function rptHeat(rows, residual){
+  const lk = residual ? "ResidualLikelihood" : "Likelihood", ck = residual ? "ResidualConsequence" : "Consequence", cnt = {};
+  let plotted = 0; rows.forEach(r => { if (LV[r[lk]] && CV[r[ck]]) { const k = r[lk] + "|" + r[ck]; cnt[k] = (cnt[k] || 0) + 1; plotted++; } });
+  return `<div class="rhm"><div class="rhm-y">Likelihood</div><div class="rhm-g"><span></span>${CONS.map(c => `<span class="rhm-h">${c}</span>`).join("")}
+    ${[...LIKE].reverse().map(l => `<span class="rhm-r">${l}</span>` + CONS.map((c, ci) => { const n = cnt[l + "|" + c] || 0, rt = MX[l][ci];
+      return `<span class="rhm-c" style="${RATE_STYLE[rt]}${n ? "" : ";opacity:.45"}" title="${l} × ${c}: ${rt} (score ${LV[l] + CV[c]})">${n || ""}</span>`; }).join("")).join("")}</div>
+    <div class="rhm-x">Consequence</div></div>${rows.length - plotted ? `<p class="sm">${rows.length - plotted} not plotted (no ${residual ? "residual " : ""}likelihood / consequence).</p>` : ""}`;
+}
+function viewRegRisk(tabs){
+  const f = S.filt.risk, rows = sortRows(riskFiltered(), "risk");
+  const regs = REGISTERS.filter(g => rows.some(r => r.RegisterType === g)).concat(rows.some(r => !REGISTERS.includes(r.RegisterType)) ? ["Other"] : []);
+  const inReg = g => rows.filter(r => g === "Other" ? !REGISTERS.includes(r.RegisterType) : r.RegisterType === g);
+  return rptBar(`${rsel("regRiskReg", [["", "All registers"], ...REGISTERS.map(g => [g, g])], f.reg)}<select class="f" data-f="risk:rating">${opt(RATINGS, f.rating, "All ratings")}<option value="hi" ${f.rating === "hi" ? "selected" : ""}>High & very high (open)</option></select><select class="f" data-f="risk:status">${opt(RISK_STATUS, f.status, "All statuses")}</select>${rptBack()}`, `MJE Risk Register ${f.reg || "all"} ${TODAY}`) + tabs + missingNote(["risk"]) + `
+  <article class="rpt" id="rpt">${rptHead("Risk Register", f.reg ? esc(f.reg) + " register" : "All registers", fdesc([f.rating === "hi" ? "high & very high (open)" : f.rating && (f.residual ? "residual " : "") + f.rating, f.status, f.cell && f.cell.replace("|", " × "), f.q && `search "${esc(f.q)}"`]))}
+  <section class="r2"><div><h2>Risk matrix <small>before controls</small></h2>${rptHeat(rows, false)}</div><div><h2>Risk matrix <small>residual, after controls</small></h2>${rptHeat(rows, true)}</div></section>
+  <section><div class="rts six">${RATINGS.map(rt => rtile(rt, rows.filter(r => r.Rating === rt).length, `${rows.filter(r => r.ResidualRating === rt).length} after controls`)).join("")}${rtile("Risks shown", rows.length, `${rows.filter(openRisk).length} open`)}</div></section>
+  ${regs.map(g => `<section><h2>${esc(g)} <small>${inReg(g).length}</small></h2><table class="rtab reg risk"><thead><tr><th style="width:42px">Ref</th><th style="width:15%">Activity / task</th><th style="width:19%">Hazard / risk</th><th style="width:84px">Before</th><th>Controls</th><th style="width:66px">Residual</th><th style="width:74px">Responsible</th><th style="width:66px">Status</th></tr></thead><tbody>
+    ${inReg(g).map(r => `<tr data-open="risk:${esc(r.id)}"><td class="mono">${esc(r.Title)}</td><td>${esc(r.ActivityArea)}${r.Task ? `<div class="sm">${esc(r.Task)}</div>` : ""}</td><td>${esc(r.Hazard)}${r.Impact ? `<div class="sm">${esc(r.Impact)}</div>` : ""}</td>
+      <td>${rrate(r.Rating)}${r.Likelihood ? `<div class="sm">${esc(r.Likelihood)} × ${esc(r.Consequence)}${r.RiskScore ? " = " + esc(r.RiskScore) : ""}</div>` : ""}</td><td class="sm">${esc(r.Controls)}</td><td>${rrate(r.ResidualRating)}${r.ResidualScore ? `<div class="sm">score ${esc(r.ResidualScore)}</div>` : ""}</td><td>${esc(r.Responsible)}</td><td>${esc(r.RiskStatus)}${r.LastReviewed ? `<div class="sm">reviewed ${fmtDate(r.LastReviewed)}</div>` : ""}</td></tr>`).join("")}</tbody></table></section>`).join("") || `<p class="rk">No risks match these filters.</p>`}
+  <footer class="rf">Scores use MJE's 5×5 matrix: likelihood (Rare 1 … Almost Certain 9) + consequence (Insignificant 1 … Catastrophic 21). The matrices count the risks listed in this report.</footer></article>${landscapeTip}`;
+}
+
+function viewRegTrn(tabs){
+  const f = S.filt.trn, staff = trnStaffFiltered(), courses = trnCourses().filter(c => staff.some(s => trnFor(s.Title, c.Title)));
+  const mand = S.trn.filter(r => r.Requirement === "Mandatory" && staff.some(s => s.Title === r.StaffName)), ok = mand.filter(r => ["done","expiring"].includes(trnState(r))).length;
+  const cnt = st => S.trn.filter(r => trnState(r) === st && staff.some(s => s.Title === r.StaffName)).length;
+  const cell = r => { const st = trnState(r); if (!r) return `<td></td>`;
+    const d = r.CompletedDate ? `${r.CompletedDate.slice(5, 7)}/${r.CompletedDate.slice(2, 4)}` : "";
+    return `<td class="mc mc-${st}" title="${esc(r.StaffName)} — ${esc(r.Course)}: ${TRN_LABEL[st]}${r.ExpiryDate ? " (expires " + fmtDate(r.ExpiryDate) + ")" : ""}">${{ done:d, expiring:d + "!", expired:d + "✗", missing:"●", planned:"○" }[st] || ""}</td>`; };
+  let dept = "";
+  const body = staff.map(s => { const head = s.Department !== dept ? `<tr class="grp"><td colspan="${courses.length + 2}">${esc(s.Department || "—")}</td></tr>` : ""; dept = s.Department;
+    const m = S.trn.filter(r => r.StaffName === s.Title && r.Requirement === "Mandatory"), o = m.filter(r => ["done","expiring"].includes(trnState(r))).length;
+    return head + `<tr data-open="staff:${esc(s.id)}"><td class="nm">${esc(s.Title)}<div class="sm">${esc(s.Position || "")}</div></td>${courses.map(c => cell(trnFor(s.Title, c.Title))).join("")}<td class="n">${m.length ? Math.round(o / m.length * 100) + "%" : ""}</td></tr>`; }).join("");
+  return rptBar(`<select class="f" data-f="trn:dept">${opt(DEPTS, f.dept, "All departments")}</select><label class="count"><input type="checkbox" id="regTrnGaps" ${f.gaps ? "checked" : ""}> Staff with gaps only</label>${rptBack()}`, `MJE Training Competency Matrix ${TODAY}`) + tabs + missingNote(["staff","trn"]) + `
+  <article class="rpt" id="rpt">${rptHead("Training &amp; Competency Matrix", `At ${fmtDate(TODAY)}`, fdesc([f.dept, f.gaps && "staff with gaps only", f.q && `search "${esc(f.q)}"`]))}
+  <section><div class="rts">${rtile("Mandatory training current", mand.length ? Math.round(ok / mand.length * 100) + "%" : "—", `${ok} of ${mand.length} requirements`)}${rtile("Not recorded", cnt("missing"), "mandatory, no completion date", cnt("missing") ? "bad" : "")}
+    ${rtile("Expired", cnt("expired"), "needs refresher", cnt("expired") ? "bad" : "")}${rtile("Expiring in 60 days", cnt("expiring"), "book now")}</div></section>
+  <section>${staff.length && courses.length ? `<div class="mxscroll"><table class="rtab rmx"><thead><tr><th class="nm">Staff member</th>${courses.map(c => `<th class="vh"><span>${esc(c.Title)}</span></th>`).join("")}<th class="n">Mand. current</th></tr></thead><tbody>${body}</tbody></table></div>
+    <p class="legend2"><span class="mc mc-done">MM/YY</span> completed (month/year) <span class="mc mc-expiring">!</span> expires within 60 days <span class="mc mc-expired">✗</span> expired <span class="mc mc-missing">●</span> mandatory, not recorded <span class="mc mc-planned">○</span> extended, not yet done · blank = not required</p>`
+    : `<p class="rk">No staff or training requirements match these filters.</p>`}</section>
+  <footer class="rf">Source: Training &amp; Competency register, active staff. Only courses that at least one listed person needs are shown.</footer></article>${landscapeTip}`;
+}
+
 /* ---------------- report controls ---------------- */
 function bindReports(){
   if (S.view !== "rpt") return;
@@ -1211,6 +1308,8 @@ function bindReports(){
   document.querySelectorAll("[data-ttloc]").forEach(r => r.onclick = () => { resetFilt(); S.view = "assets"; S.filt.assets.sub = "tt"; S.filt.tt.q = r.dataset.ttloc === "No location recorded" ? "" : r.dataset.ttloc; render(); window.scrollTo({ top:0 }); });
   [["caShow","caShow"],["caOwner","caOwner"],["caBy","caBy"],["trPeriod","trPeriod"],["rsDays","rsDays",1],["rsLoc","rsLoc"],["trStaff","staff"],["legTopic","legTopic"]]
     .forEach(([id, key, isNum]) => { const el = document.getElementById(id); if (el) el.onchange = () => { f[key] = isNum ? +el.value : el.value; render(); }; });
+  const rr = $("#regRiskReg"); if (rr) rr.onchange = () => { S.filt.risk.reg = rr.value; S.filt.risk.cell = ""; render(); };
+  const rg = $("#regTrnGaps"); if (rg) rg.onchange = () => { S.filt.trn.gaps = rg.checked; render(); };
   const ed = $("#eqDisposed"); if (ed) ed.onchange = () => { f.eqDisposed = ed.checked; render(); };
   document.querySelectorAll("[data-rtype]").forEach(b => b.onclick = () => { f.type = f.type === b.dataset.rtype ? "" : b.dataset.rtype; render(); });
 }
@@ -1327,16 +1426,21 @@ function sortRows(rows, key){
 const th = (key, col, label) => { const [c,d] = S.sort[key]; return `<th data-sort="${key}:${col}">${label}${c===col ? (d>0?" ▲":" ▼") : ""}</th>`; };
 const opt = (vals, cur, all) => `<option value="">${all}</option>` + vals.map(v => `<option ${v===cur?"selected":""} value="${esc(v)}">${esc(v)}</option>`).join("");
 
+// the rows each register shows with its current filters (shared by the screen and the printout)
+function incFiltered(){ const f = S.filt.inc, q = f.q.toLowerCase();
+  return S.inc.filter(i => (!f.year || (i.IncidentDate||"").startsWith(f.year)) && (!f.status || i.IncidentStatus === f.status) && (!f.sev || i.Severity === f.sev) &&
+    (!q || [i.Title,i.FirstName,i.Surname,i.Description,i.AgencyOfInjury,i.BodyPart,i.Location].join(" ").toLowerCase().includes(q))); }
+function impFiltered(){ const f = S.filt.imp, q = f.q.toLowerCase();
+  return S.imp.filter(i => (f.status === "" || (f.status === "open" ? i.ImprovementStatus !== "Closed" : f.status === "overdue" ? isOverdue(i) : i.ImprovementStatus === f.status)) &&
+    (!f.cat || i.Category === f.cat) && (!f.pri || i.Priority === f.pri) &&
+    (!q || [i.Title,i.NatureOfImprovement,i.ProposedAction,i.ActionedBy,i.Remarks].join(" ").toLowerCase().includes(q))); }
 function viewInc(){
   const f = S.filt.inc;
   const years = [...new Set(S.inc.map(i => (i.IncidentDate||"").slice(0,4)).filter(Boolean).concat(YEAR))].sort().reverse();
-  const q = f.q.toLowerCase();
-  const rows = sortRows(S.inc.filter(i =>
-    (!f.year || (i.IncidentDate||"").startsWith(f.year)) && (!f.status || i.IncidentStatus === f.status) && (!f.sev || i.Severity === f.sev) &&
-    (!q || [i.Title,i.FirstName,i.Surname,i.Description,i.AgencyOfInjury,i.BodyPart,i.Location].join(" ").toLowerCase().includes(q))), "inc");
+  const rows = sortRows(incFiltered(), "inc");
   return `
   <div class="bar"><h2>Safety Incident Register</h2><span class="grow"></span>
-    <button class="btn" data-act="csv:inc">Export CSV</button><button class="btn primary" data-act="new:inc">+ Report incident</button></div>
+    <button class="btn" data-rpt="reginc">🖨 Print</button><button class="btn" data-act="csv:inc">Export CSV</button><button class="btn primary" data-act="new:inc">+ Report incident</button></div>
   <div class="bar">
     <input type="search" id="q" placeholder="Search name, description, injury…" value="${esc(f.q)}">
     <select class="f" data-f="inc:year">${opt(years, f.year, "All years")}</select>
@@ -1354,15 +1458,12 @@ function viewInc(){
 }
 
 function viewImp(){
-  const f = S.filt.imp, q = f.q.toLowerCase();
-  const rows = sortRows(S.imp.filter(i =>
-    (f.status === "" || (f.status === "open" ? i.ImprovementStatus !== "Closed" : f.status === "overdue" ? isOverdue(i) : i.ImprovementStatus === f.status)) &&
-    (!f.cat || i.Category === f.cat) && (!f.pri || i.Priority === f.pri) &&
-    (!q || [i.Title,i.NatureOfImprovement,i.ProposedAction,i.ActionedBy,i.Remarks].join(" ").toLowerCase().includes(q))), "imp");
+  const f = S.filt.imp;
+  const rows = sortRows(impFiltered(), "imp");
   const statusOpts = `<option value="">All statuses</option><option value="open" ${f.status==="open"?"selected":""}>Not closed</option><option value="overdue" ${f.status==="overdue"?"selected":""}>Overdue</option>` + IMP_STATUS.map(s => `<option ${s===f.status?"selected":""}>${s}</option>`).join("");
   return `
   <div class="bar"><h2>Improvement Register</h2><span class="grow"></span>
-    <button class="btn" data-act="csv:imp">Export CSV</button><button class="btn primary" data-act="new:imp">+ New improvement</button></div>
+    <button class="btn" data-rpt="regimp">🖨 Print</button><button class="btn" data-act="csv:imp">Export CSV</button><button class="btn primary" data-act="new:imp">+ New improvement</button></div>
   <div class="bar">
     <input type="search" id="q" placeholder="Search improvement, action, remarks…" value="${esc(f.q)}">
     <select class="f" data-f="imp:status">${statusOpts}</select>
@@ -1405,6 +1506,7 @@ function bindView(){
   document.querySelectorAll("[data-gaps]").forEach(b => b.onclick = () => { S.tile = null; S.filt.trn.gaps = !S.filt.trn.gaps; render(); });
   document.querySelectorAll("[data-missed]").forEach(b => b.onclick = () => { S.tile = null; S.filt.ins.missed = !S.filt.ins.missed; render(); });
   document.querySelectorAll("[data-clearall]").forEach(b => b.onclick = () => { resetFilt(); render(); window.scrollTo({ top:0 }); });
+  document.querySelectorAll("[data-rpt]").forEach(b => b.onclick = () => openReportFor(b.dataset.rpt, {}));
   document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.view = b.dataset.goto; render(); });
 }
 
