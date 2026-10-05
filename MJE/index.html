@@ -47,7 +47,7 @@ table.legt a{font-size:12px;color:var(--info)}
 /* ---- reports: paper look on screen (light in both themes), A4 when printed ---- */
 .rpt{--rink:#1b1f24;--rmut:#5f6b7a;--rline:#d9dde3;--accent:#c8391b;--c-inc:#d63b25;--c-imp:#2563eb;--c-rev:#0f8a80;--c-tt:#b45309;--c-trn:#4f46e5;--c-ins:#0369a1;--c-leg:#a21caf;
   background:#fff;color:var(--rink);color-scheme:light;max-width:920px;margin:0 auto 14px;padding:28px 34px;border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--line);font-size:13px}
-.rpt .rh{display:flex;gap:20px;align-items:center;border-bottom:3px solid var(--accent);padding:0 0 14px;margin-bottom:16px;background:none;color:inherit;position:static;z-index:auto}
+.rpt .rh{display:flex;flex-wrap:nowrap;gap:20px;align-items:center;border-bottom:3px solid var(--accent);padding:0 0 14px;margin-bottom:16px;background:none;color:inherit;position:static;z-index:auto}
 .rpt .rh img{width:150px;height:auto;flex:none}.rpt .rh .grow{flex:1}
 .rpt h1{font-size:22px;margin:0;line-height:1.2}
 .rpt .rm{font-size:16px;font-weight:600;color:var(--accent)}
@@ -93,7 +93,7 @@ table.legt a{font-size:12px;color:var(--info)}
 .rpt tr.grp td{background:#eef0f3;font-weight:700;font-size:12px;padding-top:7px;border-bottom:0}.rpt tr.grp small{font-weight:400;color:var(--rmut);margin-left:6px}
 .rpt tr.grp.od td{background:#fdece4;color:#9a3412}
 .rpt .late{color:#b91c1c;font-weight:600}
-@media (max-width:760px){.rpt{padding:16px}.rpt .rh{flex-wrap:wrap}.rpt .rh img{width:110px}.rpt .rts,.rpt .rts.six,.rpt .kvs.four{grid-template-columns:repeat(2,1fr)}.rpt .r2,.rpt .kvs{grid-template-columns:1fr}.rpt .rphotos img{height:110px}
+@media screen and (max-width:760px){.rpt{padding:16px}.rpt .rh{flex-wrap:wrap}.rpt .rh img{width:110px}.rpt .rts,.rpt .rts.six,.rpt .kvs.four{grid-template-columns:repeat(2,1fr)}.rpt .r2,.rpt .kvs{grid-template-columns:1fr}.rpt .rphotos img{height:110px}
   .rpt .ag thead{display:none}.rpt .ag tr:not(.grp){display:grid;grid-template-columns:92px 1fr;padding:4px 0;border-bottom:1px solid #eceef1}.rpt .ag tr:not(.grp) td{border:0;padding:2px 6px}.rpt .ag td:nth-child(n+3){grid-column:2}.rpt .ag tr.grp{display:block}.rpt .ag tr.grp td{display:block}}
 @media print{
   @page{margin:12mm}                 /* no forced size: the print window's Layout and Paper size settings stay in charge */
@@ -103,7 +103,7 @@ table.legt a{font-size:12px;color:var(--info)}
   .rpt{box-shadow:none;border:0;border-radius:0;padding:0;margin:0;max-width:none}
   .rpt .rts{grid-template-columns:repeat(4,minmax(0,1fr))}.rpt .rts.six{grid-template-columns:repeat(6,minmax(0,1fr))}.rpt .rtab td{padding:3px 6px}
   .rpt .rt.on{outline:0}
-  .rpt{font-size:11px}.rpt section{margin-bottom:9px}.rpt .rh{padding-bottom:8px;margin-bottom:10px}.rpt .rh img{width:120px}.rpt .sign td{height:26px;padding:3px 6px}.rpt .kvs{gap:4px 16px}.rpt h3{margin-top:6px}.rpt h2{margin-bottom:5px;padding-bottom:2px}.rpt .rt{padding:4px 8px}.rpt .rt .v{font-size:17px}.rpt .kv span,.rpt .rtab th{font-size:9.5px}.rpt .rk{margin-bottom:5px}.rpt .rphotos img{height:95px}.rpt .rtab th{padding:3px 6px}.rpt .rtab td{padding:2px 6px}.rpt .sign td{height:30px}.rpt .rflag{padding:4px 10px;margin-bottom:8px}.rpt .costs .kv.tot{padding-top:3px}
+  .rpt{font-size:11px}.rpt section{margin-bottom:9px}.rpt .rh{padding-bottom:8px;margin-bottom:10px}.rpt .rh img{width:120px}.rpt .sign td{height:26px;padding:3px 6px}.rpt .kvs{gap:4px 16px}.rpt h3{margin-top:6px}.rpt h2{margin-bottom:5px;padding-bottom:2px}.rpt .rt{padding:4px 8px}.rpt .rt .v{font-size:17px}.rpt .kv span,.rpt .rtab th{font-size:9.5px}.rpt .rk{margin-bottom:5px}.rpt .rphotos img{height:95px}.rpt .rtab th{padding:3px 6px}.rpt .rtab td{padding:2px 6px}.rpt .ag{font-size:10.5px}.rpt .ag td{padding:2px 5px;line-height:1.3}.rpt .ag th:first-child{width:72px!important}.rpt .ag th:nth-child(2){width:105px!important}.rpt tr.grp td{padding-top:4px}.rpt .sign td{height:30px}.rpt .rflag{padding:4px 10px;margin-bottom:8px}.rpt .costs .kv.tot{padding-top:3px}
   .rpt #rptNote{border:0;padding:0;min-height:0}.rpt .rnote:has(#rptNote:empty){display:none}
   .rpt tr,.rpt .rt,.rpt .rts,.rpt .kvs,.rpt .r2>div,.rpt .rphotos,.rpt .sign,.rpt .rnote,.rpt .rflag,.rpt .txt{break-inside:avoid}.rpt thead{display:table-header-group}.rpt h2,.rpt h3{break-after:avoid}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -167,7 +167,7 @@ const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], 
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, ttGroup:true }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -937,6 +937,21 @@ function aheadItems(end){
     .forEach(i => add("imp", i.TargetDate, `${i.Title} — ${i.NatureOfImprovement || ""}`, i.ActionedBy, `Priority ${i.Priority || "—"} · ${i.ImprovementStatus || ""}`, `imp:${i.id}`));
   return out.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || a.type.localeCompare(b.type) || String(a.item).localeCompare(String(b.item)));
 }
+// Test & tag: one line per location (earliest date first) instead of one line per item
+function groupTestTag(rows){
+  const by = new Map();
+  rows.filter(r => r.type === "tt").forEach(r => { const k = r.who || "No location recorded"; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+  const out = rows.filter(r => r.type !== "tt" || by.get(r.who || "No location recorded").length === 1);
+  by.forEach((list, loc) => { if (list.length === 1) return;
+    const dates = list.map(r => r.due).filter(Boolean).sort(), failed = list.filter(r => /^Failed/.test(r.note)).length;
+    const cnt = new Map(); list.forEach(r => { const n = String(r.item).split(" — ").pop() || "Item"; cnt.set(n, (cnt.get(n) || 0) + 1); });
+    const names = [...cnt].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([n, c]) => c > 1 ? `${n} ×${c}` : n);
+    out.push({ type:"tt", due: dates[0] || "", overdue: list[0].overdue, who: loc, ttloc: loc,
+      item: `${list.length} items — ${names.slice(0, 3).join(", ")}${names.length > 3 ? `, + ${names.length - 3} other type${names.length - 3 === 1 ? "" : "s"}` : ""}`,
+      note: list[0].overdue ? [failed ? `${failed} failed` : "", list.length - failed ? `${list.length - failed} retest${list.length - failed === 1 ? "" : "s"} overdue` : ""].filter(Boolean).join(" · ")
+                            : `Retests due ${fmtDate(dates[0])}${dates.at(-1) !== dates[0] ? " – " + fmtDate(dates.at(-1)) : ""}` }); });
+  return out.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || a.type.localeCompare(b.type) || String(a.item).localeCompare(String(b.item)));
+}
 function viewLookahead(tabs){
   const f = S.filt.rpt, end = addDays(TODAY, f.days), all = aheadItems(end);
   const rows = all.filter(r => (!f.type || r.type === f.type) && (f.overdue || !r.overdue));
@@ -948,19 +963,21 @@ function viewLookahead(tabs){
   const groups = [];
   const od = rows.filter(r => r.overdue); if (od.length) groups.push([`Overdue now`, od, true]);
   rows.filter(r => !r.overdue).forEach(r => { const g = ymLabel(ymOf(r.due)); const last = groups.at(-1); if (last && last[0] === g) last[1].push(r); else groups.push([g, [r], false]); });
+  if (f.ttGroup) groups.forEach(g => { g[1] = groupTestTag(g[1]); });
   const dueTxt = r => r.month ? `${ymShort(r.month)} ${r.month.slice(0,4)}` : !r.due ? `<span class="late">no date</span>` : r.overdue ? `<span class="late">${fmtDate(r.due)}</span>` : fmtDate(r.due);
   const label = f.type ? AHEAD_TYPES[f.type][0] : "";
   return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
       <label class="count" for="rptDays">Look ahead</label><select class="f" id="rptDays">${AHEAD_DAYS.map(d => `<option value="${d}" ${d === f.days ? "selected" : ""}>${d} days</option>`).join("")}</select>
       <label class="count"><input type="checkbox" id="rptOverdue" ${f.overdue ? "checked" : ""}> Include overdue</label>
+      <label class="count"><input type="checkbox" id="rptTtGroup" ${f.ttGroup ? "checked" : ""}> Group test &amp; tag by location</label>
       <button class="btn primary" data-rprint="MJE Lookahead ${TODAY}">Print / Save as PDF</button></div>
     ${tabs}
   <article class="rpt" id="rpt">
   <header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div><h1>${f.days}-Day Lookahead</h1><div class="rm">${fmtDate(TODAY)} to ${fmtDate(end)}</div>
-    <div class="rmeta">${label ? esc(label) + " only · " : ""}${f.overdue ? "includes items already overdue" : "overdue items not shown"} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
+    <div class="rmeta">${label ? esc(label) + " only · " : ""}${f.overdue ? "includes items already overdue" : "overdue items not shown"}${f.ttGroup ? " · test &amp; tag grouped by location" : ""} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
   <section><h2>Falling due <small class="noprint">click a box to show one type; click again for all</small></h2><div class="rts six">${tiles}</div></section>
   <section>${rows.length ? `<table class="rtab ag"><thead><tr><th style="width:92px">Due</th><th style="width:150px">Type</th><th>Item</th><th>Who / where</th><th>Notes</th></tr></thead><tbody>
-    ${groups.map(([g, rs, o]) => `<tr class="grp ${o ? "od" : ""}"><td colspan="5">${g} <small>${rs.length}</small></td></tr>` + rs.map(r => `<tr data-open="${esc(r.open)}" title="Open this record">
+    ${groups.map(([g, rs, o]) => `<tr class="grp ${o ? "od" : ""}"><td colspan="5">${g} <small>${rs.reduce((n, r) => n + (r.ttloc ? +r.item.split(" ")[0] : 1), 0)}</small></td></tr>` + rs.map(r => `<tr ${r.ttloc ? `data-ttloc="${esc(r.ttloc)}" title="Show these items in the Test & tag register"` : `data-open="${esc(r.open)}" title="Open this record"`}>
       <td class="mono">${dueTxt(r)}</td><td class="ty" style="--dc:${AHEAD_TYPES[r.type][1]}"><i class="dot"></i>${AHEAD_TYPES[r.type][0]}</td><td>${esc(r.item)}</td><td>${esc(r.who)}</td><td>${esc(r.note)}</td></tr>`).join("")).join("")}
   </tbody></table>` : `<p class="rk">Nothing falls due in the next ${f.days} days${label ? " for " + esc(label.toLowerCase()) : ""}.</p>`}
   ${missing ? `<p class="rk" style="margin-top:8px">Also: ${missing} mandatory training requirement${missing === 1 ? " has" : "s have"} never been recorded — see the Training matrix.</p>` : ""}</section>
@@ -981,6 +998,8 @@ function bindReports(){
   const ph = $("#rptPhotos"); if (ph) loadReportPhotos(ph);
   const dd = $("#rptDays"); if (dd) dd.onchange = () => { f.days = +dd.value; render(); };
   const ov = $("#rptOverdue"); if (ov) ov.onchange = () => { f.overdue = ov.checked; render(); };
+  const tg = $("#rptTtGroup"); if (tg) tg.onchange = () => { f.ttGroup = tg.checked; render(); };
+  document.querySelectorAll("[data-ttloc]").forEach(r => r.onclick = () => { resetFilt(); S.view = "assets"; S.filt.assets.sub = "tt"; S.filt.tt.q = r.dataset.ttloc === "No location recorded" ? "" : r.dataset.ttloc; render(); window.scrollTo({ top:0 }); });
   document.querySelectorAll("[data-rtype]").forEach(b => b.onclick = () => { f.type = f.type === b.dataset.rtype ? "" : b.dataset.rtype; render(); });
 }
 // Wait for photos to arrive before opening the print window, so they appear on the PDF
