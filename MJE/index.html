@@ -922,7 +922,7 @@ function aheadItems(end){
         const st = areaMonthState(a, String(dt.getFullYear()), dt.getMonth()), me = monthEnd(ym);
         if (!st.planned || st.done.length) continue;
         if (me < TODAY){ if (!S.ins.some(i => i.Area === a.Title && (i.InspectionDate || "") >= ym + "-01")) missed.push(ym); }
-        else { add("ins", me, a.Title, a.Responsible, `${a.Frequency || "Planned"} inspection`, `area:${a.id}`, false); out.at(-1).month = ym; }
+        else { add("ins", me, a.Title, a.Responsible, (a.Frequency ? `Inspection ${a.Frequency}` : "Inspection planned"), `area:${a.id}`, false); out.at(-1).month = ym; }
       }
       if (missed.length) add("ins", monthEnd(missed.at(-1)), a.Title, a.Responsible,
         missed.length === 1 ? `Planned for ${ymLabel(missed[0])} — not done` : `${missed.length} planned inspections missed since ${ymLabel(missed[0])}`, `area:${a.id}`, true);
