@@ -6,7 +6,7 @@
 <title>MJE Safety Hub</title>
 <link rel="icon" type="image/png" href="shared/mje-icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
-<link rel="stylesheet" href="shared/mje.css?v=20261002">
+<link rel="stylesheet" href="shared/mje.css?v=20261005">
 <style>
 /* Safety Hub only — everything shared with the Service Hub is in shared/mje.css */
 .hm{display:grid;grid-template-columns:18px 1fr;grid-template-rows:auto auto;gap:4px}
@@ -69,8 +69,8 @@ table.legt a{font-size:12px;color:var(--info)}
 </form></dialog>
 <div class="toast" id="toast"></div>
 
-<script src="shared/mje-config.js?v=20261002"></script>
-<script src="shared/mje-core.js?v=20261002"></script>
+<script src="shared/mje-config.js?v=20261005"></script>
+<script src="shared/mje-core.js?v=20261005"></script>
 <script>
 /* =====================================================================
    CONFIG — the Microsoft 365 connection (CLIENT_ID, TENANT_ID, SP_HOST, SITE_PATH)
@@ -989,7 +989,8 @@ function showSignIn(msg){
 async function start(){
   // keep a "log an incident for job …" link safe across a Microsoft sign-in redirect
   if (/^#new-incident\?/.test(location.hash)) { try { sessionStorage.setItem("mjeIncidentLink", location.hash); } catch {} }
-  $("#apps").outerHTML = mjeAppSwitcher("safety");
+  mjeRenderApps("safety");
+  if (mjeAppState("safety") === "off") { $("#main").innerHTML = mjeUnavailable("safety"); return; }
   $("#dlgLogo").src = $(".logo .chip img").src;
   $("#frm").onsubmit = submitForm;
   $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
@@ -1008,6 +1009,8 @@ async function start(){
   if (!account) return showSignIn();
   $("#who").innerHTML = `<span>${esc(account.name || account.username)}</span><button id="so">Sign out</button>`;
   $("#so").onclick = signOut;
+  mjeRenderApps("safety");                                  // preview Hubs need the sign-in email
+  if (!mjeAppAllowed("safety")) { $("#main").innerHTML = mjeUnavailable("safety"); return; }
   try {
     await getSite();
     [S.inc, S.imp, S.risk, S.rev, S.eq, S.tt] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev"), loadListSafe("eq"), loadListSafe("tt")]);
