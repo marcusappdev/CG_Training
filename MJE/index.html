@@ -92,6 +92,7 @@ table.legt a{font-size:12px;color:var(--info)}
 .rpt .ag td.ty{white-space:nowrap}.rpt .ag tbody tr[data-open]{cursor:pointer}.rpt .ag tbody tr[data-open]:hover td{background:#f6f7f9}
 .rpt tr.grp td{background:#eef0f3;font-weight:700;font-size:12px;padding-top:7px;border-bottom:0}.rpt tr.grp small{font-weight:400;color:var(--rmut);margin-left:6px}
 .rpt tr.grp.od td{background:#fdece4;color:#9a3412}
+.rpt tr.sub td{font-weight:700;font-size:11.5px;padding:6px 6px 3px;border-bottom:1px solid var(--rline);color:var(--rink)}.rpt tr.sub small{font-weight:400;color:var(--rmut);margin-left:4px}
 .rpt .late{color:#b91c1c;font-weight:600}
 @media screen and (max-width:760px){.rpt{padding:16px}.rpt .rh{flex-wrap:wrap}.rpt .rh img{width:110px}.rpt .rts,.rpt .rts.six,.rpt .kvs.four{grid-template-columns:repeat(2,1fr)}.rpt .r2,.rpt .kvs{grid-template-columns:1fr}.rpt .rphotos img{height:110px}
   .rpt .ag thead{display:none}.rpt .ag tr:not(.grp){display:grid;grid-template-columns:92px 1fr;padding:4px 0;border-bottom:1px solid #eceef1}.rpt .ag tr:not(.grp) td{border:0;padding:2px 6px}.rpt .ag td:nth-child(n+3){grid-column:2}.rpt .ag tr.grp{display:block}.rpt .ag tr.grp td{display:block}}
@@ -167,7 +168,7 @@ const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], 
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, ttGroup:true }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -952,6 +953,19 @@ function groupTestTag(rows){
                             : `Retests due ${fmtDate(dates[0])}${dates.at(-1) !== dates[0] ? " – " + fmtDate(dates.at(-1)) : ""}` }); });
   return out.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || a.type.localeCompare(b.type) || String(a.item).localeCompare(String(b.item)));
 }
+// rows of one period; grouped = a subheading per type (in the order of the summary boxes)
+const AHEAD_PLURAL = { trn:"Training", tt:"Test & tag", ins:"Inspections", rev:"Risk reviews", leg:"Legislation reviews", imp:"Improvement actions" };
+const nItems = rs => rs.reduce((n, r) => n + (r.ttloc ? +r.item.split(" ")[0] : 1), 0);
+function aheadRow(r){
+  const due = r.month ? `${ymShort(r.month)} ${r.month.slice(0,4)}` : !r.due ? `<span class="late">no date</span>` : r.overdue ? `<span class="late">${fmtDate(r.due)}</span>` : fmtDate(r.due);
+  return `<tr ${r.ttloc ? `data-ttloc="${esc(r.ttloc)}" title="Show these items in the Test & tag register"` : `data-open="${esc(r.open)}" title="Open this record"`}>
+    <td class="mono">${due}</td><td class="ty" style="--dc:${AHEAD_TYPES[r.type][1]}"><i class="dot"></i>${AHEAD_TYPES[r.type][0]}</td><td>${esc(r.item)}</td><td>${esc(r.who)}</td><td>${esc(r.note)}</td></tr>`;
+}
+function groupRows(rs, grouped){
+  if (!grouped) return rs.map(aheadRow).join("");
+  return Object.keys(AHEAD_TYPES).map(k => { const list = rs.filter(r => r.type === k); if (!list.length) return "";
+    return `<tr class="sub" style="--dc:${AHEAD_TYPES[k][1]}"><td colspan="5"><i class="dot"></i>${AHEAD_PLURAL[k]} <small>${nItems(list)}</small></td></tr>` + list.map(aheadRow).join(""); }).join("");
+}
 function viewLookahead(tabs){
   const f = S.filt.rpt, end = addDays(TODAY, f.days), all = aheadItems(end);
   const rows = all.filter(r => (!f.type || r.type === f.type) && (f.overdue || !r.overdue));
@@ -963,22 +977,20 @@ function viewLookahead(tabs){
   const groups = [];
   const od = rows.filter(r => r.overdue); if (od.length) groups.push([`Overdue now`, od, true]);
   rows.filter(r => !r.overdue).forEach(r => { const g = ymLabel(ymOf(r.due)); const last = groups.at(-1); if (last && last[0] === g) last[1].push(r); else groups.push([g, [r], false]); });
-  if (f.ttGroup) groups.forEach(g => { g[1] = groupTestTag(g[1]); });
-  const dueTxt = r => r.month ? `${ymShort(r.month)} ${r.month.slice(0,4)}` : !r.due ? `<span class="late">no date</span>` : r.overdue ? `<span class="late">${fmtDate(r.due)}</span>` : fmtDate(r.due);
+  if (f.group) groups.forEach(g => { g[1] = groupTestTag(g[1]); });
   const label = f.type ? AHEAD_TYPES[f.type][0] : "";
   return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
       <label class="count" for="rptDays">Look ahead</label><select class="f" id="rptDays">${AHEAD_DAYS.map(d => `<option value="${d}" ${d === f.days ? "selected" : ""}>${d} days</option>`).join("")}</select>
       <label class="count"><input type="checkbox" id="rptOverdue" ${f.overdue ? "checked" : ""}> Include overdue</label>
-      <label class="count"><input type="checkbox" id="rptTtGroup" ${f.ttGroup ? "checked" : ""}> Group test &amp; tag by location</label>
+      <label class="count"><input type="checkbox" id="rptGroup" ${f.group ? "checked" : ""}> Group by type</label>
       <button class="btn primary" data-rprint="MJE Lookahead ${TODAY}">Print / Save as PDF</button></div>
     ${tabs}
   <article class="rpt" id="rpt">
   <header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div><h1>${f.days}-Day Lookahead</h1><div class="rm">${fmtDate(TODAY)} to ${fmtDate(end)}</div>
-    <div class="rmeta">${label ? esc(label) + " only · " : ""}${f.overdue ? "includes items already overdue" : "overdue items not shown"}${f.ttGroup ? " · test &amp; tag grouped by location" : ""} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
+    <div class="rmeta">${label ? esc(label) + " only · " : ""}${f.overdue ? "includes items already overdue" : "overdue items not shown"}${f.group ? " · grouped by type; test &amp; tag combined by location" : ""} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
   <section><h2>Falling due <small class="noprint">click a box to show one type; click again for all</small></h2><div class="rts six">${tiles}</div></section>
   <section>${rows.length ? `<table class="rtab ag"><thead><tr><th style="width:92px">Due</th><th style="width:150px">Type</th><th>Item</th><th>Who / where</th><th>Notes</th></tr></thead><tbody>
-    ${groups.map(([g, rs, o]) => `<tr class="grp ${o ? "od" : ""}"><td colspan="5">${g} <small>${rs.reduce((n, r) => n + (r.ttloc ? +r.item.split(" ")[0] : 1), 0)}</small></td></tr>` + rs.map(r => `<tr ${r.ttloc ? `data-ttloc="${esc(r.ttloc)}" title="Show these items in the Test & tag register"` : `data-open="${esc(r.open)}" title="Open this record"`}>
-      <td class="mono">${dueTxt(r)}</td><td class="ty" style="--dc:${AHEAD_TYPES[r.type][1]}"><i class="dot"></i>${AHEAD_TYPES[r.type][0]}</td><td>${esc(r.item)}</td><td>${esc(r.who)}</td><td>${esc(r.note)}</td></tr>`).join("")).join("")}
+    ${groups.map(([g, rs, o]) => `<tr class="grp ${o ? "od" : ""}"><td colspan="5">${g} <small>${nItems(rs)}</small></td></tr>` + groupRows(rs, f.group)).join("")}
   </tbody></table>` : `<p class="rk">Nothing falls due in the next ${f.days} days${label ? " for " + esc(label.toLowerCase()) : ""}.</p>`}
   ${missing ? `<p class="rk" style="margin-top:8px">Also: ${missing} mandatory training requirement${missing === 1 ? " has" : "s have"} never been recorded — see the Training matrix.</p>` : ""}</section>
   <footer class="rf">Source: MJE Safety Hub registers. Training = recorded expiry dates for active staff · Test &amp; tag = latest test per item · Inspections = planned months not yet done · Risk reviews = review schedule · Legislation = last review + frequency · Improvement actions = open one-off actions by target date.</footer>
@@ -998,7 +1010,7 @@ function bindReports(){
   const ph = $("#rptPhotos"); if (ph) loadReportPhotos(ph);
   const dd = $("#rptDays"); if (dd) dd.onchange = () => { f.days = +dd.value; render(); };
   const ov = $("#rptOverdue"); if (ov) ov.onchange = () => { f.overdue = ov.checked; render(); };
-  const tg = $("#rptTtGroup"); if (tg) tg.onchange = () => { f.ttGroup = tg.checked; render(); };
+  const tg = $("#rptGroup"); if (tg) tg.onchange = () => { f.group = tg.checked; render(); };
   document.querySelectorAll("[data-ttloc]").forEach(r => r.onclick = () => { resetFilt(); S.view = "assets"; S.filt.assets.sub = "tt"; S.filt.tt.q = r.dataset.ttloc === "No location recorded" ? "" : r.dataset.ttloc; render(); window.scrollTo({ top:0 }); });
   document.querySelectorAll("[data-rtype]").forEach(b => b.onclick = () => { f.type = f.type === b.dataset.rtype ? "" : b.dataset.rtype; render(); });
 }
