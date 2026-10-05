@@ -30,7 +30,7 @@ const MJE_TENANT = {
    ===================================================================== */
 const MJE_APPS_ON = {
   safety:  "on",
-  service: "on"
+  service: "preview"
 };
 // Sign-in emails that can see a Hub set to "preview" (office staff only)
 const MJE_PREVIEW = ["mscully@concept.com.pg"];
