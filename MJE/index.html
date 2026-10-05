@@ -44,6 +44,70 @@ table.cal th:not(.who-cell){font-size:12px;min-width:46px}
 .mxl{margin:0;flex-wrap:wrap}
 table.legt tr.child td:first-child{padding-left:30px;font-size:13px}
 table.legt a{font-size:12px;color:var(--info)}
+/* ---- reports: paper look on screen (light in both themes), A4 when printed ---- */
+.rpt{--rink:#1b1f24;--rmut:#5f6b7a;--rline:#d9dde3;--accent:#c8391b;--c-inc:#d63b25;--c-imp:#2563eb;--c-rev:#0f8a80;--c-tt:#b45309;--c-trn:#4f46e5;--c-ins:#0369a1;--c-leg:#a21caf;
+  background:#fff;color:var(--rink);color-scheme:light;max-width:920px;margin:0 auto 14px;padding:28px 34px;border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--line);font-size:13px}
+.rpt .rh{display:flex;gap:20px;align-items:center;border-bottom:3px solid var(--accent);padding:0 0 14px;margin-bottom:16px;background:none;color:inherit;position:static;z-index:auto}
+.rpt .rh img{width:150px;height:auto;flex:none}.rpt .rh .grow{flex:1}
+.rpt h1{font-size:22px;margin:0;line-height:1.2}
+.rpt .rm{font-size:16px;font-weight:600;color:var(--accent)}
+.rpt .rmeta{font-size:12px;color:var(--rmut)}
+.rpt .rbadges{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.rpt .rb{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#fdece4;color:#9a3412;white-space:nowrap}.rpt .rb.st{background:#eef0f3;color:var(--rink)}
+.rpt section{margin-bottom:16px}
+.rpt h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;border-bottom:1px solid var(--rline);padding-bottom:4px}
+.rpt h2 small{text-transform:none;letter-spacing:0;font-weight:400;color:var(--rmut);margin-left:6px;font-size:12px}
+.rpt h3{font-size:12px;margin:10px 0 3px;color:var(--rmut);text-transform:uppercase;letter-spacing:.3px}
+.rpt .rts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.rpt .rts.six{grid-template-columns:repeat(6,minmax(0,1fr))}
+.rpt .rt{border:1px solid var(--rline);border-radius:8px;padding:8px 10px;background:#fff;color:var(--rink);text-align:left;font:inherit}
+.rpt button.rt{cursor:pointer}.rpt button.rt:hover{background:#f6f7f9}.rpt .rt.on{outline:2px solid var(--rink);outline-offset:-1px}
+.rpt .rt .l{font-size:11px;color:var(--rmut);text-transform:uppercase;letter-spacing:.3px}
+.rpt .rt .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.rpt .rt .s{font-size:11px;color:var(--rmut)}.rpt .rt .s span{margin-left:4px}
+.rpt .dl.good{color:#1f8a4c;font-weight:600}.rpt .dl.bad{color:#b91c1c;font-weight:600}
+.rpt .r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+.rpt .rk{margin:0 0 8px}
+.rpt .rtab{width:100%;min-width:0;border-collapse:collapse;font-size:12px}
+.rpt .rtab th{position:static;cursor:default;font-weight:600;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--rmut);border-bottom:1px solid var(--rline);padding:5px 6px;background:#f6f7f9}
+.rpt .rtab td{padding:5px 6px;border-bottom:1px solid #eceef1;vertical-align:top}
+.rpt .rtab .n{text-align:right;font-variant-numeric:tabular-nums}.rpt .rtab.sm{font-size:11.5px}
+.rpt .rtab tr.tot td{font-weight:700;border-top:2px solid var(--rink);border-bottom:0}
+.rpt svg.trend{width:100%;height:auto;display:block}
+.rpt .trend path{fill:#cbd5e1}.rpt .trend path.cur{fill:var(--c-inc)}.rpt .trend line.zero{stroke:#cbd5e1;stroke-width:2}
+.rpt .trend text{font-size:10px;text-anchor:middle;fill:var(--rmut)}.rpt .trend text.v{fill:var(--rink);font-weight:600}.rpt .trend text.m.cur{fill:var(--rink);font-weight:700}
+.rpt #rptNote{min-height:60px;border:1px dashed var(--rline);border-radius:6px;padding:8px;white-space:pre-wrap;outline:none}
+.rpt #rptNote:focus{border-color:var(--accent)}.rpt #rptNote:empty:before{content:attr(data-ph);color:var(--rmut)}
+.rpt .rf{font-size:10.5px;color:var(--rmut);border-top:1px solid var(--rline);padding-top:8px;margin-top:10px}
+.rpt .kvs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 18px}.rpt .kvs.four{grid-template-columns:repeat(4,1fr)}
+.rpt .kv span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--rmut)}
+.rpt .kv b{font-weight:600}.rpt .span3{grid-column:1/-1}.rpt .kv.w2{grid-column:span 2}
+.rpt .costs .kv.tot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--rink);padding-top:6px}.rpt .costs .kv.tot b{font-size:15px}
+.rpt .nil{color:#9aa3ae;font-weight:400}
+.rpt .txt{white-space:pre-wrap;margin:0}.rpt b.txt{display:block;font-weight:400}
+.rpt .rflag{background:#fdece4;color:#9a3412;border-radius:6px;padding:7px 12px;font-size:12px;font-weight:600;margin-bottom:14px}
+.rpt .rphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rpt .rphotos img{width:100%;height:170px;object-fit:cover;border-radius:6px;border:1px solid var(--rline);display:block;background:#f6f7f9}
+.rpt .sign td{height:38px}
+.rpt .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:var(--dc);vertical-align:0}
+.rpt .ag td.ty{white-space:nowrap}.rpt .ag tbody tr[data-open]{cursor:pointer}.rpt .ag tbody tr[data-open]:hover td{background:#f6f7f9}
+.rpt tr.grp td{background:#eef0f3;font-weight:700;font-size:12px;padding-top:7px;border-bottom:0}.rpt tr.grp small{font-weight:400;color:var(--rmut);margin-left:6px}
+.rpt tr.grp.od td{background:#fdece4;color:#9a3412}
+.rpt .late{color:#b91c1c;font-weight:600}
+@media (max-width:760px){.rpt{padding:16px}.rpt .rh{flex-wrap:wrap}.rpt .rh img{width:110px}.rpt .rts,.rpt .rts.six,.rpt .kvs.four{grid-template-columns:repeat(2,1fr)}.rpt .r2,.rpt .kvs{grid-template-columns:1fr}.rpt .rphotos img{height:110px}
+  .rpt .ag thead{display:none}.rpt .ag tr:not(.grp){display:grid;grid-template-columns:92px 1fr;padding:4px 0;border-bottom:1px solid #eceef1}.rpt .ag tr:not(.grp) td{border:0;padding:2px 6px}.rpt .ag td:nth-child(n+3){grid-column:2}.rpt .ag tr.grp{display:block}.rpt .ag tr.grp td{display:block}}
+@media print{
+  @page{size:A4;margin:12mm}
+  body{background:#fff!important}
+  body>header,.noprint,.banner,.filterbar,.toast,dialog{display:none!important}
+  main{max-width:none;padding:0}
+  .rpt{box-shadow:none;border:0;border-radius:0;padding:0;margin:0;max-width:none}
+  .rpt .rts{grid-template-columns:repeat(4,minmax(0,1fr))}.rpt .rts.six{grid-template-columns:repeat(6,minmax(0,1fr))}.rpt .rtab td{padding:3px 6px}
+  .rpt .rt.on{outline:0}
+  .rpt{font-size:11px}.rpt section{margin-bottom:9px}.rpt .rh{padding-bottom:8px;margin-bottom:10px}.rpt .rh img{width:120px}.rpt .sign td{height:26px;padding:3px 6px}.rpt .kvs{gap:4px 16px}.rpt h3{margin-top:6px}.rpt h2{margin-bottom:5px;padding-bottom:2px}.rpt .rt{padding:4px 8px}.rpt .rt .v{font-size:17px}.rpt .kv span,.rpt .rtab th{font-size:9.5px}.rpt .rk{margin-bottom:5px}.rpt .rphotos img{height:95px}.rpt .rtab th{padding:3px 6px}.rpt .rtab td{padding:2px 6px}.rpt .sign td{height:30px}.rpt .rflag{padding:4px 10px;margin-bottom:8px}.rpt .costs .kv.tot{padding-top:3px}
+  .rpt #rptNote{border:0;padding:0;min-height:0}.rpt .rnote:has(#rptNote:empty){display:none}
+  .rpt tr,.rpt .rt,.rpt .rts,.rpt .kvs,.rpt .r2>div,.rpt .rphotos,.rpt .sign,.rpt .rnote,.rpt .rflag,.rpt .txt{break-inside:avoid}.rpt thead{display:table-header-group}.rpt h2,.rpt h3{break-after:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 </style>
 </head>
 <body>
@@ -57,6 +121,7 @@ table.legt a{font-size:12px;color:var(--info)}
     <button data-v="assets">Assets</button>
     <button data-v="training">Training</button>
     <button data-v="comp">Compliance</button>
+    <button data-v="rpt">Reports</button>
   </nav>
   <div class="who" id="who"></div>
 </header>
@@ -102,7 +167,7 @@ const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], 
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -598,6 +663,334 @@ function viewLegislation(tabs){
   <p class="count">Monthly review: check each instrument for amendments; record changes and the documents (e.g. Work Method Statements) whose owners must be told.</p>`;
 }
 
+/* ================= REPORTS ================= */
+// Month helpers - "YYYY-MM" strings, local dates only
+const ymOf = d => d.slice(0, 7);
+const monthEnd = ym => ymd(new Date(+ym.slice(0,4), +ym.slice(5,7), 0));
+const prevYm = ym => { const d = new Date(+ym.slice(0,4), +ym.slice(5,7) - 2, 1); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; };
+const ymLabel = ym => `${MONTHS[+ym.slice(5,7) - 1]} ${ym.slice(0,4)}`;
+const ymShort = ym => MONTHS[+ym.slice(5,7) - 1].slice(0,3);
+const inYm = (d, ym) => (d || "").startsWith(ym);
+const asAtOf = ym => { const e = monthEnd(ym); return e > TODAY ? TODAY : e; };      // the current month is "as at today"
+// Default: last month during the first 10 days (when the report is usually prepared), otherwise this month
+const defaultRptMonth = () => +TODAY.slice(8,10) <= 10 ? prevYm(ymOf(TODAY)) : ymOf(TODAY);
+
+// Improvements as at a date: open = issued by then and not closed by then.
+// Closed with no DateClosed counts as closed (we can't tell when).
+const impOpenAt = (i, d) => (i.DateIssued || "") <= d && !(i.ImprovementStatus === "Closed" && (!i.DateClosed || i.DateClosed <= d));
+const impOverdueAt = (i, d) => impOpenAt(i, d) && (i.Recurrence || "One-off") === "One-off" && i.TargetDate && i.TargetDate < d;
+// Test & tag as at a date: latest test per item done by then
+function ttLatestAt(d){
+  const m = new Map();
+  S.tt.filter(r => r.TestDate && r.TestDate <= d).forEach(r => { const k = ttKey(r), c = m.get(k);
+    if (!c || r.TestDate > c.TestDate || (r.TestDate === c.TestDate && String(r.Title) > String(c.Title))) m.set(k, r); });
+  return [...m.values()];
+}
+const ttBadAt = (r, d) => r.Result === "Fail" || (r.NextTestDate && r.NextTestDate < d);
+// Mandatory training as at a date (active staff): current = completed by then and not expired by then
+const trnCurrentAt = (r, d) => r.CompletedDate && r.CompletedDate <= d && !(r.ExpiryDate && r.ExpiryDate < d);
+
+function hseFigures(ym){
+  const d = asAtOf(ym), y = ym.slice(0,4), mi = +ym.slice(5,7) - 1;
+  const inc = S.inc.filter(i => inYm(i.IncidentDate, ym));
+  const mand = S.trn.filter(r => r.Requirement === "Mandatory" && activeStaff().some(s => s.Title === r.StaffName));
+  const trnOk = mand.filter(r => trnCurrentAt(r, d)).length;
+  const ttL = ttLatestAt(d);
+  let insPlanned = 0, insDone = 0, ytdPlanned = 0, ytdDone = 0;
+  S.area.forEach(a => { for (let k = 0; k <= mi; k++){ const s = areaMonthState(a, y, k);
+    if (s.planned) ytdPlanned++; if (s.planned && s.done.length) ytdDone++;
+    if (k === mi){ if (s.planned) insPlanned++; if (s.planned && s.done.length) insDone++; } } });
+  return {
+    ym, d, inc,
+    incN: inc.length, lti: inc.filter(i => i.Severity === "Lost Time Injury").length,
+    serious: inc.filter(i => ["Medical Treatment","Lost Time Injury","Serious / Notifiable"].includes(i.Severity)).length,
+    nearMiss: inc.filter(i => i.Severity === "Near Miss").length,
+    cost: inc.reduce((a, i) => a + num(i.TotalEstCost), 0), hrsLost: inc.reduce((a, i) => a + num(i.WorkersTimeLostHrs), 0),
+    impOpened: S.imp.filter(i => inYm(i.DateIssued, ym)).length,
+    impClosed: S.imp.filter(i => i.ImprovementStatus === "Closed" && inYm(i.DateClosed, ym)).length,
+    impOpen: S.imp.filter(i => impOpenAt(i, d)).length,
+    overdue: S.imp.filter(i => impOverdueAt(i, d)).sort((a, b) => a.TargetDate.localeCompare(b.TargetDate)),
+    trnPct: mand.length ? Math.round(trnOk / mand.length * 100) : null, trnOk, trnN: mand.length,
+    trnExpired: mand.filter(r => r.CompletedDate && r.CompletedDate <= d && r.ExpiryDate && r.ExpiryDate < d),
+    trnMissing: mand.filter(r => !r.CompletedDate || r.CompletedDate > d).length,
+    trnExpiring: mand.filter(r => trnCurrentAt(r, d) && r.ExpiryDate && r.ExpiryDate <= addDays(d, 60)).length,
+    ttItems: ttL.length, ttBad: ttL.filter(r => ttBadAt(r, d)).length,
+    ttTests: S.tt.filter(r => inYm(r.TestDate, ym)).length, ttFailed: S.tt.filter(r => inYm(r.TestDate, ym) && r.Result === "Fail").length,
+    insPlanned, insDone, ytdPlanned, ytdDone,
+    insLog: S.ins.filter(i => inYm(i.InspectionDate, ym)).sort((a, b) => (a.InspectionDate || "").localeCompare(b.InspectionDate || "")),
+    revDone: S.rev.filter(r => inYm(r.ReviewDate, ym)).length,
+    legDone: S.leg.filter(r => inYm(r.LastReviewed, ym)).length,
+  };
+}
+
+// Change since last month. better: "down" (fewer is better), "up", or "" (neutral)
+function delta(cur, prev, better, fmt = v => v){
+  if (cur == null || prev == null) return `<span class="dl">no comparison</span>`;
+  const df = Math.round((cur - prev) * 100) / 100;
+  if (!df) return `<span class="dl">no change</span>`;
+  const tone = !better ? "" : (better === "down") === (df < 0) ? "good" : "bad";
+  return `<span class="dl ${tone}">${df > 0 ? "▲ +" : "▼ −"}${fmt(Math.abs(df))}</span>`;
+}
+
+// 12-month incident bars ending at the report month (single series; report month darker)
+function incTrend(ym){
+  const months = []; let m = ym; for (let k = 0; k < 12; k++){ months.unshift(m); m = prevYm(m); }
+  const rows = months.map(x => { const r = S.inc.filter(i => inYm(i.IncidentDate, x)); return { ym:x, n:r.length, lti:r.filter(i => i.Severity === "Lost Time Injury").length }; });
+  const max = Math.max(1, ...rows.map(r => r.n)), W = 520, H = 120, bw = W / 12, top = 16, base = H - 18;
+  const bars = rows.map((r, k) => { const h = r.n ? Math.max(3, (base - top) * r.n / max) : 0, x = k * bw + 6, w = bw - 12;
+    return `<g><title>${ymLabel(r.ym)}: ${r.n} incident${r.n === 1 ? "" : "s"}${r.lti ? `, ${r.lti} lost time` : ""}</title>
+      <rect x="${k * bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>
+      ${h ? `<path d="M${x},${base} v${-(h - 4)} q0,-4 4,-4 h${w - 8} q4,0 4,4 v${h - 4} z" class="${r.ym === ym ? "cur" : ""}"/>` : `<line x1="${x}" x2="${x + w}" y1="${base}" y2="${base}" class="zero"/>`}
+      ${r.n ? `<text x="${x + w / 2}" y="${base - h - 4}" class="v">${r.n}</text>` : ""}
+      <text x="${x + w / 2}" y="${H - 4}" class="m${r.ym === ym ? " cur" : ""}">${ymShort(r.ym)}</text></g>`; }).join("");
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Incidents per month, last 12 months">${bars}</svg>`;
+}
+
+function rptNoteKey(ym){ return "mjeHseNote:" + ym; }
+function rptNote(ym){ try { return localStorage.getItem(rptNoteKey(ym)) || ""; } catch { return ""; } }
+
+const RPT_SUBS = [["hse","Monthly HSE report"],["inc","Incident report"],["ahead","Lookahead"]];
+function viewReports(){
+  const f = S.filt.rpt;
+  if (!f.month) f.month = defaultRptMonth();
+  const tabs = `<div class="bar chips noprint">${RPT_SUBS.map(([k, l]) => `<button class="chip ${f.sub === k ? "on" : ""}" data-rsub="${k}">${l}</button>`).join("")}</div>`;
+  if (f.sub === "inc") return viewIncReport(tabs);
+  if (f.sub === "ahead") return viewLookahead(tabs);
+  const months = []; let m = ymOf(TODAY); for (let k = 0; k < 24; k++){ months.push(m); m = prevYm(m); }
+  return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
+      <label class="count" for="rptMonth">Month</label><select class="f" id="rptMonth">${months.map(v => `<option value="${v}" ${v === f.month ? "selected" : ""}>${ymLabel(v)}</option>`).join("")}</select>
+      <button class="btn primary" data-rprint="MJE HSE Report ${f.month}">Print / Save as PDF</button></div>
+    ${tabs}${hseReport(f.month)}
+    <p class="count noprint">Type comments in the box before printing; they're kept on this computer only. In the print window choose <b>Save as PDF</b> to make a file to email.</p>`;
+}
+
+function hseReport(ym){
+  const c = hseFigures(ym), p = hseFigures(prevYm(ym)), pm = ymShort(prevYm(ym)), cur = ym === ymOf(TODAY);
+  const riskOn = !S.missing.includes("risk"), ttOn = !S.missing.includes("tt"), trnOn = !S.missing.includes("trn") && !S.missing.includes("staff"),
+        insOn = !S.missing.includes("area"), legOn = !S.missing.includes("leg");
+  const hi = S.risk.filter(r => openRisk(r) && ["High","Very High"].includes(r.Rating)).sort((a, b) => (b.RiskScore || 0) - (a.RiskScore || 0));
+  const revOver = S.rev.filter(r => ["overdue","none"].includes(revState(r))).length, legDue = S.leg.filter(r => legState(r) !== "ok").length;
+  const tile = (label, v, dl, sub) => `<div class="rt"><div class="l">${label}</div><div class="v">${v}</div><div class="s">${dl}${sub ? ` <span>${sub}</span>` : ""}</div></div>`;
+  const vs = `vs ${pm}`;
+  const sevRows = INC_SEV.map(s => [s, c.inc.filter(i => i.Severity === s).length, S.inc.filter(i => inYm(i.IncidentDate, ym.slice(0,4)) && (i.IncidentDate || "") <= c.d && i.Severity === s).length]).filter(r => r[1] || r[2]);
+  const daysLate = t => Math.round((new Date(c.d) - new Date(t)) / 864e5);
+  return `<article class="rpt" id="rpt">
+  <header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div><h1>Monthly HSE Report</h1><div class="rm">${ymLabel(ym)}</div>
+    <div class="rmeta">Figures as at ${fmtDate(c.d)}${cur ? " (month in progress)" : ""} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
+
+  <section><h2>Headline figures <small>change ${vs}</small></h2><div class="rts">
+    ${tile("Incidents", c.incN, delta(c.incN, p.incN, "down"), "")}
+    ${tile("Lost time injuries", c.lti, delta(c.lti, p.lti, "down"), "")}
+    ${tile("Est. incident cost", kina(c.cost), delta(c.cost, p.cost, "down", kina), "")}
+    ${tile("Improvements closed", c.impClosed, delta(c.impClosed, p.impClosed, "up"), `${c.impOpened} opened`)}
+    ${tile("Overdue actions", c.overdue.length, delta(c.overdue.length, p.overdue.length, "down"), `${c.impOpen} open`)}
+    ${trnOn ? tile("Mandatory training", c.trnPct == null ? "—" : c.trnPct + "%", delta(c.trnPct, p.trnPct, "up", v => v + " pts"), "") : ""}
+    ${ttOn ? tile("Test & tag overdue / failed", c.ttBad, delta(c.ttBad, p.ttBad, "down"), `of ${c.ttItems}`) : ""}
+    ${insOn ? tile("Inspections done", `${c.insDone}/${c.insPlanned}`, delta(c.insDone, p.insDone, "up"), "of planned") : ""}
+  </div></section>
+
+  <section class="r2"><div><h2>Incidents</h2>
+    <p class="rk">${c.incN ? `${c.incN} incident${c.incN === 1 ? "" : "s"} in ${ymLabel(ym)}: ${c.serious} needing medical treatment or worse, ${c.nearMiss} near miss${c.nearMiss === 1 ? "" : "es"}, ${c.hrsLost ? c.hrsLost + " working hours lost" : "no working hours lost"}.` : `No incidents recorded in ${ymLabel(ym)}.`}</p>
+    ${sevRows.length ? `<table class="rtab sm"><thead><tr><th>Severity</th><th class="n">${ymShort(ym)}</th><th class="n">Year to date</th></tr></thead><tbody>${sevRows.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${r[1]}</td><td class="n">${r[2]}</td></tr>`).join("")}</tbody></table>` : ""}
+  </div><div><h2>Incidents — last 12 months</h2>${incTrend(ym)}</div></section>
+
+  ${c.inc.length ? `<section><table class="rtab"><thead><tr><th>No.</th><th>Date</th><th>Location</th><th>Agency</th><th>Injury</th><th>Severity</th><th>Status now</th><th class="n">Est. cost</th></tr></thead><tbody>
+    ${c.inc.sort((a, b) => (a.IncidentDate || "").localeCompare(b.IncidentDate || "")).map(i => `<tr><td class="mono">${esc(i.Title)}</td><td class="mono">${fmtDate(i.IncidentDate)}</td><td>${esc(i.Location)}</td><td>${esc(i.AgencyOfInjury)}</td><td>${esc([i.ActualInjury, i.BodyPart].filter(Boolean).join(" — "))}</td><td>${esc(i.Severity)}</td><td>${esc(i.IncidentStatus)}</td><td class="n">${num(i.TotalEstCost) ? kina(num(i.TotalEstCost)) : ""}</td></tr>`).join("")}
+  </tbody></table></section>` : ""}
+
+  <section><h2>Improvement actions <small>${c.impOpened} opened · ${c.impClosed} closed · ${c.impOpen} open at ${fmtDate(c.d)}</small></h2>
+    ${c.overdue.length ? `<table class="rtab"><thead><tr><th>Serial</th><th>Overdue action</th><th>Actioned by</th><th>Due</th><th class="n">Days late</th></tr></thead><tbody>
+      ${c.overdue.slice(0, 10).map(i => `<tr><td class="mono">${esc(i.Title)}</td><td>${esc(i.NatureOfImprovement)}</td><td>${esc(i.ActionedBy)}</td><td class="mono">${fmtDate(i.TargetDate)}</td><td class="n">${daysLate(i.TargetDate)}</td></tr>`).join("")}
+    </tbody></table>${c.overdue.length > 10 ? `<p class="rk">+ ${c.overdue.length - 10} more overdue — see the Improvement register.</p>` : ""}` : `<p class="rk">No overdue improvement actions at ${fmtDate(c.d)}.</p>`}
+  </section>
+
+  <section class="r2">
+    ${trnOn ? `<div><h2>Training</h2><p class="rk">${c.trnPct == null ? "No mandatory training requirements recorded." : `${c.trnOk} of ${c.trnN} mandatory requirements current (${c.trnPct}%). ${c.trnExpired.length} expired, ${c.trnMissing} not recorded, ${c.trnExpiring} expiring within 60 days.`}</p>
+      ${c.trnExpired.length ? `<table class="rtab sm"><thead><tr><th>Expired</th><th>Course</th><th>Expired on</th></tr></thead><tbody>${c.trnExpired.slice(0, 8).map(r => `<tr><td>${esc(r.StaffName)}</td><td>${esc(r.Course)}</td><td class="mono">${fmtDate(r.ExpiryDate)}</td></tr>`).join("")}</tbody></table>${c.trnExpired.length > 8 ? `<p class="rk">+ ${c.trnExpired.length - 8} more</p>` : ""}` : ""}</div>` : ""}
+    ${insOn ? `<div><h2>Workplace inspections</h2><p class="rk">${c.insDone} of ${c.insPlanned} planned inspections done in ${ymShort(ym)}; ${c.ytdDone} of ${c.ytdPlanned} for the year to date.</p>
+      ${c.insLog.length ? `<table class="rtab sm"><thead><tr><th>Date</th><th>Area</th><th>Outcome</th></tr></thead><tbody>${c.insLog.map(i => `<tr><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Outcome)}${i.ActionsRaised ? ` · ${esc(i.ActionsRaised)}` : ""}</td></tr>`).join("")}</tbody></table>` : ""}</div>` : ""}
+  </section>
+
+  <section class="r2">
+    ${ttOn ? `<div><h2>Test &amp; tag</h2><p class="rk">${c.ttTests} test${c.ttTests === 1 ? "" : "s"} done in ${ymShort(ym)}${c.ttFailed ? `, ${c.ttFailed} failed` : ""}. At ${fmtDate(c.d)}, ${c.ttBad} of ${c.ttItems} tagged items were overdue or failed.</p></div>` : ""}
+    ${riskOn || legOn ? `<div><h2>Risks &amp; legislation <small>current status</small></h2><p class="rk">${riskOn ? `${hi.length} open high or very high risks (${hi.filter(r => r.Rating === "Very High").length} very high, before controls). ${c.revDone} risk review${c.revDone === 1 ? "" : "s"} signed off in ${ymShort(ym)}; ${revOver} overdue now.` : ""}
+      ${legOn ? ` ${c.legDone} legislation review${c.legDone === 1 ? "" : "s"} recorded in ${ymShort(ym)}; ${legDue} due now.` : ""}</p>
+      ${hi.length ? `<table class="rtab sm"><thead><tr><th>Ref</th><th>Highest risks</th><th>Rating</th></tr></thead><tbody>${hi.slice(0, 5).map(r => `<tr><td class="mono">${esc(r.Title)}</td><td>${esc(r.ActivityArea)}${r.Task ? " — " + esc(r.Task) : ""}</td><td>${esc(r.Rating)}${r.ResidualRating ? ` → ${esc(r.ResidualRating)}` : ""}</td></tr>`).join("")}</tbody></table>` : ""}</div>` : ""}
+  </section>
+
+  <section class="rnote"><h2>Comments</h2><div id="rptNote" contenteditable="true" data-ph="Click here to add the Safety Officer's comments for this month…">${esc(rptNote(ym))}</div></section>
+  <footer class="rf">Source: MJE Safety Hub registers. Figures are worked out as at ${fmtDate(c.d)} from the dates recorded; risks and legislation show their current status because no history is kept. Change arrows compare with ${ymLabel(prevYm(ym))}.</footer>
+</article>`;
+}
+/* ---------------- printable incident report ---------------- */
+const incName = i => [i.FirstName, i.Surname].filter(Boolean).join(" ");
+const incSorted = () => [...S.inc].sort((a, b) => (b.IncidentDate || "").localeCompare(a.IncidentDate || "") || String(b.Title).localeCompare(String(a.Title), undefined, { numeric:true }));
+function viewIncReport(tabs){
+  const f = S.filt.rpt, list = incSorted();
+  const head = `<div class="bar noprint"><h2>Reports</h2></div>`;
+  if (!list.length) return head + tabs + `<div class="card"><div class="empty">No incidents recorded yet.</div></div>`;
+  const i = list.find(x => String(x.id) === String(f.inc)) || list[0]; f.inc = i.id;
+  return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
+      <label class="count" for="rptInc">Incident</label><select class="f" id="rptInc" style="max-width:420px">${list.map(x => `<option value="${esc(x.id)}" ${x === i ? "selected" : ""}>${esc(x.Title)} · ${fmtDate(x.IncidentDate)}${incName(x) ? " · " + esc(incName(x)) : ""} · ${esc(x.Severity || "")}</option>`).join("")}</select>
+      <button class="btn" data-open="inc:${esc(i.id)}">Edit incident</button>
+      <button class="btn primary" data-rprint="MJE Incident Report ${esc(i.Title)}">Print / Save as PDF</button></div>
+    ${tabs}${incReport(i)}
+    <p class="count noprint">One incident on one page, for insurers, a workers' compensation claim or the employee's file. Blank fields print as a dash. In the print window choose <b>Save as PDF</b> to make a file to email.</p>`;
+}
+function incReport(i){
+  const v = x => (x === "" || x == null) ? `<span class="nil">—</span>` : esc(x);
+  const kv = (label, x) => `<div class="kv"><span>${label}</span><b>${v(x)}</b></div>`;
+  const imp = i.LinkedImprovement ? S.imp.find(x => String(x.Title).trim().toLowerCase() === String(i.LinkedImprovement).trim().toLowerCase()) : null;
+  const k = x => num(x) ? kina(x) : `<span class="nil">—</span>`, h = x => num(x) ? `${num(x)} hrs` : `<span class="nil">—</span>`;
+  const costRows = [["Workers' time lost", h(i.WorkersTimeLostHrs)], ["Admin & follow-up time", h(i.AdminHours)], ["Est. direct cost", k(i.EstDirectCost)], ["Est. indirect cost", k(i.EstIndirectCost)],
+    ["Workcover excess", k(i.WorkcoverExcess)], ["Return to work program", i.RTWProgram === "Yes" ? `Yes — ${num(i.RTWDays)} day${num(i.RTWDays) === 1 ? "" : "s"} (${num(i.RTWHours)} hrs) at ${num(i.ReductionWorkActivityPct)}% reduced activity` : v(i.RTWProgram || "No")],
+    ["Est. cost of return to work", k(i.EstCostRTW)]];
+  const flag = { "Lost Time Injury":"Lost time injury", "Serious / Notifiable":"Serious / notifiable incident" }[i.Severity];
+  const signers = [["Person involved", incName(i)], ["Supervisor", ""], ["Safety Officer", ""], ["Managing Director", ""]];
+  return `<article class="rpt" id="rpt">
+  <header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div class="grow"><h1>Incident Report</h1><div class="rm">${esc(i.Title)}</div>
+    <div class="rmeta">Safety Incident Register · printed ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div>
+    <div class="rbadges"><span class="rb">${v(i.Severity)}</span><span class="rb st">${v(i.IncidentStatus)}</span></div></header>
+  ${flag ? `<div class="rflag">${flag}: check that the workers' compensation notification has been made and recorded.</div>` : ""}
+
+  <section><h2>Incident details</h2><div class="kvs">
+    ${kv("Date", fmtDate(i.IncidentDate))}${kv("Time", i.IncidentTime)}${kv("Location / site", i.Location)}
+    ${kv("Person involved", incName(i))}${kv("Reported by", i.ReportedBy)}${kv("Reported to division", i.ReportedToDivision)}
+    ${i.JobNo ? kv("Service Hub job no.", i.JobNo) : ""}</div>
+    <h3>Description</h3><p class="txt">${v(i.Description)}</p></section>
+
+  <section><h2>Injury</h2><div class="kvs four">
+    ${kv("Agency of injury or disease", i.AgencyOfInjury)}${kv("Actual injury or disease", i.ActualInjury)}${kv("Part of body", i.BodyPart)}${kv("Severity", i.Severity)}</div></section>
+
+  <section id="rptPhotoSec"><h2>Photos</h2><div class="rphotos" id="rptPhotos" data-title="${esc(i.Title)}"><span class="rk">Loading photos…</span></div></section>
+
+  <section><h2>Corrective action</h2><p class="txt">${v(i.CorrectiveAction)}</p>
+    ${i.LinkedImprovement ? `<h3>Linked improvement ${esc(i.LinkedImprovement)}</h3>${imp ? `<div class="kvs">
+      ${kv("Nature of improvement", imp.NatureOfImprovement)}${kv("Actioned by", imp.ActionedBy)}${kv("Status", imp.ImprovementStatus + (imp.ImprovementStatus === "Closed" && imp.DateClosed ? " " + fmtDate(imp.DateClosed) : ""))}
+      ${imp.ProposedAction ? `<div class="kv span3"><span>Proposed action</span><b class="txt">${esc(imp.ProposedAction)}</b></div>` : ""}
+      ${kv("Target date", fmtDate(imp.TargetDate))}${kv("Priority", imp.Priority)}${kv("Category", imp.Category)}</div>`
+      : `<p class="rk">${esc(i.LinkedImprovement)} wasn't found in the Improvement register.</p>`}` : ""}</section>
+
+  <section><h2>Time lost &amp; cost <small>PGK</small></h2><div class="kvs four costs">
+    ${costRows.map(r => `<div class="kv${r[0] === "Return to work program" ? " w2" : ""}"><span>${r[0]}</span><b>${r[1]}</b></div>`).join("")}
+    <div class="kv tot"><span>Total estimated cost</span><b>${kina(i.TotalEstCost)}</b></div></div></section>
+
+  <section class="sign"><h2>Sign-off</h2><table class="rtab"><thead><tr><th style="width:24%"></th><th style="width:32%">Name</th><th style="width:28%">Signature</th><th>Date</th></tr></thead><tbody>
+    ${signers.map(([r, n]) => `<tr><td>${r}</td><td>${esc(n)}</td><td></td><td></td></tr>`).join("")}</tbody></table></section>
+  <footer class="rf">MJE Safety Hub · ${esc(i.Title)} · Contains personal information: keep with the employee's file and share only with people who need it.</footer>
+</article>`;
+}
+// Photos come from the incident's folder in MJE_IncidentPhotos (large thumbnails so they print clearly)
+async function loadReportPhotos(el){
+  const title = el.dataset.title, sec = $("#rptPhotoSec");
+  const show = (html, hide) => { if (el.isConnected) { el.innerHTML = html; if (hide && sec) sec.classList.add("noprint"); } };
+  if (DEMO) return show(`<span class="rk">Photos aren't available in demo mode.</span>`, true);
+  S.rptPhotos ||= {};
+  if (!S.rptPhotos[title]) S.rptPhotos[title] = (async () => {
+    const d = await photoDrive(); if (!d) return null;
+    try { return (await graph(`/drives/${d}/root:/${encodeURIComponent(title)}:/children?$expand=thumbnails`)).value.filter(p => p.thumbnails?.length); }
+    catch(e){ return isMissingList(e) ? [] : null; }
+  })();
+  S.rptPhotosWait = S.rptPhotos[title];
+  const ph = await S.rptPhotos[title];
+  if (ph === null) return show(`<span class="rk">The photo library isn't available.</span>`, true);
+  if (!ph.length) return show(`<span class="rk">No photos attached.</span>`, true);
+  show(ph.slice(0, 6).map(p => `<a href="${esc(p.webUrl)}" target="_blank" rel="noopener"><img src="${esc(p.thumbnails[0].large?.url || p.thumbnails[0].medium?.url || "")}" alt="${esc(p.name)}"></a>`).join("")
+    + (ph.length > 6 ? `<p class="rk span3">+ ${ph.length - 6} more in the photo library.</p>` : ""));
+}
+
+/* ---------------- lookahead: everything falling due ---------------- */
+const AHEAD_TYPES = { trn:["Training","var(--c-trn)","Training"], tt:["Test & tag","var(--c-tt)","Test & tag"], ins:["Inspection","var(--c-ins)","Inspections"], rev:["Risk review","var(--c-rev)","Risk reviews"], leg:["Legislation","var(--c-leg)","Legislation"], imp:["Improvement action","var(--c-imp)","Actions"] };
+const AHEAD_DAYS = [30, 60, 90, 180];
+function aheadItems(end){
+  const out = [], on = k => !S.missing.includes(k);
+  const add = (type, due, item, who, note, open, overdue) => out.push({ type, due, item, who, note, open, overdue: overdue ?? (!due || due < TODAY) });
+  if (on("trn") && on("staff")) S.trn.filter(r => r.CompletedDate && r.ExpiryDate && r.ExpiryDate <= end && activeStaff().some(s => s.Title === r.StaffName))
+    .forEach(r => add("trn", r.ExpiryDate, r.Course, r.StaffName, `${r.Requirement || "Training"} · ${r.ExpiryDate < TODAY ? "expired" : "expires"}`, `trn:${r.id}`));
+  if (on("tt")) ttLatest().forEach(r => {
+    const item = [r.PlantID, r.Description].filter(Boolean).join(" — ");
+    if (r.Result === "Fail") add("tt", r.TestDate, item, r.Location, `Failed test${r.ReportedFault ? ": " + r.ReportedFault : ""} — repair and retest`, `tt:${r.id}`, true);
+    else if (r.NextTestDate && r.NextTestDate <= end) add("tt", r.NextTestDate, item, r.Location, `Retest${r.TestPeriod ? " (" + r.TestPeriod + ")" : ""}`, `tt:${r.id}`);
+  });
+  if (on("area")){
+    const start = new Date(+TODAY.slice(0,4), +TODAY.slice(5,7) - 13, 1), endM = ymOf(end);
+    S.area.forEach(a => {
+      let missed = [];
+      for (let dt = new Date(start); ; dt.setMonth(dt.getMonth() + 1)){
+        const ym = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`; if (ym > endM) break;
+        const st = areaMonthState(a, String(dt.getFullYear()), dt.getMonth()), me = monthEnd(ym);
+        if (!st.planned || st.done.length) continue;
+        if (me < TODAY){ if (!S.ins.some(i => i.Area === a.Title && (i.InspectionDate || "") >= ym + "-01")) missed.push(ym); }
+        else { add("ins", me, a.Title, a.Responsible, `${a.Frequency || "Planned"} inspection`, `area:${a.id}`, false); out.at(-1).month = ym; }
+      }
+      if (missed.length) add("ins", monthEnd(missed.at(-1)), a.Title, a.Responsible,
+        missed.length === 1 ? `Planned for ${ymLabel(missed[0])} — not done` : `${missed.length} planned inspections missed since ${ymLabel(missed[0])}`, `area:${a.id}`, true);
+    });
+  }
+  if (on("rev")) S.rev.forEach(r => { const n = nextDue(r);
+    if (!n) add("rev", "", r.Title, r.Responsible, `${r.RegisterType || ""} · no review recorded`, `rev:${r.id}`, true);
+    else if (n <= end) add("rev", n, r.Title, r.Responsible, `${r.RegisterType || ""} · ${r.ReviewFrequency || ""}`, `rev:${r.id}`); });
+  if (on("leg")) S.leg.forEach(r => { const n = legDue(r);
+    if (!n) add("leg", "", r.Title, r.Responsible, "Never reviewed", `leg:${r.id}`, true);
+    else if (n <= end) add("leg", n, r.Title, r.Responsible, `${r.ReviewFrequency || "Monthly"} review`, `leg:${r.id}`); });
+  S.imp.filter(i => i.ImprovementStatus !== "Closed" && (i.Recurrence || "One-off") === "One-off" && i.TargetDate && i.TargetDate <= end)
+    .forEach(i => add("imp", i.TargetDate, `${i.Title} — ${i.NatureOfImprovement || ""}`, i.ActionedBy, `Priority ${i.Priority || "—"} · ${i.ImprovementStatus || ""}`, `imp:${i.id}`));
+  return out.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || a.type.localeCompare(b.type) || String(a.item).localeCompare(String(b.item)));
+}
+function viewLookahead(tabs){
+  const f = S.filt.rpt, end = addDays(TODAY, f.days), all = aheadItems(end);
+  const rows = all.filter(r => (!f.type || r.type === f.type) && (f.overdue || !r.overdue));
+  const missing = !S.missing.includes("trn") && (!f.type || f.type === "trn")
+    ? S.trn.filter(r => r.Requirement === "Mandatory" && !r.CompletedDate && activeStaff().some(s => s.Title === r.StaffName)).length : 0;
+  const tiles = Object.entries(AHEAD_TYPES).map(([k, [, c, label]]) => {
+    const od = all.filter(r => r.type === k && r.overdue).length, due = all.filter(r => r.type === k && !r.overdue).length;
+    return `<button type="button" class="rt ${f.type === k ? "on" : ""}" data-rtype="${k}" style="--dc:${c}"><div class="l"><i class="dot"></i>${label}</div><div class="v">${due}</div><div class="s">${od ? `<span class="late">${od} overdue</span>` : "none overdue"}</div></button>`; }).join("");
+  const groups = [];
+  const od = rows.filter(r => r.overdue); if (od.length) groups.push([`Overdue now`, od, true]);
+  rows.filter(r => !r.overdue).forEach(r => { const g = ymLabel(ymOf(r.due)); const last = groups.at(-1); if (last && last[0] === g) last[1].push(r); else groups.push([g, [r], false]); });
+  const dueTxt = r => r.month ? `${ymShort(r.month)} ${r.month.slice(0,4)}` : !r.due ? `<span class="late">no date</span>` : r.overdue ? `<span class="late">${fmtDate(r.due)}</span>` : fmtDate(r.due);
+  const label = f.type ? AHEAD_TYPES[f.type][0] : "";
+  return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
+      <label class="count" for="rptDays">Look ahead</label><select class="f" id="rptDays">${AHEAD_DAYS.map(d => `<option value="${d}" ${d === f.days ? "selected" : ""}>${d} days</option>`).join("")}</select>
+      <label class="count"><input type="checkbox" id="rptOverdue" ${f.overdue ? "checked" : ""}> Include overdue</label>
+      <button class="btn primary" data-rprint="MJE Lookahead ${TODAY}">Print / Save as PDF</button></div>
+    ${tabs}
+  <article class="rpt" id="rpt">
+  <header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div><h1>${f.days}-Day Lookahead</h1><div class="rm">${fmtDate(TODAY)} to ${fmtDate(end)}</div>
+    <div class="rmeta">${label ? esc(label) + " only · " : ""}${f.overdue ? "includes items already overdue" : "overdue items not shown"} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
+  <section><h2>Falling due <small class="noprint">click a box to show one type; click again for all</small></h2><div class="rts six">${tiles}</div></section>
+  <section>${rows.length ? `<table class="rtab ag"><thead><tr><th style="width:92px">Due</th><th style="width:150px">Type</th><th>Item</th><th>Who / where</th><th>Notes</th></tr></thead><tbody>
+    ${groups.map(([g, rs, o]) => `<tr class="grp ${o ? "od" : ""}"><td colspan="5">${g} <small>${rs.length}</small></td></tr>` + rs.map(r => `<tr data-open="${esc(r.open)}" title="Open this record">
+      <td class="mono">${dueTxt(r)}</td><td class="ty" style="--dc:${AHEAD_TYPES[r.type][1]}"><i class="dot"></i>${AHEAD_TYPES[r.type][0]}</td><td>${esc(r.item)}</td><td>${esc(r.who)}</td><td>${esc(r.note)}</td></tr>`).join("")).join("")}
+  </tbody></table>` : `<p class="rk">Nothing falls due in the next ${f.days} days${label ? " for " + esc(label.toLowerCase()) : ""}.</p>`}
+  ${missing ? `<p class="rk" style="margin-top:8px">Also: ${missing} mandatory training requirement${missing === 1 ? " has" : "s have"} never been recorded — see the Training matrix.</p>` : ""}</section>
+  <footer class="rf">Source: MJE Safety Hub registers. Training = recorded expiry dates for active staff · Test &amp; tag = latest test per item · Inspections = planned months not yet done · Risk reviews = review schedule · Legislation = last review + frequency · Improvement actions = open one-off actions by target date.</footer>
+</article>
+  <p class="count noprint">Click a row to open the record. Use this to book courses, testers and inspections ahead of time.</p>`;
+}
+
+/* ---------------- report controls ---------------- */
+function bindReports(){
+  if (S.view !== "rpt") return;
+  const f = S.filt.rpt;
+  document.querySelectorAll("[data-rsub]").forEach(b => b.onclick = () => { f.sub = b.dataset.rsub; render(); });
+  document.querySelectorAll("[data-rprint]").forEach(b => b.onclick = () => printReport(b.dataset.rprint));
+  const sel = $("#rptMonth"); if (sel) sel.onchange = () => { f.month = sel.value; render(); };
+  const n = $("#rptNote"); if (n) n.oninput = () => { try { localStorage.setItem(rptNoteKey(f.month), n.innerText.trim()); } catch {} };
+  const ri = $("#rptInc"); if (ri) ri.onchange = () => { f.inc = ri.value; render(); };
+  const ph = $("#rptPhotos"); if (ph) loadReportPhotos(ph);
+  const dd = $("#rptDays"); if (dd) dd.onchange = () => { f.days = +dd.value; render(); };
+  const ov = $("#rptOverdue"); if (ov) ov.onchange = () => { f.overdue = ov.checked; render(); };
+  document.querySelectorAll("[data-rtype]").forEach(b => b.onclick = () => { f.type = f.type === b.dataset.rtype ? "" : b.dataset.rtype; render(); });
+}
+// Wait for photos to arrive before opening the print window, so they appear on the PDF
+async function printReport(title){
+  if (S.view === "rpt" && S.filt.rpt.sub === "inc" && S.rptPhotosWait) { try { await S.rptPhotosWait; } catch {} await new Promise(r => setTimeout(r, 50)); }
+  const imgs = [...document.querySelectorAll("#rpt img")].filter(im => !im.complete);
+  if (imgs.length) await Promise.race([Promise.all(imgs.map(im => new Promise(r => { im.addEventListener("load", r); im.addEventListener("error", r); }))), new Promise(r => setTimeout(r, 5000))]);
+  const t = document.title; document.title = title; window.print(); document.title = t;
+}
+
 const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM, eq:EQ_FORM, tt:TT_FORM, staff:STAFF_FORM, course:COURSE_FORM, trn:TRN_FORM, area:AREA_FORM, ins:INS_FORM, leg:LEG_FORM };
 const USER_TITLE = new Set(["rev","staff","course","area","leg","trn"]);
 const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item", eq:"Equipment item", tt:"Test", staff:"Staff member", course:"Course", trn:"Training record", area:"Inspection area", ins:"Inspection", leg:"Legislation" };
@@ -628,8 +1021,8 @@ function render(){
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === S.view));
   const banner = DEMO ? `<div class="banner">Demo mode — showing the existing registers as sample data. Changes are kept only until you refresh. Add the app registration details to CONFIG to connect to SharePoint.</div>` : "";
   const tb = S.tile && S.view !== "dash" ? `<div class="filterbar" style="--fbc:var(--c-${GO_LABEL[S.tile][1]})"><span class="ft">Showing from dashboard:</span> <b>${esc(GO_LABEL[S.tile][0])}</b><span class="grow"></span><button class="fchip" data-clearall="1">✕ Clear filter</button></div>` : "";
-  $("#main").innerHTML = banner + tb + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets, training:viewTraining, comp:viewCompliance }[S.view])();
-  bindView();
+  $("#main").innerHTML = banner + tb + ({ dash:viewDash, inc:viewInc, imp:viewImp, risk:viewRisk, assets:viewAssets, training:viewTraining, comp:viewCompliance, rpt:viewReports }[S.view])();
+  bindView(); bindReports();
 }
 
 function hbars(rows, max, colors){
@@ -867,10 +1260,12 @@ function openForm(key, item, prefill = {}){
     + (key === "rev" ? `<button type="button" class="btn" id="revToday">✓ Record a review today</button>` : "")
     + (key === "tt" && item ? `<button type="button" class="btn" id="ttRetest">↻ Record a new test for this item</button>` : "")
     + (key === "leg" ? `<button type="button" class="btn" id="legToday">✓ Record a review today</button>` : "")
+    + (key === "inc" && item ? `<button type="button" class="btn" id="incPrint">🖨 Print incident report</button>` : "")
 ;
   if (key === "inc"){
     $("#phInput").onchange = e => { [...e.target.files].forEach(f => { f._url = URL.createObjectURL(f); photoQueue.push(f); }); e.target.value = ""; renderQueue(); };
     loadPhotos(item?.Title);
+    if (item) $("#incPrint").onclick = () => { $("#dlg").close(); S.view = "rpt"; Object.assign(S.filt.rpt, { sub:"inc", inc:item.id }); render(); window.scrollTo({ top:0 }); };
   }
   if (key === "risk"){
     const upd = (lName, cName, sName, rName, e) => {
