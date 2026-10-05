@@ -207,3 +207,5 @@ label.fld input[readonly]{background:var(--grey-bg)}
   .hb{grid-template-columns:100px 1fr 36px}
   input[type=search]{width:100%}
 }
+/* "Preview" tag on a Hub that only listed people can see (MJE_APPS_ON in mje-config.js) */
+.apps a .pv{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;background:#f59e0b;color:#231f20;vertical-align:1px}

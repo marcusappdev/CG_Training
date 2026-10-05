@@ -14,10 +14,38 @@ const MJE_APPS = [
   { key:"safety",  name:"Safety Hub",  href: MJE_ROOT },
   { key:"service", name:"Service Hub", href: MJE_ROOT + "service/" },
 ];
-// Header app switcher: Safety Hub | Service Hub
+// On / off / preview switches come from MJE_APPS_ON + MJE_PREVIEW in mje-config.js.
+// Missing or unknown values count as "on".
+function mjeAppState(key){
+  const v = String((typeof MJE_APPS_ON === "object" && MJE_APPS_ON) ? (MJE_APPS_ON[key] ?? "on") : "on").trim().toLowerCase();
+  return v === "off" || v === "preview" ? v : "on";
+}
+// Can the signed-in person use this Hub?  (`account` is set by initAuth; DEMO mode sees everything)
+function mjeAppAllowed(key){
+  const st = mjeAppState(key);
+  if (st === "on") return true;
+  if (st === "off") return false;
+  if (String(MJE_TENANT.CLIENT_ID).startsWith("<<")) return true;
+  const me = String(account?.username || "").trim().toLowerCase();
+  return !!me && (typeof MJE_PREVIEW !== "undefined" ? MJE_PREVIEW : []).some(e => String(e).trim().toLowerCase() === me);
+}
+const mjeApp = key => MJE_APPS.find(a => a.key === key);
+// Header app switcher: Safety Hub | Service Hub.  Shows only the Hubs this person can use;
+// hidden altogether when that leaves just one.  Call again after sign-in (preview needs the email).
 function mjeAppSwitcher(current){
-  return `<div class="apps" role="navigation" aria-label="MJE apps">${MJE_APPS.map(a =>
-    `<a href="${a.href}" class="${a.key === current ? "on" : ""}"${a.key === current ? ' aria-current="page"' : ""}>${a.name}</a>`).join("")}</div>`;
+  const list = MJE_APPS.filter(a => mjeAppAllowed(a.key));
+  if (list.length < 2) return `<span id="apps"></span>`;
+  return `<div class="apps" id="apps" role="navigation" aria-label="MJE apps">${list.map(a =>
+    `<a href="${a.href}" class="${a.key === current ? "on" : ""}"${a.key === current ? ' aria-current="page"' : ""}>${a.name}${mjeAppState(a.key) === "preview" ? '<span class="pv" title="Preview - only listed people can see this Hub">Preview</span>' : ""}</a>`).join("")}</div>`;
+}
+function mjeRenderApps(current){ const el = document.getElementById("apps"); if (el) el.outerHTML = mjeAppSwitcher(current); }
+// Page shown when a Hub is switched off (or in preview and this person isn't listed)
+function mjeUnavailable(key){
+  const me = mjeApp(key), other = MJE_APPS.filter(a => a.key !== key && mjeAppAllowed(a.key));
+  return `<div class="card signin"><div class="full"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"></div>
+    <h2>${esc(me?.name || "This Hub")} isn't available yet</h2>
+    <p>The MJE office hasn't switched it on. Please check back later.</p>
+    ${other.map(a => `<a class="btn primary" href="${a.href}">Go to the ${esc(a.name)}</a>`).join(" ")}</div>`;
 }
 
 /* ---------------- helpers ---------------- */

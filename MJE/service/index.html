@@ -6,7 +6,7 @@
 <title>MJE Service Hub</title>
 <link rel="icon" type="image/png" href="../shared/mje-icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
-<link rel="stylesheet" href="../shared/mje.css?v=20261002">
+<link rel="stylesheet" href="../shared/mje.css?v=20261005">
 <style>
 /* Service Hub only — everything shared with the Safety Hub is in ../shared/mje.css */
 .rolepill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:1px 6px;color:#fff}
@@ -125,8 +125,8 @@ a.btn{color:inherit;text-decoration:none;display:inline-block}
 </form></dialog>
 <div class="toast" id="toast"></div>
 
-<script src="../shared/mje-config.js?v=20261002"></script>
-<script src="../shared/mje-core.js?v=20261002"></script>
+<script src="../shared/mje-config.js?v=20261005"></script>
+<script src="../shared/mje-core.js?v=20261005"></script>
 <script>
 /* =====================================================================
    MJE Service Hub — quote → job → schedule → field completion → invoice
@@ -414,7 +414,7 @@ function viewNoAccess(){
                 staff:`Your Service Hub role is set to <b>None</b>.` }[S.roleSource] || "";
   return `<div class="card signin"><h2>Service Hub access</h2><p>${why}</p>
     <p>Ask the MJE office to add your sign-in email and a <b>Service Hub Role</b> (Technician or Office) to your staff record, then refresh.</p>
-    <a class="btn" href="${MJE_ROOT}">Go to the Safety Hub</a></div>`;
+    ${mjeAppAllowed("safety") ? `<a class="btn" href="${MJE_ROOT}">Go to the Safety Hub</a>` : ""}</div>`;
 }
 function viewSettings(){
   const keys = Object.keys(CONFIG.LISTS), service = keys.filter(k => !SAFETY_KEYS.includes(k));
@@ -1415,7 +1415,7 @@ function viewJob(){
   <div class="bar"><h2>${esc(j.Title)}</h2>${jobPill(st)}${priPill(j.Priority)}<span class="count">${esc(j.CustomerName || "")}${j.SiteName ? " · " + esc(j.SiteName) : ""}</span><span class="grow"></span>
     ${st !== "Invoiced" ? `<button class="btn" data-jact="edit">Edit details</button>` : ""}
     ${st === "On Hold" ? `<button class="btn" data-jact="resume">Resume</button>` : st === "Cancelled" ? `<button class="btn" data-jact="resume">Reopen</button>` : !CLOSED.includes(st) ? `<button class="btn" data-jact="hold">Put on hold</button><button class="btn danger" data-jact="cancel">Cancel job</button>` : ""}
-    <a class="btn" href="${esc(incidentLink(j, site))}" target="_blank" rel="noopener">⚠ Log an incident</a></div>
+    ${mjeAppAllowed("safety") ? `<a class="btn" href="${esc(incidentLink(j, site))}" target="_blank" rel="noopener">⚠ Log an incident</a>` : ""}</div>
   ${st === "On Hold" && j.OnHoldReason ? `<div class="banner">On hold: ${esc(j.OnHoldReason)}</div>` : ""}${st === "Cancelled" && j.CancelReason ? `<div class="banner err">Cancelled: ${esc(j.CancelReason)}</div>` : ""}
   <div class="tabs" role="tablist">${JOB_TABS.map(([k, l]) => `<a role="tab" href="#/jobs/${encodeURIComponent(no)}/${k}" class="${k === tab ? "on" : ""}" aria-selected="${k === tab}">${l}${cnt[k] ? ` <span>${cnt[k]}</span>` : ""}</a>`).join("")}</div>
   ${body}`;
@@ -1640,7 +1640,7 @@ function jobSafety(j){
       <p class="count" style="margin-top:8px">${mapped.length ? `Training needed for ${esc(j.JobType)}: ${mapped.map(esc).join(", ")}.` : `No required training is set for ${esc(j.JobType || "this job type")} yet (Settings).`} Test &amp; tag uses items assigned to each person in the Safety Hub.</p></div>
     <div class="card"><h3>Incidents linked to this job</h3>${incs.length ? `<ul class="list">${incs.map(i => `<li><span class="id mono">${esc(i.Title)}</span><span class="x">${esc(i.Description || "").slice(0, 120)}<br><span class="count">${fmtDate(i.IncidentDate)} · ${esc(i.Severity || "")}</span></span>${i.IncidentStatus ? `<span class="pill ${i.IncidentStatus === "Closed" ? "p-ok" : "p-warn"}">${esc(i.IncidentStatus)}</span>` : ""}</li>`).join("")}</ul>`
       : `<div class="empty">No incidents logged against this job</div>`}
-      <a class="btn" href="${esc(incidentLink(j, site))}" target="_blank" rel="noopener" style="margin-top:10px">⚠ Log an incident</a>
+      ${mjeAppAllowed("safety") ? `<a class="btn" href="${esc(incidentLink(j, site))}" target="_blank" rel="noopener" style="margin-top:10px">⚠ Log an incident</a>` : ""}
       <p class="count" style="margin-top:8px">Opens the Safety Hub incident form with the date, site and job number filled in.</p></div>
   </div>`;
 }
@@ -1881,7 +1881,8 @@ async function siteListNames(){
   return out;
 }
 async function start(){
-  $("#apps").outerHTML = mjeAppSwitcher("service");
+  mjeRenderApps("service");
+  if (mjeAppState("service") === "off") { $("#main").innerHTML = mjeUnavailable("service"); return; }
   $("#dlgLogo").src = $(".logo .chip img").src;
   $("#dlgX").onclick = $("#dlgCancel").onclick = () => $("#dlg").close();
   $("#frm").onsubmit = submitForm;
@@ -1891,6 +1892,11 @@ async function start(){
   } else {
     try { await initAuth(); } catch(e){ showSignIn("Sign-in error: " + e.message); return; }
     if (!account) return showSignIn();
+    mjeRenderApps("service");                                 // preview Hubs need the sign-in email
+    if (!mjeAppAllowed("service")) {
+      $("#who").innerHTML = `<span class="nm">${esc(account.name || account.username)}</span><button id="so">Sign out</button>`; $("#so").onclick = signOut;
+      $("#main").innerHTML = mjeUnavailable("service"); return;
+    }
     try {
       await getSite();
       S.have = await siteListNames();
