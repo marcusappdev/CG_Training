@@ -182,7 +182,7 @@ const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], 
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true, caShow:"open", caOwner:"", caBy:"due", trPeriod:"12m", rsDays:30, rsLoc:"", staff:"", eqDisposed:false, legTopic:"" }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true, caShow:"open", caOwner:"", caBy:"due", trPeriod:"12m", rsDays:30, rsLoc:"", staff:"", eqDisposed:false, legTopic:"", from:"", fromScroll:0 }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -841,6 +841,9 @@ function hseReport(ym){
 </article>`;
 }
 /* ---------------- printable incident report ---------------- */
+const VIEW_NAMES = { dash:"Dashboard", inc:"Incidents", imp:"Improvements", risk:"Risks", assets:"Assets", training:"Training", comp:"Compliance" };
+const rptBack = () => S.filt.rpt.from ? `<button class="btn" data-rback="1">← Back to ${VIEW_NAMES[S.filt.rpt.from] || "register"}</button>` : "";
+
 const incName = i => [i.FirstName, i.Surname].filter(Boolean).join(" ");
 const incSorted = () => [...S.inc].sort((a, b) => (b.IncidentDate || "").localeCompare(a.IncidentDate || "") || String(b.Title).localeCompare(String(a.Title), undefined, { numeric:true }));
 function viewIncReport(tabs){
@@ -850,7 +853,7 @@ function viewIncReport(tabs){
   const i = list.find(x => String(x.id) === String(f.inc)) || list[0]; f.inc = i.id;
   return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
       <label class="count" for="rptInc">Incident</label><select class="f" id="rptInc" style="max-width:420px">${list.map(x => `<option value="${esc(x.id)}" ${x === i ? "selected" : ""}>${esc(x.Title)} · ${fmtDate(x.IncidentDate)}${incName(x) ? " · " + esc(incName(x)) : ""} · ${esc(x.Severity || "")}</option>`).join("")}</select>
-      <button class="btn" data-open="inc:${esc(i.id)}">Edit incident</button>
+      ${rptBack()}<button class="btn" data-open="inc:${esc(i.id)}">Edit incident</button>
       <button class="btn primary" data-rprint="MJE Incident Report ${esc(i.Title)}">Print / Save as PDF</button></div>
     ${tabs}${incReport(i)}
     <p class="count noprint">One incident on one page, for insurers, a workers' compensation claim or the employee's file. Blank fields print as a dash. In the print window choose <b>Save as PDF</b> to make a file to email.</p>`;
@@ -1140,7 +1143,7 @@ function viewTrainingRecord(tabs){
   const mand = recs.filter(r => r.Requirement === "Mandatory"), cur = mand.filter(r => ["done","expiring"].includes(trnState(r))).length;
   const sec = (title, list) => list.length ? `<section><h2>${title} <small>${list.length}</small></h2><table class="rtab"><thead><tr><th>Course</th><th style="width:86px">Completed</th><th style="width:86px">Expires</th><th style="width:150px">Status</th><th style="width:130px">Provider</th><th style="width:100px">Certificate no.</th></tr></thead><tbody>
     ${list.map(r => `<tr data-open="trn:${esc(r.id)}"><td>${esc(r.Course)}${S.course.find(c => c.Title === r.Course)?.RefresherMonths ? `<div class="sm">refresher every ${num(S.course.find(c => c.Title === r.Course).RefresherMonths)} months</div>` : ""}</td><td class="mono">${fmtDate(r.CompletedDate)}</td><td class="mono">${fmtDate(r.ExpiryDate)}</td><td><span class="rst ${st(r)[1]}">${st(r)[0]}</span></td><td>${esc(r.Provider)}</td><td class="mono">${esc(r.CertificateNo)}</td></tr>`).join("")}</tbody></table></section>` : "";
-  return rptBar(`<label class="count">Staff member</label>${rsel("trStaff", staff.map(s => [s.id, s.Title + (s.StaffStatus === "Left" ? " (left)" : "")]), p.id)}`, `MJE Training Record ${p.Title}`) + tabs + missingNote(["staff","trn"]) + `
+  return rptBar(`<label class="count">Staff member</label>${rsel("trStaff", staff.map(s => [s.id, s.Title + (s.StaffStatus === "Left" ? " (left)" : "")]), p.id)}${rptBack()}<button class="btn" data-open="staff:${esc(p.id)}">Edit staff member</button>`, `MJE Training Record ${p.Title}`) + tabs + missingNote(["staff","trn"]) + `
   <article class="rpt" id="rpt">${rptHead("Training &amp; Competency Record", esc(p.Title), p.StaffStatus === "Left" ? "no longer with MJE" : "")}
   <section><div class="kvs four"><div class="kv"><span>Position</span><b>${esc(p.Position) || `<span class="nil">—</span>`}</b></div><div class="kv"><span>Department</span><b>${esc(p.Department) || `<span class="nil">—</span>`}</b></div>
     <div class="kv"><span>Employee no.</span><b>${esc(p.EmployeeNo) || `<span class="nil">—</span>`}</b></div><div class="kv"><span>Mandatory training current</span><b>${mand.length ? `${cur} of ${mand.length} (${Math.round(cur / mand.length * 100)}%)` : "none recorded"}</b></div></div></section>
@@ -1195,7 +1198,8 @@ function viewLegLog(tabs){
 function bindReports(){
   if (S.view !== "rpt") return;
   const f = S.filt.rpt;
-  document.querySelectorAll("[data-rsub]").forEach(b => b.onclick = () => { f.sub = b.dataset.rsub; render(); });
+  document.querySelectorAll("[data-rsub]").forEach(b => b.onclick = () => { f.sub = b.dataset.rsub; f.from = ""; render(); });
+  document.querySelectorAll("[data-rback]").forEach(b => b.onclick = () => { const y = f.fromScroll || 0; S.view = f.from; f.from = ""; render(); window.scrollTo({ top:y }); });
   document.querySelectorAll("[data-rprint]").forEach(b => b.onclick = () => printReport(b.dataset.rprint));
   const sel = $("#rptMonth"); if (sel) sel.onchange = () => { f.month = sel.value; render(); };
   const n = $("#rptNote"); if (n) n.oninput = () => { try { localStorage.setItem(rptNoteKey(f.month), n.innerText.trim()); } catch {} };
@@ -1406,7 +1410,7 @@ function bindView(){
 
 /* ---------------- dashboard tile links ---------------- */
 function resetFilt(){
-  S.tile = null;
+  S.tile = null; S.filt.rpt.from = "";
   S.sort.inc = ["Title",-1]; S.sort.imp = ["Title",-1]; S.sort.risk = ["Title",1];
   Object.assign(S.filt.inc, { q:"", status:"", year:YEAR, sev:"" }); Object.assign(S.filt.imp, { q:"", status:"open", cat:"", pri:"" });
   Object.assign(S.filt.risk, { q:"", reg:"", rating:"", status:"", cell:"", residual:false }); S.filt.rev.state = "";
@@ -1488,11 +1492,12 @@ function openForm(key, item, prefill = {}){
     + (key === "tt" && item ? `<button type="button" class="btn" id="ttRetest">↻ Record a new test for this item</button>` : "")
     + (key === "leg" ? `<button type="button" class="btn" id="legToday">✓ Record a review today</button>` : "")
     + (key === "inc" && item ? `<button type="button" class="btn" id="incPrint">🖨 Print incident report</button>` : "")
+    + (key === "staff" && item ? `<button type="button" class="btn" id="staffPrint">🖨 Print training record</button>` : "")
 ;
   if (key === "inc"){
     $("#phInput").onchange = e => { [...e.target.files].forEach(f => { f._url = URL.createObjectURL(f); photoQueue.push(f); }); e.target.value = ""; renderQueue(); };
     loadPhotos(item?.Title);
-    if (item) $("#incPrint").onclick = () => { $("#dlg").close(); S.view = "rpt"; Object.assign(S.filt.rpt, { sub:"inc", inc:item.id }); render(); window.scrollTo({ top:0 }); };
+    if (item) $("#incPrint").onclick = () => openReportFor("inc", { inc:item.id });
   }
   if (key === "risk"){
     const upd = (lName, cName, sName, rName, e) => {
@@ -1534,7 +1539,14 @@ function openForm(key, item, prefill = {}){
       if (e.target.name === "ImprovementStatus" && e.target.value === "Closed" && !$("[name=DateClosed]").value) $("[name=DateClosed]").value = TODAY;
     };
   }
+  if (key === "staff" && item) $("#staffPrint").onclick = () => openReportFor("trnrec", { staff:item.id });
   $("#dlg").showModal();
+}
+// Jump from a record to its printable report, remembering where we came from for the Back button
+function openReportFor(sub, sel){
+  $("#dlg").close();
+  Object.assign(S.filt.rpt, { sub, from: S.view === "rpt" ? S.filt.rpt.from : S.view, fromScroll: window.scrollY }, sel);
+  S.view = "rpt"; render(); window.scrollTo({ top:0 });
 }
 function readForm(){
   const o = {};
