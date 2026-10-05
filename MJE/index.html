@@ -94,6 +94,20 @@ table.legt a{font-size:12px;color:var(--info)}
 .rpt tr.grp.od td{background:#fdece4;color:#9a3412}
 .rpt tr.sub td{font-weight:700;font-size:11.5px;padding:6px 6px 3px;border-bottom:1px solid var(--rline);color:var(--rink)}.rpt tr.sub small{font-weight:400;color:var(--rmut);margin-left:4px}
 .rpt .late{color:#b91c1c;font-weight:600}
+.rgroups{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}.rgroup{display:flex;flex-direction:column;gap:4px}.rgroup .chips{display:flex;flex-wrap:wrap}
+.rgl{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.rpt .rt.bad .v{color:#b91c1c}
+.rpt .sm{font-size:11px;color:var(--rmut)}.rpt td .sm{margin-top:1px}
+.rpt .rbars{display:flex;flex-direction:column;gap:5px}
+.rpt .rbar{display:grid;grid-template-columns:minmax(0,40%) 1fr auto;gap:8px;align-items:center;font-size:11.5px}
+.rpt .rbar>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rpt .rbar .t{background:#eef0f3;border-radius:3px;height:10px;overflow:hidden}.rpt .rbar .t i{display:block;height:100%;border-radius:3px}
+.rpt .rbar .n{font-variant-numeric:tabular-nums;font-weight:600;min-width:24px;text-align:right}
+.rpt .trend rect.cb{fill:#fbd5cc}.rpt .trend polyline.cum{fill:none;stroke:var(--c-inc);stroke-width:2}
+.rpt .rst{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#eef0f3}.rpt .rst.ok{background:#e7f5ed;color:#1f8a4c}.rpt .rst.warn{background:#fdf3e1;color:#9a5b0b}.rpt .rst.bad{background:#fdece4;color:#b91c1c}
+.rpt .kv b.line{display:block;border-bottom:1px solid var(--rink);height:20px}
+.rpt .run td{height:26px}.rpt .run td:nth-child(n+6){border:1px solid #c9ced6}.rpt .run td.box{white-space:nowrap;font-size:12px}
+.rpt .leglog tr.act td{background:#f6f7f9}.rpt .leglog tr.act td:first-child{font-weight:600}
+.rpt tbody tr[data-open]{cursor:pointer}.rpt tbody tr[data-open]:hover td{background:#f6f7f9}
 @media screen and (max-width:760px){.rpt{padding:16px}.rpt .rh{flex-wrap:wrap}.rpt .rh img{width:110px}.rpt .rts,.rpt .rts.six,.rpt .kvs.four{grid-template-columns:repeat(2,1fr)}.rpt .r2,.rpt .kvs{grid-template-columns:1fr}.rpt .rphotos img{height:110px}
   .rpt .ag thead{display:none}.rpt .ag tr:not(.grp){display:grid;grid-template-columns:92px 1fr;padding:4px 0;border-bottom:1px solid #eceef1}.rpt .ag tr:not(.grp) td{border:0;padding:2px 6px}.rpt .ag td:nth-child(n+3){grid-column:2}.rpt .ag tr.grp{display:block}.rpt .ag tr.grp td{display:block}}
 @media print{
@@ -168,7 +182,7 @@ const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], 
             filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true, caShow:"open", caOwner:"", caBy:"due", trPeriod:"12m", rsDays:30, rsLoc:"", staff:"", eqDisposed:false, legTopic:"" }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -750,13 +764,16 @@ function incTrend(ym){
 function rptNoteKey(ym){ return "mjeHseNote:" + ym; }
 function rptNote(ym){ try { return localStorage.getItem(rptNoteKey(ym)) || ""; } catch { return ""; } }
 
-const RPT_SUBS = [["hse","Monthly HSE report"],["inc","Incident report"],["ahead","Lookahead"]];
+const RPT_GROUPS = [
+  ["For the MD", [["hse","Monthly HSE report"],["trend","Incident trends"]]],
+  ["Planning & follow-up", [["ahead","Lookahead"],["ca","Corrective actions"],["run","Test & tag run sheet"]]],
+  ["Records", [["inc","Incident report"],["trnrec","Training record"],["assets","Assets & fleet"],["leglog","Legislation log"]]]];
 function viewReports(){
   const f = S.filt.rpt;
   if (!f.month) f.month = defaultRptMonth();
-  const tabs = `<div class="bar chips noprint">${RPT_SUBS.map(([k, l]) => `<button class="chip ${f.sub === k ? "on" : ""}" data-rsub="${k}">${l}</button>`).join("")}</div>`;
-  if (f.sub === "inc") return viewIncReport(tabs);
-  if (f.sub === "ahead") return viewLookahead(tabs);
+  const tabs = `<div class="rgroups noprint">${RPT_GROUPS.map(([g, list]) => `<div class="rgroup"><span class="rgl">${g}</span><div class="chips">${list.map(([k, l]) => `<button class="chip ${f.sub === k ? "on" : ""}" data-rsub="${k}">${l}</button>`).join("")}</div></div>`).join("")}</div>`;
+  const other = { inc:viewIncReport, ahead:viewLookahead, ca:viewCaReport, trend:viewTrendReport, run:viewRunSheet, trnrec:viewTrainingRecord, assets:viewAssetReport, leglog:viewLegLog }[f.sub];
+  if (other) return other(tabs);
   const months = []; let m = ymOf(TODAY); for (let k = 0; k < 24; k++){ months.push(m); m = prevYm(m); }
   return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
       <label class="count" for="rptMonth">Month</label><select class="f" id="rptMonth">${months.map(v => `<option value="${v}" ${v === f.month ? "selected" : ""}>${ymLabel(v)}</option>`).join("")}</select>
@@ -998,6 +1015,182 @@ function viewLookahead(tabs){
   <p class="count noprint">Click a row to open the record. Use this to book courses, testers and inspections ahead of time.</p>`;
 }
 
+/* ---------------- shared report pieces ---------------- */
+const rptHead = (title, sub, meta) => `<header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div class="grow"><h1>${title}</h1><div class="rm">${sub}</div>
+  <div class="rmeta">${meta ? meta + " · " : ""}prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>`;
+const rptBar = (controls, printTitle) => `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>${controls}<button class="btn primary" data-rprint="${esc(printTitle)}">Print / Save as PDF</button></div>`;
+const rsel = (id, opts, cur) => `<select class="f" id="${id}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+const rtile = (label, v, sub, cls = "") => `<div class="rt ${cls}"><div class="l">${label}</div><div class="v">${v}</div><div class="s">${sub || ""}</div></div>`;
+// horizontal bars: rows = [[label, value, extra?]]
+function rbars(rows, color, fmt = v => v){
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  return rows.length ? `<div class="rbars">${rows.map(r => `<div class="rbar"><span title="${esc(r[0])}">${esc(r[0])}</span><span class="t"><i style="width:${r[1] / max * 100}%;background:${color}"></i></span><span class="n">${fmt(r[1])}</span></div>`).join("")}</div>` : `<p class="rk">None recorded.</p>`;
+}
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
+const missingNote = keys => { const m = keys.filter(k => S.missing.includes(k)); return m.length ? `<div class="banner err noprint">This report needs the ${m.map(k => CONFIG.LISTS[k]).join(", ")} list${m.length > 1 ? "s" : ""}, which ${m.length > 1 ? "aren't" : "isn't"} set up on SharePoint yet.</div>` : ""; };
+
+/* ---------------- corrective action tracker ---------------- */
+// Every open improvement action, where it came from, and records that should have an action but don't
+function caSources(i){
+  const t = String(i.Title).trim().toLowerCase(), has = v => String(v || "").toLowerCase().split(/[\s,;/]+/).includes(t);
+  return [...S.inc.filter(x => has(x.LinkedImprovement)).map(x => `Incident ${x.Title}`), ...S.ins.filter(x => has(x.ActionsRaised)).map(x => `Inspection ${x.Title} (${x.Area})`)];
+}
+function caRows(){
+  return S.imp.filter(i => i.ImprovementStatus !== "Closed").map(i => {
+    const oneOff = (i.Recurrence || "One-off") === "One-off", late = oneOff && i.TargetDate && i.TargetDate < TODAY;
+    return { i, owner: (i.ActionedBy || "").trim() || "Not assigned", due: oneOff ? i.TargetDate || "" : "", oneOff, late,
+      soon: oneOff && i.TargetDate && !late && i.TargetDate <= addDays(TODAY, 30), src: caSources(i) };
+  });
+}
+function caGaps(){
+  const imps = new Set(S.imp.map(i => String(i.Title).trim().toLowerCase()));
+  const inc = S.inc.filter(x => x.IncidentStatus !== "Closed" && x.Severity !== "Near Miss" && !imps.has(String(x.LinkedImprovement || "").trim().toLowerCase()) && !(x.CorrectiveAction || "").trim());
+  const ins = S.ins.filter(x => ["Actions required","Not satisfactory"].includes(x.Outcome) && !(x.ActionsRaised || "").trim());
+  return { inc, ins };
+}
+function viewCaReport(tabs){
+  const f = S.filt.rpt, all = caRows(), gaps = caGaps();
+  const owners = [...new Set(all.map(r => r.owner))].sort();
+  const rows = all.filter(r => (!f.caOwner || r.owner === f.caOwner) && ({ open:true, overdue:r.late, soon:r.late || r.soon, nodate:r.oneOff && !r.due }[f.caShow]))
+    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || String(a.i.Title).localeCompare(String(b.i.Title), undefined, { numeric:true }));
+  const groups = f.caBy === "owner" ? owners.map(o => [o, rows.filter(r => r.owner === o)]).filter(g => g[1].length) : [["", rows]];
+  const showLbl = { open:"All open actions", overdue:"Overdue only", soon:"Overdue + due in 30 days", nodate:"One-off actions with no due date" }[f.caShow];
+  const row = r => `<tr data-open="imp:${esc(r.i.id)}" title="Open this action"><td class="mono">${esc(r.i.Title)}</td><td>${esc(r.i.NatureOfImprovement)}${r.i.ProposedAction ? `<div class="sm">${esc(r.i.ProposedAction)}</div>` : ""}</td>
+    <td class="sm">${r.src.length ? r.src.map(esc).join("<br>") : esc(r.i.OriginatedBy ? "Raised by " + r.i.OriginatedBy : "")}</td>${f.caBy === "owner" ? "" : `<td>${esc(r.owner)}</td>`}<td>${esc(r.i.Priority)}</td>
+    <td class="mono">${r.oneOff ? (r.due ? `<span class="${r.late ? "late" : ""}">${fmtDate(r.due)}</span>` : `<span class="late">not set</span>`) : esc(r.i.Recurrence)}</td>
+    <td class="n">${r.late ? `<span class="late">${daysBetween(r.due, TODAY)}</span>` : ""}</td><td>${esc(r.i.ImprovementStatus)}</td></tr>`;
+  return rptBar(`<label class="count">Show</label>${rsel("caShow", [["open","All open"],["overdue","Overdue"],["soon","Overdue + next 30 days"],["nodate","No due date"]], f.caShow)}
+      ${rsel("caOwner", [["", "All owners"], ...owners.map(o => [o, o])], f.caOwner)}${rsel("caBy", [["due","Sort by due date"],["owner","Group by owner"]], f.caBy)}`, `MJE Corrective Actions ${TODAY}`) + tabs + missingNote(["imp"]) + `
+  <article class="rpt" id="rpt">${rptHead("Corrective Action Tracker", `Open actions at ${fmtDate(TODAY)}`, showLbl + (f.caOwner ? " · " + esc(f.caOwner) : ""))}
+  <section><div class="rts">${rtile("Open actions", all.length, `${all.filter(r => !r.oneOff).length} ongoing / recurring`)}${rtile("Overdue", all.filter(r => r.late).length, all.filter(r => r.late).length ? `oldest ${daysBetween(all.filter(r => r.late).map(r => r.due).sort()[0], TODAY)} days late` : "", all.some(r => r.late) ? "bad" : "")}
+    ${rtile("Due in 30 days", all.filter(r => r.soon).length, "")}${rtile("Not assigned", all.filter(r => r.owner === "Not assigned").length, `${all.filter(r => r.oneOff && !r.due).length} with no due date`)}</div></section>
+  <section>${rows.length ? `<table class="rtab ca"><thead><tr><th style="width:84px">Serial</th><th>Action</th><th style="width:150px">Source</th>${f.caBy === "owner" ? "" : `<th style="width:90px">Owner</th>`}<th style="width:34px">Pri.</th><th style="width:78px">Due</th><th class="n" style="width:44px">Days late</th><th style="width:76px">Status</th></tr></thead><tbody>
+    ${groups.map(([g, rs]) => (g ? `<tr class="grp"><td colspan="7">${esc(g)} <small>${rs.length} action${rs.length === 1 ? "" : "s"}${rs.filter(r => r.late).length ? ` · ${rs.filter(r => r.late).length} overdue` : ""}</small></td></tr>` : "") + rs.map(row).join("")).join("")}
+  </tbody></table>` : `<p class="rk">No actions match.</p>`}</section>
+  ${gaps.inc.length || gaps.ins.length ? `<section><h2>Records with no action raised</h2>
+    ${gaps.inc.length ? `<p class="rk">${gaps.inc.length} open incident${gaps.inc.length === 1 ? " has" : "s have"} no linked improvement and no corrective action recorded:</p><table class="rtab sm"><tbody>${gaps.inc.map(x => `<tr data-open="inc:${esc(x.id)}"><td class="mono" style="width:84px">${esc(x.Title)}</td><td class="mono" style="width:78px">${fmtDate(x.IncidentDate)}</td><td>${esc(x.Description)}</td><td style="width:120px">${esc(x.Severity)}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${gaps.ins.length ? `<p class="rk" style="margin-top:8px">${gaps.ins.length} inspection${gaps.ins.length === 1 ? "" : "s"} found problems but no improvement number is recorded under Actions raised:</p><table class="rtab sm"><tbody>${gaps.ins.map(x => `<tr data-open="ins:${esc(x.id)}"><td class="mono" style="width:84px">${esc(x.Title)}</td><td class="mono" style="width:78px">${fmtDate(x.InspectionDate)}</td><td>${esc(x.Area)} — ${esc(x.Findings || x.Outcome)}</td></tr>`).join("")}</tbody></table>` : ""}</section>` : ""}
+  <footer class="rf">Source: Improvement register (all actions not Closed). Source column = incidents whose Linked improvement and inspections whose Actions raised name the action. Ongoing / recurring actions have no due date. Click a row to open the record.</footer></article>`;
+}
+
+/* ---------------- incident trends ---------------- */
+function trendMonths(p){ const end = p === "12m" ? ymOf(TODAY) : `${p}-12`; const out = []; let m = end; for (let k = 0; k < 12; k++){ out.unshift(m); m = prevYm(m); } return out; }
+function costChart(months){
+  const rows = months.map(m => S.inc.filter(i => inYm(i.IncidentDate, m)).reduce((a, i) => a + num(i.TotalEstCost), 0));
+  let run = 0; const cum = rows.map(v => run += v);
+  const W = 520, H = 130, bw = W / 12, top = 14, base = H - 18, max = Math.max(1, ...rows), cmax = Math.max(1, run);
+  const bars = rows.map((v, k) => { const h = v ? Math.max(3, (base - top) * v / max) : 0, x = k * bw + 8, w = bw - 16;
+    return `<g><title>${ymLabel(months[k])}: ${kina(v)} (running total ${kina(cum[k])})</title>${h ? `<rect x="${x}" y="${base - h}" width="${w}" height="${h}" rx="3" class="cb"/>` : `<line x1="${x}" x2="${x + w}" y1="${base}" y2="${base}" class="zero"/>`}
+      <text x="${x + w / 2}" y="${H - 4}" class="m">${ymShort(months[k])}</text></g>`; }).join("");
+  const pts = cum.map((v, k) => `${k * bw + bw / 2},${base - (base - top) * v / cmax}`).join(" ");
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Incident cost per month with running total">${bars}<polyline points="${pts}" class="cum"/>
+</svg>`;
+}
+function viewTrendReport(tabs){
+  const f = S.filt.rpt, months = trendMonths(f.trPeriod), from = months[0] + "-01", to = monthEnd(months[11]);
+  const inc = S.inc.filter(i => (i.IncidentDate || "") >= from && (i.IncidentDate || "") <= to);
+  const years = [...new Set(S.inc.map(i => (i.IncidentDate || "").slice(0, 4)).filter(Boolean).concat(YEAR))].sort().reverse();
+  const count = key => { const m = new Map(); inc.forEach(i => { const v = String(i[key] || "").trim() || "Not recorded"; const k = v.toLowerCase(); const c = m.get(k) || [v, 0]; c[1]++; m.set(k, c); }); return [...m.values()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
+  const injuries = inc.filter(i => !["Near Miss","Property Damage Only","No Injury"].includes(i.Severity) && !["No Injury","Property Damage Only","N/A"].includes(i.ActualInjury));
+  const lti = inc.filter(i => i.Severity === "Lost Time Injury"), cost = inc.reduce((a, i) => a + num(i.TotalEstCost), 0), hrs = inc.reduce((a, i) => a + num(i.WorkersTimeLostHrs), 0);
+  const sev = INC_SEV.map(s => [s, inc.filter(i => i.Severity === s).length]).filter(r => r[1]);
+  let run = 0;
+  const monthRows = months.map(m => { const r = inc.filter(i => inYm(i.IncidentDate, m)), c = r.reduce((a, i) => a + num(i.TotalEstCost), 0); run += c;
+    return `<tr><td>${ymLabel(m)}</td><td class="n">${r.length || ""}</td><td class="n">${r.filter(i => i.Severity === "Near Miss").length || ""}</td><td class="n">${r.filter(i => i.Severity === "Lost Time Injury").length || ""}</td><td class="n">${r.reduce((a, i) => a + num(i.WorkersTimeLostHrs), 0) || ""}</td><td class="n">${c ? kina(c) : ""}</td><td class="n">${run ? kina(run) : ""}</td></tr>`; }).join("");
+  const period = f.trPeriod === "12m" ? `${ymLabel(months[0])} to ${ymLabel(months[11])}` : `Calendar year ${f.trPeriod}`;
+  return rptBar(`<label class="count">Period</label>${rsel("trPeriod", [["12m","Last 12 months"], ...years.map(y => [y, y])], f.trPeriod)}`, `MJE Incident Trends ${f.trPeriod}`) + tabs + `
+  <article class="rpt" id="rpt">${rptHead("Incident Trends", period, `${inc.length} incident${inc.length === 1 ? "" : "s"}`)}
+  <section><div class="rts">${rtile("Incidents", inc.length, (n => `${n} near miss${n === 1 ? "" : "es"}`)(inc.filter(i => i.Severity === "Near Miss").length))}${rtile("Injuries", injuries.length, "excluding near misses & damage only")}
+    ${rtile("Lost time injuries", lti.length, `${hrs} working hours lost`, lti.length ? "bad" : "")}${rtile("Est. cost", kina(cost), inc.length ? `average ${kina(cost / inc.length)} per incident` : "")}</div></section>
+  <section class="r2"><div><h2>Incidents per month</h2>${incTrend(months[11])}</div><div><h2>Cost per month <small>bars; line = running total (${kina(cost)})</small></h2>${costChart(months)}</div></section>
+  <section class="r2"><div><h2>Agency of injury <small>what caused it</small></h2>${rbars(count("AgencyOfInjury").map(r => [r[0], r[1]]), "var(--c-inc)")}</div>
+    <div><h2>Part of body</h2>${rbars(count("BodyPart").slice(0, 10), "var(--c-inc)")}${count("BodyPart").length > 10 ? `<p class="rk">+ ${count("BodyPart").length - 10} more</p>` : ""}</div></section>
+  <section class="r2"><div><h2>Injury or disease</h2>${rbars(count("ActualInjury"), "var(--c-imp)")}</div><div><h2>Severity</h2>${rbars(sev, "var(--c-imp)")}</div></section>
+  <section class="r2"><div><h2>Location <small>top 8</small></h2>${rbars(count("Location").slice(0, 8), "var(--c-rev)")}</div><div><h2>Cost by agency</h2>${rbars([...new Set(inc.map(i => i.AgencyOfInjury || "Not recorded"))].map(a => [a, inc.filter(i => (i.AgencyOfInjury || "Not recorded") === a).reduce((s, i) => s + num(i.TotalEstCost), 0)]).filter(r => r[1]).sort((a, b) => b[1] - a[1]), "var(--c-rev)", kina)}</div></section>
+  <section><h2>Month by month</h2><table class="rtab sm"><thead><tr><th>Month</th><th class="n">Incidents</th><th class="n">Near misses</th><th class="n">LTI</th><th class="n">Hours lost</th><th class="n">Est. cost</th><th class="n">Running total</th></tr></thead><tbody>${monthRows}
+    <tr class="tot"><td>Total</td><td class="n">${inc.length}</td><td class="n">${inc.filter(i => i.Severity === "Near Miss").length}</td><td class="n">${lti.length}</td><td class="n">${hrs}</td><td class="n">${kina(cost)}</td><td></td></tr></tbody></table></section>
+  <footer class="rf">Source: Safety Incident Register, by incident date. Part of body and location are grouped on the text as typed (capital letters ignored), so similar spellings show separately — keep entries consistent for best results.</footer></article>`;
+}
+
+/* ---------------- test & tag run sheet ---------------- */
+function viewRunSheet(tabs){
+  const f = S.filt.rpt, end = addDays(TODAY, f.rsDays);
+  const due = ttLatest().filter(r => r.Result === "Fail" || !r.NextTestDate || r.NextTestDate <= end);
+  const locs = [...new Set(ttLatest().map(r => (r.Location || "").trim() || "No location recorded"))].sort();
+  const rows = due.filter(r => !f.rsLoc || ((r.Location || "").trim() || "No location recorded") === f.rsLoc);
+  const byLoc = [...new Set(rows.map(r => (r.Location || "").trim() || "No location recorded"))].sort().map(l => [l, rows.filter(r => ((r.Location || "").trim() || "No location recorded") === l)
+    .sort((a, b) => (a.NextTestDate || "").localeCompare(b.NextTestDate || "") || String(a.PlantID || a.Description).localeCompare(String(b.PlantID || b.Description), undefined, { numeric:true }))]);
+  const why = r => r.Result === "Fail" ? `<span class="late">Failed ${fmtDate(r.TestDate)}</span>` : !r.NextTestDate ? `<span class="late">no date</span>` : r.NextTestDate < TODAY ? `<span class="late">${fmtDate(r.NextTestDate)}</span>` : fmtDate(r.NextTestDate);
+  return rptBar(`<label class="count">Due within</label>${rsel("rsDays", [[0,"Overdue only"],[14,"14 days"],[30,"30 days"],[60,"60 days"],[90,"90 days"]], f.rsDays)}${rsel("rsLoc", [["", "All locations"], ...locs.map(l => [l, l])], f.rsLoc)}`, `MJE Test and Tag Run Sheet ${TODAY}`) + tabs + missingNote(["tt"]) + `
+  <article class="rpt" id="rpt">${rptHead("Test &amp; Tag Run Sheet", f.rsDays ? `Overdue and due by ${fmtDate(end)}` : "Overdue items", `${rows.length} item${rows.length === 1 ? "" : "s"}${f.rsLoc ? " · " + esc(f.rsLoc) : ""}`)}
+  <section class="rsmeta"><div class="kvs four"><div class="kv"><span>Tester / competent person</span><b class="line"></b></div><div class="kv"><span>Licence / ticket no.</span><b class="line"></b></div><div class="kv"><span>Test instrument</span><b class="line"></b></div><div class="kv"><span>Date(s) tested</span><b class="line"></b></div></div></section>
+  ${byLoc.length ? byLoc.map(([l, rs]) => `<section><h2>${esc(l)} <small>${rs.length} item${rs.length === 1 ? "" : "s"}</small></h2><table class="rtab run"><thead><tr><th style="width:74px">Plant ID</th><th>Description</th><th style="width:70px">Last test</th><th style="width:70px">Due</th><th style="width:56px">Period</th><th style="width:76px">Pass / Fail</th><th style="width:66px">Reading</th><th style="width:72px">New tag date</th><th style="width:44px">Initials</th></tr></thead><tbody>
+    ${rs.map(r => `<tr data-open="tt:${esc(r.id)}"><td class="mono">${esc(r.PlantID)}</td><td>${esc(r.Description)}${r.ReportedFault ? `<div class="sm">Fault: ${esc(r.ReportedFault)}</div>` : ""}</td><td class="mono">${fmtDate(r.TestDate)}</td><td class="mono">${why(r)}</td><td class="sm">${esc(r.TestPeriod)}</td><td class="box">☐ P &nbsp;☐ F</td><td></td><td></td><td></td></tr>`).join("")}
+  </tbody></table></section>`).join("") : `<p class="rk">Nothing is due for testing${f.rsLoc ? " at " + esc(f.rsLoc) : ""} in this period.</p>`}
+  <footer class="rf">Back at the office: record each result in the Test &amp; tag register (open the item → "Record a new test for this item"). Failed items must be tagged out of service until repaired and retested.</footer></article>`;
+}
+
+/* ---------------- individual training record ---------------- */
+function viewTrainingRecord(tabs){
+  const f = S.filt.rpt, staff = [...S.staff].sort((a, b) => (a.StaffStatus === "Left") - (b.StaffStatus === "Left") || String(a.Title).localeCompare(String(b.Title)));
+  if (!staff.length) return `<div class="bar noprint"><h2>Reports</h2></div>${tabs}${missingNote(["staff","trn"])}<div class="card"><div class="empty">No staff recorded yet.</div></div>`;
+  const p = staff.find(s => String(s.id) === String(f.staff)) || staff[0]; f.staff = p.id;
+  const recs = S.trn.filter(r => r.StaffName === p.Title).sort((a, b) => (a.Requirement === "Mandatory" ? 0 : 1) - (b.Requirement === "Mandatory" ? 0 : 1) || String(a.Course).localeCompare(String(b.Course)));
+  const st = r => ({ done:["Current","ok"], expiring:["Expires within 60 days","warn"], expired:["Expired","bad"], missing:["Not recorded","bad"], planned:["Not yet done","grey"] }[trnState(r)] || ["", ""]);
+  const mand = recs.filter(r => r.Requirement === "Mandatory"), cur = mand.filter(r => ["done","expiring"].includes(trnState(r))).length;
+  const sec = (title, list) => list.length ? `<section><h2>${title} <small>${list.length}</small></h2><table class="rtab"><thead><tr><th>Course</th><th style="width:86px">Completed</th><th style="width:86px">Expires</th><th style="width:150px">Status</th><th style="width:130px">Provider</th><th style="width:100px">Certificate no.</th></tr></thead><tbody>
+    ${list.map(r => `<tr data-open="trn:${esc(r.id)}"><td>${esc(r.Course)}${S.course.find(c => c.Title === r.Course)?.RefresherMonths ? `<div class="sm">refresher every ${num(S.course.find(c => c.Title === r.Course).RefresherMonths)} months</div>` : ""}</td><td class="mono">${fmtDate(r.CompletedDate)}</td><td class="mono">${fmtDate(r.ExpiryDate)}</td><td><span class="rst ${st(r)[1]}">${st(r)[0]}</span></td><td>${esc(r.Provider)}</td><td class="mono">${esc(r.CertificateNo)}</td></tr>`).join("")}</tbody></table></section>` : "";
+  return rptBar(`<label class="count">Staff member</label>${rsel("trStaff", staff.map(s => [s.id, s.Title + (s.StaffStatus === "Left" ? " (left)" : "")]), p.id)}`, `MJE Training Record ${p.Title}`) + tabs + missingNote(["staff","trn"]) + `
+  <article class="rpt" id="rpt">${rptHead("Training &amp; Competency Record", esc(p.Title), p.StaffStatus === "Left" ? "no longer with MJE" : "")}
+  <section><div class="kvs four"><div class="kv"><span>Position</span><b>${esc(p.Position) || `<span class="nil">—</span>`}</b></div><div class="kv"><span>Department</span><b>${esc(p.Department) || `<span class="nil">—</span>`}</b></div>
+    <div class="kv"><span>Employee no.</span><b>${esc(p.EmployeeNo) || `<span class="nil">—</span>`}</b></div><div class="kv"><span>Mandatory training current</span><b>${mand.length ? `${cur} of ${mand.length} (${Math.round(cur / mand.length * 100)}%)` : "none recorded"}</b></div></div></section>
+  ${sec("Mandatory", mand)}${sec("Extended / other", recs.filter(r => r.Requirement !== "Mandatory"))}
+  ${recs.length ? "" : `<p class="rk">No training requirements are recorded for ${esc(p.Title)}.</p>`}
+  <section class="sign"><h2>Verified</h2><table class="rtab"><thead><tr><th style="width:24%"></th><th style="width:32%">Name</th><th style="width:28%">Signature</th><th>Date</th></tr></thead><tbody><tr><td>Employee</td><td>${esc(p.Title)}</td><td></td><td></td></tr><tr><td>Safety Officer / Manager</td><td></td><td></td><td></td></tr></tbody></table></section>
+  <footer class="rf">Source: Training &amp; Competency register at ${fmtDate(TODAY)}. "Expires within 60 days" is still current. Keep certificates on file; this record lists what has been entered in the Safety Hub.</footer></article>`;
+}
+
+/* ---------------- asset & fleet report ---------------- */
+function viewAssetReport(tabs){
+  const f = S.filt.rpt, items = S.eq.filter(r => f.eqDisposed || r.EquipStatus !== "Disposed");
+  const cats = [...EQ_CATS, ...new Set(items.map(r => r.Category).filter(c => c && !EQ_CATS.includes(c)))].map(c => [c, items.filter(r => (r.Category || "Other") === c)]).filter(g => g[1].length);
+  const tot = rs => [rs.reduce((a, r) => a + num(r.Cost), 0), rs.reduce((a, r) => a + num(r.DisposalValue), 0)];
+  const [tc, td] = tot(items), veh = items.filter(r => r.Category === "Vehicle");
+  const sort = rs => [...rs].sort((a, b) => String(a.Title).localeCompare(String(b.Title), undefined, { numeric:true }));
+  return rptBar(`<label class="count"><input type="checkbox" id="eqDisposed" ${f.eqDisposed ? "checked" : ""}> Include disposed items</label>`, `MJE Asset and Fleet Report ${TODAY}`) + tabs + missingNote(["eq"]) + `
+  <article class="rpt" id="rpt">${rptHead("Asset &amp; Fleet Report", `Plant &amp; equipment at ${fmtDate(TODAY)}`, f.eqDisposed ? "includes disposed items" : "items in and out of service")}
+  <section><div class="rts">${rtile("Items", items.length, `${items.filter(r => r.EquipStatus === "Out of service").length} out of service`)}${rtile("Vehicles", veh.length, `${veh.filter(r => r.EquipStatus === "In service" || !r.EquipStatus).length} in service`)}
+    ${rtile("Purchase cost", kina(tc), "total recorded")}${rtile("Disposal value", kina(td), "total recorded")}</div></section>
+  <section><h2>By category</h2><table class="rtab sm"><thead><tr><th>Category</th><th class="n">Items</th><th class="n">In service</th><th class="n">Out of service</th>${f.eqDisposed ? `<th class="n">Disposed</th>` : ""}<th class="n">Purchase cost</th><th class="n">Disposal value</th></tr></thead><tbody>
+    ${cats.map(([c, rs]) => `<tr><td>${esc(c)}</td><td class="n">${rs.length}</td><td class="n">${rs.filter(r => (r.EquipStatus || "In service") === "In service").length}</td><td class="n">${rs.filter(r => r.EquipStatus === "Out of service").length}</td>${f.eqDisposed ? `<td class="n">${rs.filter(r => r.EquipStatus === "Disposed").length}</td>` : ""}<td class="n">${kina(tot(rs)[0])}</td><td class="n">${kina(tot(rs)[1])}</td></tr>`).join("")}
+    <tr class="tot"><td>Total</td><td class="n">${items.length}</td><td></td><td></td>${f.eqDisposed ? "<td></td>" : ""}<td class="n">${kina(tc)}</td><td class="n">${kina(td)}</td></tr></tbody></table></section>
+  ${veh.length ? `<section><h2>Vehicles <small>for insurance and registration renewals</small></h2><table class="rtab"><thead><tr><th style="width:74px">Asset ID</th><th>Make / model</th><th>Type</th><th style="width:96px">Rego no.</th><th>Assigned to / location</th><th style="width:80px">Purchased</th><th class="n">Cost</th><th class="n">Disposal value</th><th style="width:80px">Status</th></tr></thead><tbody>
+    ${sort(veh).map(r => `<tr data-open="eq:${esc(r.id)}"><td class="mono">${esc(r.Title)}</td><td>${esc([r.Make, r.Model].filter(Boolean).join(" "))}</td><td>${esc(r.EquipType)}</td><td class="mono">${esc(r.SerialRego)}</td><td>${esc(r.Location)}</td><td class="mono">${fmtDate(r.PurchaseDate)}</td><td class="n">${num(r.Cost) ? kina(r.Cost) : ""}</td><td class="n">${num(r.DisposalValue) ? kina(r.DisposalValue) : ""}</td><td>${esc(r.EquipStatus || "In service")}</td></tr>`).join("")}</tbody></table></section>` : ""}
+  ${cats.filter(([c]) => c !== "Vehicle").map(([c, rs]) => `<section><h2>${esc(c)} <small>${rs.length}</small></h2><table class="rtab sm"><thead><tr><th style="width:74px">Asset ID</th><th>Make / item</th><th>Model / type</th><th style="width:110px">Serial no.</th><th>Location</th><th style="width:80px">Purchased</th><th class="n">Cost</th><th class="n">Disposal value</th><th style="width:80px">Status</th></tr></thead><tbody>
+    ${sort(rs).map(r => `<tr data-open="eq:${esc(r.id)}"><td class="mono">${esc(r.Title)}</td><td>${esc(r.Make)}</td><td>${esc([r.Model, r.EquipType].filter(Boolean).join(" · "))}</td><td class="mono">${esc(r.SerialRego)}</td><td>${esc(r.Location)}</td><td class="mono">${fmtDate(r.PurchaseDate)}</td><td class="n">${num(r.Cost) ? kina(r.Cost) : ""}</td><td class="n">${num(r.DisposalValue) ? kina(r.DisposalValue) : ""}</td><td>${esc(r.EquipStatus || "In service")}</td></tr>`).join("")}</tbody></table></section>`).join("")}
+  ${items.length ? "" : `<p class="rk">No equipment recorded.</p>`}
+  <footer class="rf">Source: Plant &amp; Equipment register. Costs are as recorded (PGK); items with no cost entered count as zero.</footer></article>`;
+}
+
+/* ---------------- legislation review log ---------------- */
+function viewLegLog(tabs){
+  const f = S.filt.rpt, rows = S.leg.filter(r => !f.legTopic || r.Topic === f.legTopic);
+  const acts = rows.filter(r => r.LegType === "Act").sort((a, b) => String(a.Title).localeCompare(String(b.Title)));
+  const order = [...acts.flatMap(a => [a, ...rows.filter(r => r.LegType !== "Act" && r.ParentAct === a.Title).sort((x, y) => String(x.Title).localeCompare(String(y.Title)))]),
+                 ...rows.filter(r => r.LegType !== "Act" && !acts.some(a => a.Title === r.ParentAct))];
+  const state = r => ({ none:`<span class="late">Not reviewed</span>`, overdue:`<span class="late">Overdue — was due ${fmtDate(legDue(r))}</span>`, ok:`Next ${fmtDate(legDue(r))}` }[legState(r)]);
+  const topics = [...new Set(S.leg.map(r => r.Topic).filter(Boolean))].sort();
+  return rptBar(`<label class="count">Topic</label>${rsel("legTopic", [["", "All topics"], ...topics.map(t => [t, t])], f.legTopic)}`, `MJE Legislation Review Log ${TODAY}`) + tabs + missingNote(["leg"]) + `
+  <article class="rpt" id="rpt">${rptHead("Legislation Review Log", `Legislative compliance at ${fmtDate(TODAY)}`, f.legTopic ? esc(f.legTopic) : "all topics")}
+  <section><div class="rts">${rtile("Instruments", rows.length, `${acts.length} Acts`)}${rtile("Reviews up to date", rows.filter(r => legState(r) === "ok").length, `of ${rows.length}`)}
+    ${rtile("Overdue / not reviewed", rows.filter(r => legState(r) !== "ok").length, "", rows.some(r => legState(r) !== "ok") ? "bad" : "")}${rtile("Compliant", rows.filter(r => r.ComplianceStatus === "Compliant").length, `${rows.filter(r => r.ComplianceStatus === "Review required").length} review required`)}</div></section>
+  <section>${order.length ? `<table class="rtab leglog"><thead><tr><th>Legislation</th><th style="width:96px">Reviewed by</th><th style="width:76px">Last review</th><th style="width:120px">Next review</th><th style="width:86px">Compliance</th><th>Changes noted / documents affected</th></tr></thead><tbody>
+    ${order.map(r => `<tr data-open="leg:${esc(r.id)}" class="${r.LegType === "Act" ? "act" : ""}"><td>${r.LegType === "Act" ? "" : "↳ "}${esc(r.Title)}<div class="sm">${esc(r.LegType)}${r.Topic ? " · " + esc(r.Topic) : ""} · ${esc(r.ReviewFrequency || "Monthly")}</div></td>
+      <td>${esc(r.Responsible)}</td><td class="mono">${fmtDate(r.LastReviewed)}</td><td class="sm">${state(r)}</td><td>${esc(r.ComplianceStatus)}</td>
+      <td class="sm">${esc(r.ChangesNoted)}${r.AffectedDocuments ? `${r.ChangesNoted ? "<br>" : ""}<b>Documents:</b> ${esc(r.AffectedDocuments)}` : ""}</td></tr>`).join("")}</tbody></table>` : `<p class="rk">No legislation recorded.</p>`}</section>
+  <footer class="rf">Source: Legislative Compliance register. The register keeps the latest review of each instrument (who, when, changes noted); earlier reviews aren't stored, so print or save this log after each monthly review to keep a dated trail for auditors.</footer></article>`;
+}
+
 /* ---------------- report controls ---------------- */
 function bindReports(){
   if (S.view !== "rpt") return;
@@ -1012,6 +1205,9 @@ function bindReports(){
   const ov = $("#rptOverdue"); if (ov) ov.onchange = () => { f.overdue = ov.checked; render(); };
   const tg = $("#rptGroup"); if (tg) tg.onchange = () => { f.group = tg.checked; render(); };
   document.querySelectorAll("[data-ttloc]").forEach(r => r.onclick = () => { resetFilt(); S.view = "assets"; S.filt.assets.sub = "tt"; S.filt.tt.q = r.dataset.ttloc === "No location recorded" ? "" : r.dataset.ttloc; render(); window.scrollTo({ top:0 }); });
+  [["caShow","caShow"],["caOwner","caOwner"],["caBy","caBy"],["trPeriod","trPeriod"],["rsDays","rsDays",1],["rsLoc","rsLoc"],["trStaff","staff"],["legTopic","legTopic"]]
+    .forEach(([id, key, isNum]) => { const el = document.getElementById(id); if (el) el.onchange = () => { f[key] = isNum ? +el.value : el.value; render(); }; });
+  const ed = $("#eqDisposed"); if (ed) ed.onchange = () => { f.eqDisposed = ed.checked; render(); };
   document.querySelectorAll("[data-rtype]").forEach(b => b.onclick = () => { f.type = f.type === b.dataset.rtype ? "" : b.dataset.rtype; render(); });
 }
 // Wait for photos to arrive before opening the print window, so they appear on the PDF
