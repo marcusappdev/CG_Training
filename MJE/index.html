@@ -44,8 +44,13 @@ table.cal th:not(.who-cell){font-size:12px;min-width:46px}
 .mxl{margin:0;flex-wrap:wrap}
 table.legt tr.child td:first-child{padding-left:30px;font-size:13px}
 table.legt a{font-size:12px;color:var(--info)}
+/* Task & observation register (Phase 5) - lime; internal audits share the inspection colour */
+:root{--c-obs:#4d7c0f}
+.kpi.k-obs{--kc:var(--c-obs)}
+#dlg.f-obs{--fc:#4d7c0f;--fc-bg:#f3f8ea}
+@media (prefers-color-scheme:dark){:root{--c-obs:#a3e635}#dlg.f-obs{--fc:#a3e635;--fc-bg:#1b2511}}
 /* ---- reports: paper look on screen (light in both themes), A4 when printed ---- */
-.rpt{--rink:#1b1f24;--rmut:#5f6b7a;--rline:#d9dde3;--accent:#c8391b;--c-inc:#d63b25;--c-imp:#2563eb;--c-rev:#0f8a80;--c-tt:#b45309;--c-trn:#4f46e5;--c-ins:#0369a1;--c-leg:#a21caf;
+.rpt{--rink:#1b1f24;--rmut:#5f6b7a;--rline:#d9dde3;--accent:#c8391b;--c-inc:#d63b25;--c-imp:#2563eb;--c-rev:#0f8a80;--c-tt:#b45309;--c-trn:#4f46e5;--c-ins:#0369a1;--c-leg:#a21caf;--c-obs:#4d7c0f;
   background:#fff;color:var(--rink);color-scheme:light;max-width:920px;margin:0 auto 14px;padding:28px 34px;border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--line);font-size:13px}
 .rpt .rh{display:flex;flex-wrap:nowrap;gap:20px;align-items:center;border-bottom:3px solid var(--accent);padding:0 0 14px;margin-bottom:16px;background:none;color:inherit;position:static;z-index:auto}
 .rpt .rh img{width:150px;height:auto;flex:none}.rpt .rh .grow{flex:1}
@@ -173,12 +178,12 @@ table.legt a{font-size:12px;color:var(--info)}
 const CONFIG = {
   ...MJE_TENANT,
   LISTS: { inc: "MJE_Incidents", imp: "MJE_Improvements", risk: "MJE_Risks", rev: "MJE_RiskReviews", eq: "MJE_Equipment", tt: "MJE_TestTag", photos: "MJE_IncidentPhotos",
-           staff: "MJE_Staff", course: "MJE_Courses", trn: "MJE_Training", area: "MJE_InspectionAreas", ins: "MJE_Inspections", leg: "MJE_Legislation" },
+           staff: "MJE_Staff", course: "MJE_Courses", trn: "MJE_Training", area: "MJE_InspectionAreas", ins: "MJE_Inspections", leg: "MJE_Legislation", obs: "MJE_Observations" },
   SCOPES: ["Sites.ReadWrite.All", "User.Read"],
   RTW_HOURS_PER_DAY: 9
 };
 const DEMO = CONFIG.CLIENT_ID.startsWith("<<");
-const SEED = {"inc":[],"imp":[],"risk":[],"rev":[],"eq":[],"tt":[],"staff":[],"course":[],"trn":[],"area":[],"ins":[],"leg":[]};
+const SEED = {"inc":[],"imp":[],"risk":[],"rev":[],"eq":[],"tt":[],"staff":[],"course":[],"trn":[],"area":[],"ins":[],"leg":[],"obs":[]};
 
 /* ---------------- data layer (generic helpers are in shared/mje-core.js) ---------------- */
 const loadList = key => listItems(CONFIG.LISTS[key]);
@@ -190,11 +195,11 @@ async function loadListSafe(key){
 const saveItem = (key, id, fields) => saveListItem(CONFIG.LISTS[key], id, fields);
 
 /* ---------------- state ---------------- */
-const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], trn:[], area:[], ins:[], leg:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1], eq:["Title",1], tt:["NextTestDate",1], staff:["Title",1], course:["Title",1], trn:["Title",1], area:["Title",1], ins:["InspectionDate",-1], leg:["Title",1] },
-            filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"" },
+const S = { inc:[], imp:[], risk:[], rev:[], eq:[], tt:[], staff:[], course:[], trn:[], area:[], ins:[], leg:[], obs:[], missing:[], view:"dash", sort:{ inc:["Title",-1], imp:["Title",-1], risk:["Title",1], rev:["RegisterType",1], eq:["Title",1], tt:["NextTestDate",1], staff:["Title",1], course:["Title",1], trn:["Title",1], area:["Title",1], ins:["InspectionDate",-1], leg:["Title",1], obs:["Title",1] },
+            filt:{ inc:{ q:"", status:"", year:YEAR, sev:"" }, imp:{ q:"", status:"open", cat:"", pri:"", src:"" }, imps:{ sub:"imp" }, obs:{ q:"", status:"open", src:"" },
                    risk:{ q:"", reg:"", rating:"", status:"", cell:"", residual:false },
                    assets:{ sub:"eq" }, eq:{ q:"", cat:"", status:"" }, tt:{ q:"", state:"", all:false },
-                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true, caShow:"open", caOwner:"", caBy:"due", trPeriod:"12m", rsDays:30, rsLoc:"", staff:"", eqDisposed:false, legTopic:"", from:"", fromScroll:0 }, ins:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
+                   training:{ sub:"matrix" }, trn:{ q:"", dept:"", gaps:false }, comp:{ sub:"ins" }, rpt:{ sub:"hse", month:"", inc:"", days:90, type:"", overdue:true, group:true, caShow:"open", caOwner:"", caBy:"due", trPeriod:"12m", rsDays:30, rsLoc:"", staff:"", eqDisposed:false, legTopic:"", from:"", fromScroll:0 }, ins:{ year:YEAR, missed:false }, aud:{ year:YEAR, missed:false }, leg:{ q:"", topic:"", state:"" }, rev:{ state:"" } } };
 
 /* ---------------- field definitions ---------------- */
 const INC_AGENCY = ["Slip, Trip, Fall","Vehicle / Mobile Plant","Electrical","Manual Handling","Hand / Power Tools","Falling Object","Hazardous Substance","Heat / Fire","N/A","Other"];
@@ -205,6 +210,8 @@ const IMP_CAT = ["Safety","Quality","Environment","HR"];
 const IMP_PRI = ["H","M","L"];
 const IMP_REC = ["One-off","Ongoing","Fortnightly","Monthly","Quarterly","As needed"];
 const IMP_STATUS = ["Open","In Progress","Ongoing","Closed"];
+// where an improvement came from (fill-in: the old register has values like "Audit finding / HR review")
+const IMP_SRC = ["Audit finding","Inspection","Observation","Incident","Risk review","Management review","HR review","Research","Other"];
 
 const INC_FORM = [
   ["Incident", [
@@ -233,14 +240,37 @@ const INC_FORM = [
 const IMP_FORM = [
   ["Improvement", [
     ["Title","Serial No","text",{ro:1}], ["Category","Category","select",{opts:IMP_CAT,req:1}], ["Priority","Priority","select",{opts:IMP_PRI,req:1}],
-    ["OriginatedBy","Originated by","text",{req:1}], ["DateIssued","Date issued","date",{req:1}], ["ActionedBy","Actioned by","text"],
+    ["OriginatedBy","Originated by","text",{req:1}], ["DateIssued","Date issued","date",{req:1}], ["ActionedBy","Actioned by","text"], ["Source","Source","select",{opts:IMP_SRC}],
     ["NatureOfImprovement","Nature of improvement","textarea",{w:3,req:1}],
     ["ProposedAction","Proposed improvement action","textarea",{w:3}],
+    ["Impact","Impact","textarea",{w:3}], ["Benefit","Benefit","textarea",{w:3}],
   ]],
   ["Tracking", [
     ["Recurrence","Recurrence","select",{opts:IMP_REC}], ["TargetDate","Proposed completion date","date"],
     ["ImprovementStatus","Status","select",{opts:IMP_STATUS,req:1}], ["DateClosed","Date closed","date"],
+    ["Evidence","Evidence of implementation","textarea",{w:3}],
     ["Remarks","Remarks","textarea",{w:3}],
+  ]],
+];
+
+/* ---- Task & Observation Monitoring register (Phase 5) ---- */
+const OBS_STATUS = ["Open","In Progress","Active","Closed"];
+const OBS_SRC = ["Site walk-through","HR monitoring","HR monitoring / Audit","Audit","Inspection","Toolbox talk","Other"];
+const OBS_REC = ["One-off","Ongoing"];
+const OBS_FREQ = ["Daily","Weekly","Fortnightly","Monthly","Quarterly","Six-monthly","Annually"];
+const OBS_FORM = [
+  ["Observation", [
+    ["Title","TOM no.","text",{ro:1}], ["Source","Source","select",{opts:OBS_SRC}], ["DateRaised","Date raised","date"],
+    ["Observation","Observation / task","textarea",{w:3,req:1}], ["ImpactRisk","Impact / risk","textarea",{w:3}],
+  ]],
+  ["Action & monitoring", [
+    ["ActionRequired","Action required","textarea",{w:3}],
+    ["Responsible","Responsible","text"], ["DueDate","Due date (one-off actions)","date"], ["Recurrence","Recurrence","select",{opts:OBS_REC}],
+    ["ReviewFrequency","Review frequency","select",{opts:OBS_FREQ}], ["LastReviewed","Last reviewed","date"],
+  ]],
+  ["Status & evidence", [
+    ["ObsStatus","Status","select",{opts:OBS_STATUS,req:1}], ["DateClosed","Date closed","date"], ["LinkedImprovement","Linked improvement (IR no.)","text"],
+    ["Evidence","Evidence (documents, registers, forms)","textarea",{w:3}], ["Remarks","Remarks","textarea",{w:3}],
   ]],
 ];
 
@@ -527,6 +557,7 @@ async function uploadPhotos(title){
 }
 const NO_PERMISSION = "You don't have permission to change this record. MJE staff can log new incidents, edit their own incidents and add photos; everything else is edited by the MJE site owners.";
 /* ================= TRAINING, INSPECTIONS, LEGISLATION (Phase 4) ================= */
+const INS_TYPES = ["Inspection","Internal Audit"];
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DEPTS = ["Administration","Service","Projects","Other"];
 const STAFF_FORM = [["Staff member", [
@@ -541,10 +572,10 @@ const TRN_FORM = [
   ["Requirement", [ ["StaffName","Staff member","select",{opts:[],req:1,dyn:"staff"}], ["Course","Course","select",{opts:[],req:1,dyn:"course"}], ["Requirement","Requirement","select",{opts:["Mandatory","Extended"],req:1}] ]],
   ["Completion", [ ["CompletedDate","Date completed","date"], ["ExpiryDate","Expiry date","date"], ["Provider","Provider","text"], ["CertificateNo","Certificate no.","text"], ["Notes","Notes","textarea",{w:3}] ]]];
 const AREA_FORM = [["Inspection area", [
-  ["Title","Area","text",{req:1}], ["PlannedMonth","Planned month","select",{opts:MONTHS}], ["Frequency","Frequency","select",{opts:["Monthly","Quarterly","Six-monthly","Annually"]}],
+  ["Title","Area / audit topic","text",{req:1,w:2}], ["InspType","Type","select",{opts:INS_TYPES}], ["PlannedMonth","Planned month","select",{opts:MONTHS}], ["Frequency","Frequency","select",{opts:["Monthly","Quarterly","Six-monthly","Annually"]}],
   ["Responsible","Responsible","text"], ["Notes","Notes","textarea",{w:3}] ]]];
 const INS_FORM = [
-  ["Inspection", [ ["Title","Inspection no.","text",{ro:1}], ["Area","Inspection area","select",{opts:[],req:1,dyn:"area"}], ["InspectionDate","Date","date",{req:1}], ["Inspector","Inspector","text"],
+  ["Inspection", [ ["Title","Inspection / audit no.","text",{ro:1}], ["InspType","Type","select",{opts:INS_TYPES}], ["Area","Area / audit topic","select",{opts:[],req:1,dyn:"area"}], ["InspectionDate","Date","date",{req:1}], ["Inspector","Inspector","text"],
     ["Outcome","Outcome","select",{opts:["Satisfactory","Actions required","Not satisfactory"]}], ["ActionsRaised","Actions raised (IR no.)","text"] ]],
   ["Findings", [ ["Findings","Findings","textarea",{w:3}], ["Notes","Notes","textarea",{w:3}] ]]];
 const LEG_FORM = [
@@ -615,11 +646,22 @@ function viewSimpleList(key, title, tabs, cols, addLabel){
   </tbody></table>${rows.length ? "" : `<div class="empty">Nothing here yet</div>`}</div>`;
 }
 
-/* ---- inspections ---- */
+/* ---- inspections & internal audits ----
+   Internal audits are inspection areas whose Type is "Internal Audit" (one topic per month);
+   areas with no Type are workplace inspections. Both record into MJE_Inspections. */
+const AUD = "Internal Audit";
+const cap1 = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+const isAudArea = a => !!a && a.InspType === AUD;
+const insIsAud = i => i.InspType ? i.InspType === AUD : (isAudArea(S.area.find(a => a.Title === i.Area)) || /^AUD-/.test(i.Title || ""));
+const areasOf = t => S.area.filter(a => (t === "aud") === isAudArea(a));
+const insOf = t => S.ins.filter(i => (t === "aud") === insIsAud(i));
+const INS_TXT = {
+  ins: { title:"Workplace Inspection Program", unit:"areas", one:"area", thing:"inspection", things:"inspections", done:"Inspected", col:"Checklist area", who:"Inspector", rec:"+ Record inspection", newArea:"+ New area", rpt:"regins", log:"Inspection log" },
+  aud: { title:"Internal Audit Schedule", unit:"topics", one:"topic", thing:"audit", things:"audits", done:"Audited", col:"Audit topic", who:"Auditor", rec:"+ Record audit", newArea:"+ New audit topic", rpt:"regaud", log:"Audit log" } };
 function viewCompliance(){
   const sub = S.filt.comp.sub;
-  const tabs = `<div class="bar chips"><button class="chip ${sub==="ins"?"on":""}" data-csub="ins">Workplace inspections <span>${S.area.length} areas</span></button><button class="chip ${sub==="leg"?"on":""}" data-csub="leg">Legislation <span>${S.leg.length}</span></button></div>`;
-  return sub === "leg" ? viewLegislation(tabs) : viewInspections(tabs);
+  const tabs = `<div class="bar chips"><button class="chip ${sub==="ins"?"on":""}" data-csub="ins">Workplace inspections <span>${areasOf("ins").length} areas</span></button><button class="chip ${sub==="aud"?"on":""}" data-csub="aud">Internal audits <span>${areasOf("aud").length} topics</span></button><button class="chip ${sub==="leg"?"on":""}" data-csub="leg">Legislation <span>${S.leg.length}</span></button></div>`;
+  return sub === "leg" ? viewLegislation(tabs) : viewInspections(tabs, sub === "aud" ? "aud" : "ins");
 }
 const insYears = () => [...new Set(S.ins.map(i => (i.InspectionDate||"").slice(0,4)).filter(Boolean).concat(YEAR))].sort().reverse();
 function areaMonthState(a, y, mi){
@@ -628,40 +670,47 @@ function areaMonthState(a, y, mi){
   const monthEnd = ymd(new Date(+y, mi + 1, 0));
   return { done, planned, overdue: planned && !done.length && monthEnd < TODAY };
 }
-function insAreasFiltered(){ const f = S.filt.ins, y = f.year;
-  return [...S.area].filter(a => !f.missed || MONTHS.some((m, mi) => areaMonthState(a, y, mi).overdue)).sort((a,b) => (MONTHS.indexOf(a.PlannedMonth) + 13) % 13 - (MONTHS.indexOf(b.PlannedMonth) + 13) % 13 || a.Title.localeCompare(b.Title)); }
-function viewInspections(tabs){
-  if (S.missing.includes("area")) return `<div class="bar"><h2>Compliance</h2></div>${tabs}<div class="banner err">The inspection lists haven't been set up on SharePoint yet. Run the Phase 4 script (Provision-MJE-Phase4.ps1), then refresh.</div>`;
-  const f = S.filt.ins, y = f.year;
-  const areas = insAreasFiltered();
+function insAreasFiltered(t = "ins"){ const f = S.filt[t], y = f.year;
+  return areasOf(t).filter(a => !f.missed || MONTHS.some((m, mi) => areaMonthState(a, y, mi).overdue)).sort((a,b) => (MONTHS.indexOf(a.PlannedMonth) + 13) % 13 - (MONTHS.indexOf(b.PlannedMonth) + 13) % 13 || a.Title.localeCompare(b.Title)); }
+// planned slots / planned slots done / planned months passed and not done - for every area of the type
+function insStats(t, y){
   let planned = 0, done = 0, overdue = 0;
-  S.area.forEach(a => MONTHS.forEach((m, mi) => { const s = areaMonthState(a, y, mi); if (s.planned) planned++; if (s.done.length) done++; if (s.overdue) overdue++; }));   // KPIs always cover every area
-  const rowsHtml = areas.map(a => `<tr><th class="who-cell" data-open="area:${a.id}"><b>${esc(a.Title)}</b><span>${esc(a.Frequency || "")}${a.PlannedMonth ? "" : " · not scheduled"}</span></th>` +
+  areasOf(t).forEach(a => MONTHS.forEach((m, mi) => { const s = areaMonthState(a, y, mi); if (s.planned) planned++; if (s.planned && s.done.length) done++; if (s.overdue) overdue++; }));
+  return { planned, done, overdue };
+}
+function viewInspections(tabs, t = "ins"){
+  const T = INS_TXT[t];
+  if (S.missing.includes("area")) return `<div class="bar"><h2>Compliance</h2></div>${tabs}<div class="banner err">The inspection lists haven't been set up on SharePoint yet. Run the setup kit (Setup-MJE-Hub.ps1), then refresh.</div>`;
+  const f = S.filt[t], y = f.year, all = areasOf(t), areas = insAreasFiltered(t), st = insStats(t, y);
+  const pre = esc(JSON.stringify({ InspType: t === "aud" ? AUD : "Inspection" }));
+  const rowsHtml = areas.map(a => `<tr><th class="who-cell" data-open="area:${a.id}"><b>${esc(a.Title)}</b><span>${esc(a.Frequency || "")}${a.Responsible ? " · " + esc(a.Responsible) : ""}${a.PlannedMonth ? "" : " · not scheduled"}</span></th>` +
     MONTHS.map((m, mi) => { const s = areaMonthState(a, y, mi);
       const cls = s.done.length ? "done" : s.overdue ? "expired" : s.planned ? "planned" : "na";
       const label = s.done.length ? s.done.map(d => fmtDate(d.InspectionDate).slice(0,5)).join(" ") : s.planned ? (s.overdue ? "due" : "plan") : "";
-      const act = s.done.length ? `data-open="ins:${s.done[0].id}"` : `data-newins="${esc(a.Title)}|${mi}"`;
-      return `<td><button class="mx mx-${cls}" ${act} title="${esc(a.Title)} — ${m} ${y}: ${s.done.length ? "inspected " + s.done.map(d => fmtDate(d.InspectionDate)).join(", ") : s.overdue ? "planned, not done" : s.planned ? "planned" : "not planned"}">${label}</button></td>`; }).join("") + `</tr>`).join("");
-  const log = sortRows(S.ins.filter(i => (i.InspectionDate||"").startsWith(y)), "ins");
+      const act = s.done.length ? `data-open="ins:${s.done[0].id}"` : `data-newins="${esc(a.Title)}|${mi}|${t}"`;
+      return `<td><button class="mx mx-${cls}" ${act} title="${esc(a.Title)} — ${m} ${y}: ${s.done.length ? T.done.toLowerCase() + " " + s.done.map(d => fmtDate(d.InspectionDate)).join(", ") : s.overdue ? "planned, not done" : s.planned ? "planned" : "not planned"}">${label}</button></td>`; }).join("") + `</tr>`).join("");
+  const log = sortRows(insOf(t).filter(i => (i.InspectionDate||"").startsWith(y)), "ins");
   return `
-  <div class="bar"><h2>Workplace Inspection Program</h2><span class="grow"></span>
-    <button class="btn" data-rpt="regins">🖨 Print</button><button class="btn" data-act="new:area">+ New area</button><button class="btn primary" data-act="new:ins">+ Record inspection</button></div>
+  <div class="bar"><h2>${T.title}</h2><span class="grow"></span>
+    <button class="btn" data-rpt="${T.rpt}">🖨 Print</button><button class="btn" data-act="new:area" data-pre="${pre}">${T.newArea}</button><button class="btn primary" data-act="new:ins" data-pre="${pre}">${T.rec}</button></div>
   ${tabs}
+  ${t === "aud" && !all.length ? `<div class="banner">No internal audit topics yet. Load the 12-month audit schedule with the setup kit's import step (Phase 5 folder), or add topics with “${T.newArea.slice(2)}”.</div>` : ""}
   <div class="grid kpis">
-    <div class="card kpi k-ins"><div class="l">Inspections ${esc(y)}</div><div class="v">${S.ins.filter(i => (i.InspectionDate||"").startsWith(y)).length}</div><div class="s">${done} of ${planned} planned slots done</div></div>
-    <div class="card kpi k-ins ${overdue?"alert":""}"><div class="l">Planned, not done</div><div class="v">${overdue}</div><div class="s">months already passed</div></div>
-    <div class="card kpi k-ins"><div class="l">Areas not scheduled</div><div class="v">${S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${S.area.length} checklist areas</div></div>
+    <div class="card kpi k-ins"><div class="l">${cap1(T.things)} ${esc(y)}</div><div class="v">${log.length}</div><div class="s">${st.done} of ${st.planned} planned slots done</div></div>
+    <div class="card kpi k-ins ${st.overdue?"alert":""}"><div class="l">Planned, not done</div><div class="v">${st.overdue}</div><div class="s">months already passed</div></div>
+    ${t === "aud" ? `<div class="card kpi k-ins"><div class="l">Audits that raised improvements</div><div class="v">${log.filter(i => (i.ActionsRaised || "").trim()).length}</div><div class="s">findings → Improvement register</div></div>`
+                  : `<div class="card kpi k-ins"><div class="l">Areas not scheduled</div><div class="v">${all.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length}</div><div class="s">of ${all.length} checklist areas</div></div>`}
   </div>
-  <div class="bar"><select class="f" data-f="ins:year">${insYears().map(v => `<option ${v===y?"selected":""}>${v}</option>`).join("")}</select>
-    <button class="chip ${f.missed?"on":""}" data-missed="1">Missed only</button>
-    <span class="legend mxl"><span><i class="mx mx-done"></i>Inspected</span><span><i class="mx mx-planned">plan</i>Planned</span><span><i class="mx mx-expired">due</i>Planned, missed</span></span></div>
-  <div class="tablewrap mxwrap"><table class="matrix cal"><thead><tr><th class="who-cell">Checklist area</th>${MONTHS.map(m => `<th>${m.slice(0,3)}</th>`).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table></div>
-  <p class="count">Click a planned or empty month to record an inspection; click a completed one to open it. Click an area name to change its planned month.</p>
-  <div class="bar" style="margin-top:22px"><h2>Inspection log ${esc(y)}</h2><span class="grow"></span><button class="btn" data-act="csv:ins">Export CSV</button></div>
-  <div class="tablewrap"><table><thead><tr>${th("ins","Title","No.")}${th("ins","InspectionDate","Date")}${th("ins","Area","Area")}${th("ins","Inspector","Inspector")}${th("ins","Outcome","Outcome")}<th>Findings</th>${th("ins","ActionsRaised","Actions")}</tr></thead><tbody>
+  <div class="bar"><select class="f" data-f="${t}:year">${insYears().map(v => `<option ${v===y?"selected":""}>${v}</option>`).join("")}</select>
+    <button class="chip ${f.missed?"on":""}" data-missed="${t}">Missed only</button>
+    <span class="legend mxl"><span><i class="mx mx-done"></i>${T.done}</span><span><i class="mx mx-planned">plan</i>Planned</span><span><i class="mx mx-expired">due</i>Planned, missed</span></span></div>
+  <div class="tablewrap mxwrap"><table class="matrix cal"><thead><tr><th class="who-cell">${T.col}</th>${MONTHS.map(m => `<th>${m.slice(0,3)}</th>`).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table>${areas.length ? "" : `<div class="empty">No ${T.unit} match</div>`}</div>
+  <p class="count">Click a planned or empty month to record ${t === "aud" ? "an audit" : "an inspection"}; click a completed one to open it. Click ${t === "aud" ? "a topic" : "an area"} name to change its planned month.${t === "aud" ? " For each audit finding, open the audit and use <b>↗ Raise improvement</b> — it goes into the Improvement register with Source “Audit finding” and its number is recorded on the audit." : ""}</p>
+  <div class="bar" style="margin-top:22px"><h2>${T.log} ${esc(y)}</h2><span class="grow"></span><button class="btn" data-act="csv:ins">Export CSV</button></div>
+  <div class="tablewrap"><table><thead><tr>${th("ins","Title","No.")}${th("ins","InspectionDate","Date")}${th("ins","Area",t === "aud" ? "Topic" : "Area")}${th("ins","Inspector",T.who)}${th("ins","Outcome","Outcome")}<th>Findings</th>${th("ins","ActionsRaised","Actions")}</tr></thead><tbody>
   ${log.map(i => `<tr data-open="ins:${i.id}"><td class="mono"><b>${esc(i.Title)}</b></td><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Inspector)}</td>
     <td>${i.Outcome ? `<span class="pill ${i.Outcome==="Satisfactory"?"p-ok":i.Outcome==="Actions required"?"p-warn":"p-crit"}">${esc(i.Outcome)}</span>` : ""}</td><td class="clip"><div>${esc(i.Findings || i.Notes)}</div></td><td class="mono">${esc(i.ActionsRaised)}</td></tr>`).join("")}
-  </tbody></table>${log.length ? "" : `<div class="empty">No inspections recorded in ${esc(y)}</div>`}</div>`;
+  </tbody></table>${log.length ? "" : `<div class="empty">No ${T.things} recorded in ${esc(y)}</div>`}</div>`;
 }
 
 /* ---- legislation ---- */
@@ -731,7 +780,7 @@ function hseFigures(ym){
   const trnOk = mand.filter(r => trnCurrentAt(r, d)).length;
   const ttL = ttLatestAt(d);
   let insPlanned = 0, insDone = 0, ytdPlanned = 0, ytdDone = 0;
-  S.area.forEach(a => { for (let k = 0; k <= mi; k++){ const s = areaMonthState(a, y, k);
+  areasOf("ins").forEach(a => { for (let k = 0; k <= mi; k++){ const s = areaMonthState(a, y, k);
     if (s.planned) ytdPlanned++; if (s.planned && s.done.length) ytdDone++;
     if (k === mi){ if (s.planned) insPlanned++; if (s.planned && s.done.length) insDone++; } } });
   return {
@@ -751,7 +800,10 @@ function hseFigures(ym){
     ttItems: ttL.length, ttBad: ttL.filter(r => ttBadAt(r, d)).length,
     ttTests: S.tt.filter(r => inYm(r.TestDate, ym)).length, ttFailed: S.tt.filter(r => inYm(r.TestDate, ym) && r.Result === "Fail").length,
     insPlanned, insDone, ytdPlanned, ytdDone,
-    insLog: S.ins.filter(i => inYm(i.InspectionDate, ym)).sort((a, b) => (a.InspectionDate || "").localeCompare(b.InspectionDate || "")),
+    insLog: insOf("ins").filter(i => inYm(i.InspectionDate, ym)).sort((a, b) => (a.InspectionDate || "").localeCompare(b.InspectionDate || "")),
+    audits: areasOf("aud").map(a => ({ a, st: areaMonthState(a, y, mi) })).filter(x => x.st.planned || x.st.done.length),
+    audYtd: (() => { let p = 0, dn = 0; areasOf("aud").forEach(a => { for (let k = 0; k <= mi; k++){ const s = areaMonthState(a, y, k); if (s.planned) p++; if (s.planned && s.done.length) dn++; } }); return [dn, p]; })(),
+    obsOpen: S.obs.filter(o => o.ObsStatus !== "Closed").length, obsClosed: S.obs.filter(o => inYm(o.DateClosed, ym)).length,
     revDone: S.rev.filter(r => inYm(r.ReviewDate, ym)).length,
     legDone: S.leg.filter(r => inYm(r.LastReviewed, ym)).length,
   };
@@ -787,12 +839,12 @@ const RPT_GROUPS = [
   ["For the MD", [["hse","Monthly HSE report"],["trend","Incident trends"]]],
   ["Planning & follow-up", [["ahead","Lookahead"],["ca","Corrective actions"],["run","Test & tag run sheet"]]],
   ["Records", [["inc","Incident report"],["trnrec","Training record"],["assets","Assets & fleet"],["leglog","Legislation log"]]],
-  ["Registers", [["reginc","Incident register"],["regimp","Improvement register"],["regrisk","Risk register"],["regtrn","Training matrix"],["regtt","Test & tag register"],["regins","Inspection program"]]]];
+  ["Registers", [["reginc","Incident register"],["regimp","Improvement register"],["regobs","Task & observations"],["regrisk","Risk register"],["regtrn","Training matrix"],["regtt","Test & tag register"],["regins","Inspection program"],["regaud","Internal audit schedule"]]]];
 function viewReports(){
   const f = S.filt.rpt;
   if (!f.month) f.month = defaultRptMonth();
   const tabs = `<div class="rgroups noprint">${RPT_GROUPS.map(([g, list]) => `<div class="rgroup"><span class="rgl">${g}</span><div class="chips">${list.map(([k, l]) => `<button class="chip ${f.sub === k ? "on" : ""}" data-rsub="${k}">${l}</button>`).join("")}</div></div>`).join("")}</div>`;
-  const other = { inc:viewIncReport, ahead:viewLookahead, ca:viewCaReport, trend:viewTrendReport, run:viewRunSheet, trnrec:viewTrainingRecord, assets:viewAssetReport, leglog:viewLegLog, reginc:viewRegInc, regimp:viewRegImp, regrisk:viewRegRisk, regtrn:viewRegTrn, regtt:viewRegTT, regins:viewRegIns }[f.sub];
+  const other = { inc:viewIncReport, ahead:viewLookahead, ca:viewCaReport, trend:viewTrendReport, run:viewRunSheet, trnrec:viewTrainingRecord, assets:viewAssetReport, leglog:viewLegLog, reginc:viewRegInc, regimp:viewRegImp, regrisk:viewRegRisk, regtrn:viewRegTrn, regtt:viewRegTT, regins:viewRegIns, regobs:viewRegObs, regaud: tb => viewRegIns(tb, "aud") }[f.sub];
   if (other) return other(tabs);
   const months = []; let m = ymOf(TODAY); for (let k = 0; k < 24; k++){ months.push(m); m = prevYm(m); }
   return `<div class="bar noprint"><h2>Reports</h2><span class="grow"></span>
@@ -840,13 +892,15 @@ function hseReport(ym){
     ${c.overdue.length ? `<table class="rtab"><thead><tr><th>Serial</th><th>Overdue action</th><th>Actioned by</th><th>Due</th><th class="n">Days late</th></tr></thead><tbody>
       ${c.overdue.slice(0, 10).map(i => `<tr><td class="mono">${esc(i.Title)}</td><td>${esc(i.NatureOfImprovement)}</td><td>${esc(i.ActionedBy)}</td><td class="mono">${fmtDate(i.TargetDate)}</td><td class="n">${daysLate(i.TargetDate)}</td></tr>`).join("")}
     </tbody></table>${c.overdue.length > 10 ? `<p class="rk">+ ${c.overdue.length - 10} more overdue — see the Improvement register.</p>` : ""}` : `<p class="rk">No overdue improvement actions at ${fmtDate(c.d)}.</p>`}
+    ${S.missing.includes("obs") || !S.obs.length ? "" : `<p class="rk">Task &amp; observation register: ${c.obsOpen} item${c.obsOpen === 1 ? "" : "s"} open now; ${c.obsClosed} closed in ${ymShort(ym)}.</p>`}
   </section>
 
   <section class="r2">
     ${trnOn ? `<div><h2>Training</h2><p class="rk">${c.trnPct == null ? "No mandatory training requirements recorded." : `${c.trnOk} of ${c.trnN} mandatory requirements current (${c.trnPct}%). ${c.trnExpired.length} expired, ${c.trnMissing} not recorded, ${c.trnExpiring} expiring within 60 days.`}</p>
       ${c.trnExpired.length ? `<table class="rtab sm"><thead><tr><th>Expired</th><th>Course</th><th>Expired on</th></tr></thead><tbody>${c.trnExpired.slice(0, 8).map(r => `<tr><td>${esc(r.StaffName)}</td><td>${esc(r.Course)}</td><td class="mono">${fmtDate(r.ExpiryDate)}</td></tr>`).join("")}</tbody></table>${c.trnExpired.length > 8 ? `<p class="rk">+ ${c.trnExpired.length - 8} more</p>` : ""}` : ""}</div>` : ""}
     ${insOn ? `<div><h2>Workplace inspections</h2><p class="rk">${c.insDone} of ${c.insPlanned} planned inspections done in ${ymShort(ym)}; ${c.ytdDone} of ${c.ytdPlanned} for the year to date.</p>
-      ${c.insLog.length ? `<table class="rtab sm"><thead><tr><th>Date</th><th>Area</th><th>Outcome</th></tr></thead><tbody>${c.insLog.map(i => `<tr><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Outcome)}${i.ActionsRaised ? ` · ${esc(i.ActionsRaised)}` : ""}</td></tr>`).join("")}</tbody></table>` : ""}</div>` : ""}
+      ${c.insLog.length ? `<table class="rtab sm"><thead><tr><th>Date</th><th>Area</th><th>Outcome</th></tr></thead><tbody>${c.insLog.map(i => `<tr><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Outcome)}${i.ActionsRaised ? ` · ${esc(i.ActionsRaised)}` : ""}</td></tr>`).join("")}</tbody></table>` : ""}
+      ${c.audits.length ? `<h3>Internal audit</h3><p class="rk">${c.audits.map(x => `${esc(x.a.Title)}: ${x.st.done.length ? "done " + fmtDate(x.st.done[0].InspectionDate) + (x.st.done[0].ActionsRaised ? " · " + esc(x.st.done[0].ActionsRaised) : "") : x.st.overdue ? "<b>not done</b>" : "planned"}`).join("; ")}. ${c.audYtd[0]} of ${c.audYtd[1]} audits done for the year to date.</p>` : ""}</div>` : ""}
   </section>
 
   <section class="r2">
@@ -941,7 +995,7 @@ async function loadReportPhotos(el){
 }
 
 /* ---------------- lookahead: everything falling due ---------------- */
-const AHEAD_TYPES = { trn:["Training","var(--c-trn)","Training"], tt:["Test & tag","var(--c-tt)","Test & tag"], ins:["Inspection","var(--c-ins)","Inspections"], rev:["Risk review","var(--c-rev)","Risk reviews"], leg:["Legislation","var(--c-leg)","Legislation"], imp:["Improvement action","var(--c-imp)","Actions"] };
+const AHEAD_TYPES = { trn:["Training","var(--c-trn)","Training"], tt:["Test & tag","var(--c-tt)","Test & tag"], ins:["Inspection","var(--c-ins)","Inspections"], aud:["Internal audit","var(--c-ins)","Internal audits"], rev:["Risk review","var(--c-rev)","Risk reviews"], leg:["Legislation","var(--c-leg)","Legislation"], imp:["Improvement action","var(--c-imp)","Actions"], obs:["Observation","var(--c-obs)","Observations"] };
 const AHEAD_DAYS = [30, 60, 90, 180];
 function aheadItems(end){
   const out = [], on = k => !S.missing.includes(k);
@@ -956,16 +1010,18 @@ function aheadItems(end){
   if (on("area")){
     const start = new Date(+TODAY.slice(0,4), +TODAY.slice(5,7) - 13, 1), endM = ymOf(end);
     S.area.forEach(a => {
+      const ty = isAudArea(a) ? "aud" : "ins", word = ty === "aud" ? "Audit" : "Inspection";
       let missed = [];
       for (let dt = new Date(start); ; dt.setMonth(dt.getMonth() + 1)){
         const ym = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`; if (ym > endM) break;
         const st = areaMonthState(a, String(dt.getFullYear()), dt.getMonth()), me = monthEnd(ym);
         if (!st.planned || st.done.length) continue;
+        if (ty === "aud" && ym < YEAR + "-01") continue;
         if (me < TODAY){ if (!S.ins.some(i => i.Area === a.Title && (i.InspectionDate || "") >= ym + "-01")) missed.push(ym); }
-        else { add("ins", me, a.Title, a.Responsible, (a.Frequency ? `Inspection ${a.Frequency}` : "Inspection planned"), `area:${a.id}`, false); out.at(-1).month = ym; }
+        else { add(ty, me, a.Title, a.Responsible, (a.Frequency ? `${word} ${a.Frequency}` : `${word} planned`), `area:${a.id}`, false); out.at(-1).month = ym; }
       }
-      if (missed.length) add("ins", monthEnd(missed.at(-1)), a.Title, a.Responsible,
-        missed.length === 1 ? `Planned for ${ymLabel(missed[0])} — not done` : `${missed.length} planned inspections missed since ${ymLabel(missed[0])}`, `area:${a.id}`, true);
+      if (missed.length) add(ty, monthEnd(missed.at(-1)), a.Title, a.Responsible,
+        missed.length === 1 ? `Planned for ${ymLabel(missed[0])} — not done` : `${missed.length} planned ${word.toLowerCase()}s missed since ${ymLabel(missed[0])}`, `area:${a.id}`, true);
     });
   }
   if (on("rev")) S.rev.forEach(r => { const n = nextDue(r);
@@ -976,6 +1032,12 @@ function aheadItems(end){
     else if (n <= end) add("leg", n, r.Title, r.Responsible, `${r.ReviewFrequency || "Monthly"} review`, `leg:${r.id}`); });
   S.imp.filter(i => i.ImprovementStatus !== "Closed" && (i.Recurrence || "One-off") === "One-off" && i.TargetDate && i.TargetDate <= end)
     .forEach(i => add("imp", i.TargetDate, `${i.Title} — ${i.NatureOfImprovement || ""}`, i.ActionedBy, `Priority ${i.Priority || "—"} · ${i.ImprovementStatus || ""}`, `imp:${i.id}`));
+  if (on("obs")) S.obs.filter(obsOpen).forEach(o => {
+    const item = `${o.Title} — ${o.Observation || ""}`, rs = obsRevState(o), nx = obsNextReview(o);
+    if (obsOneOff(o) && o.DueDate && o.DueDate <= end) add("obs", o.DueDate, item, o.Responsible, `Action due · ${o.ObsStatus || ""}`, `obs:${o.id}`);
+    if (rs === "none") add("obs", "", item, o.Responsible, `${o.ReviewFrequency} review · none recorded`, `obs:${o.id}`, true);
+    else if (rs !== "na" && nx <= end) add("obs", nx, item, o.Responsible, `${o.ReviewFrequency} review`, `obs:${o.id}`);
+  });
   return out.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || a.type.localeCompare(b.type) || String(a.item).localeCompare(String(b.item)));
 }
 // Test & tag: one line per location (earliest date first) instead of one line per item
@@ -994,7 +1056,7 @@ function groupTestTag(rows){
   return out.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || a.type.localeCompare(b.type) || String(a.item).localeCompare(String(b.item)));
 }
 // rows of one period; grouped = a subheading per type (in the order of the summary boxes)
-const AHEAD_PLURAL = { trn:"Training", tt:"Test & tag", ins:"Inspections", rev:"Risk reviews", leg:"Legislation reviews", imp:"Improvement actions" };
+const AHEAD_PLURAL = { trn:"Training", tt:"Test & tag", ins:"Inspections", aud:"Internal audits", rev:"Risk reviews", leg:"Legislation reviews", imp:"Improvement actions", obs:"Observation actions & reviews" };
 const nItems = rs => rs.reduce((n, r) => n + (r.ttloc ? +r.item.split(" ")[0] : 1), 0);
 function aheadRow(r){
   const due = r.month ? `${ymShort(r.month)} ${r.month.slice(0,4)}` : !r.due ? `<span class="late">no date</span>` : r.overdue ? `<span class="late">${fmtDate(r.due)}</span>` : fmtDate(r.due);
@@ -1028,12 +1090,12 @@ function viewLookahead(tabs){
   <article class="rpt" id="rpt">
   <header class="rh"><img src="${MJE_SHARED}mje-logo-full.png" alt="MJ Electrical"><div><h1>${f.days}-Day Lookahead</h1><div class="rm">${fmtDate(TODAY)} to ${fmtDate(end)}</div>
     <div class="rmeta">${label ? esc(label) + " only · " : ""}${f.overdue ? "includes items already overdue" : "overdue items not shown"}${f.group ? " · grouped by type; test &amp; tag combined by location" : ""} · prepared ${fmtDate(TODAY)}${account?.name ? " by " + esc(account.name) : ""}</div></div></header>
-  <section><h2>Falling due <small class="noprint">click a box to show one type; click again for all</small></h2><div class="rts six">${tiles}</div></section>
+  <section><h2>Falling due <small class="noprint">click a box to show one type; click again for all</small></h2><div class="rts">${tiles}</div></section>
   <section>${rows.length ? `<table class="rtab ag"><thead><tr><th style="width:92px">Due</th><th style="width:150px">Type</th><th>Item</th><th>Who / where</th><th>Notes</th></tr></thead><tbody>
     ${groups.map(([g, rs, o]) => `<tr class="grp ${o ? "od" : ""}"><td colspan="5">${g} <small>${nItems(rs)}</small></td></tr>` + groupRows(rs, f.group)).join("")}
   </tbody></table>` : `<p class="rk">Nothing falls due in the next ${f.days} days${label ? " for " + esc(label.toLowerCase()) : ""}.</p>`}
   ${missing ? `<p class="rk" style="margin-top:8px">Also: ${missing} mandatory training requirement${missing === 1 ? " has" : "s have"} never been recorded — see the Training matrix.</p>` : ""}</section>
-  <footer class="rf">Source: MJE Safety Hub registers. Training = recorded expiry dates for active staff · Test &amp; tag = latest test per item · Inspections = planned months not yet done · Risk reviews = review schedule · Legislation = last review + frequency · Improvement actions = open one-off actions by target date.</footer>
+  <footer class="rf">Source: MJE Safety Hub registers. Training = recorded expiry dates for active staff · Test &amp; tag = latest test per item · Inspections / internal audits = planned months not yet done · Observations = one-off due dates and review frequency · Risk reviews = review schedule · Legislation = last review + frequency · Improvement actions = open one-off actions by target date.</footer>
 </article>
   <p class="count noprint">Click a row to open the record. Use this to book courses, testers and inspections ahead of time.</p>`;
 }
@@ -1056,7 +1118,9 @@ const missingNote = keys => { const m = keys.filter(k => S.missing.includes(k));
 // Every open improvement action, where it came from, and records that should have an action but don't
 function caSources(i){
   const t = String(i.Title).trim().toLowerCase(), has = v => String(v || "").toLowerCase().split(/[\s,;/]+/).includes(t);
-  return [...S.inc.filter(x => has(x.LinkedImprovement)).map(x => `Incident ${x.Title}`), ...S.ins.filter(x => has(x.ActionsRaised)).map(x => `Inspection ${x.Title} (${x.Area})`)];
+  return [...S.inc.filter(x => has(x.LinkedImprovement)).map(x => `Incident ${x.Title}`),
+    ...S.ins.filter(x => has(x.ActionsRaised)).map(x => `${insIsAud(x) ? "Internal audit" : "Inspection"} ${x.Title} (${x.Area})`),
+    ...S.obs.filter(x => has(x.LinkedImprovement)).map(x => `Observation ${x.Title}`)];
 }
 function caRows(){
   return S.imp.filter(i => i.ImprovementStatus !== "Closed").map(i => {
@@ -1079,7 +1143,7 @@ function viewCaReport(tabs){
   const groups = f.caBy === "owner" ? owners.map(o => [o, rows.filter(r => r.owner === o)]).filter(g => g[1].length) : [["", rows]];
   const showLbl = { open:"All open actions", overdue:"Overdue only", soon:"Overdue + due in 30 days", nodate:"One-off actions with no due date" }[f.caShow];
   const row = r => `<tr data-open="imp:${esc(r.i.id)}" title="Open this action"><td class="mono">${esc(r.i.Title)}</td><td>${esc(r.i.NatureOfImprovement)}${r.i.ProposedAction ? `<div class="sm">${esc(r.i.ProposedAction)}</div>` : ""}</td>
-    <td class="sm">${r.src.length ? r.src.map(esc).join("<br>") : esc(r.i.OriginatedBy ? "Raised by " + r.i.OriginatedBy : "")}</td>${f.caBy === "owner" ? "" : `<td>${esc(r.owner)}</td>`}<td>${esc(r.i.Priority)}</td>
+    <td class="sm">${r.src.length ? r.src.map(esc).join("<br>") : esc([r.i.Source, r.i.OriginatedBy ? "raised by " + r.i.OriginatedBy : ""].filter(Boolean).join(" · "))}</td>${f.caBy === "owner" ? "" : `<td>${esc(r.owner)}</td>`}<td>${esc(r.i.Priority)}</td>
     <td class="mono">${r.oneOff ? (r.due ? `<span class="${r.late ? "late" : ""}">${fmtDate(r.due)}</span>` : `<span class="late">not set</span>`) : esc(r.i.Recurrence)}</td>
     <td class="n">${r.late ? `<span class="late">${daysBetween(r.due, TODAY)}</span>` : ""}</td><td>${esc(r.i.ImprovementStatus)}</td></tr>`;
   return rptBar(`<label class="count">Show</label>${rsel("caShow", [["open","All open"],["overdue","Overdue"],["soon","Overdue + next 30 days"],["nodate","No due date"]], f.caShow)}
@@ -1093,7 +1157,7 @@ function viewCaReport(tabs){
   ${gaps.inc.length || gaps.ins.length ? `<section><h2>Records with no action raised</h2>
     ${gaps.inc.length ? `<p class="rk">${gaps.inc.length} open incident${gaps.inc.length === 1 ? " has" : "s have"} no linked improvement and no corrective action recorded:</p><table class="rtab sm"><tbody>${gaps.inc.map(x => `<tr data-open="inc:${esc(x.id)}"><td class="mono" style="width:84px">${esc(x.Title)}</td><td class="mono" style="width:78px">${fmtDate(x.IncidentDate)}</td><td>${esc(x.Description)}</td><td style="width:120px">${esc(x.Severity)}</td></tr>`).join("")}</tbody></table>` : ""}
     ${gaps.ins.length ? `<p class="rk" style="margin-top:8px">${gaps.ins.length} inspection${gaps.ins.length === 1 ? "" : "s"} found problems but no improvement number is recorded under Actions raised:</p><table class="rtab sm"><tbody>${gaps.ins.map(x => `<tr data-open="ins:${esc(x.id)}"><td class="mono" style="width:84px">${esc(x.Title)}</td><td class="mono" style="width:78px">${fmtDate(x.InspectionDate)}</td><td>${esc(x.Area)} — ${esc(x.Findings || x.Outcome)}</td></tr>`).join("")}</tbody></table>` : ""}</section>` : ""}
-  <footer class="rf">Source: Improvement register (all actions not Closed). Source column = incidents whose Linked improvement and inspections whose Actions raised name the action. Ongoing / recurring actions have no due date. Click a row to open the record.</footer></article>`;
+  <footer class="rf">Source: Improvement register (all actions not Closed). Source column = incidents and observations whose Linked improvement, and inspections / audits whose Actions raised, name the action; otherwise the improvement's own Source. Ongoing / recurring actions have no due date. Click a row to open the record.</footer></article>`;
 }
 
 /* ---------------- incident trends ---------------- */
@@ -1240,13 +1304,13 @@ function viewRegImp(tabs){
   const f = S.filt.imp, rows = sortRows(impFiltered(), "imp");
   const stLbl = { "":"All statuses", open:"Not closed", overdue:"Overdue" }[f.status] ?? f.status;
   const statusOpts = [["", "All statuses"], ["open", "Not closed"], ["overdue", "Overdue"], ...IMP_STATUS.map(x => [x, x])];
-  return rptBar(`<select class="f" data-f="imp:status">${statusOpts.map(([v, l]) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${l}</option>`).join("")}</select><select class="f" data-f="imp:cat">${opt(IMP_CAT, f.cat, "All categories")}</select><select class="f" data-f="imp:pri">${opt(IMP_PRI, f.pri, "All priorities")}</select>`, `MJE Improvement Register ${TODAY}`) + tabs + `
-  <article class="rpt" id="rpt">${rptHead("Improvement Register", stLbl, fdesc([f.cat, f.pri && "priority " + f.pri, f.q && `search "${esc(f.q)}"`]))}
+  return rptBar(`<select class="f" data-f="imp:status">${statusOpts.map(([v, l]) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${l}</option>`).join("")}</select><select class="f" data-f="imp:cat">${opt(IMP_CAT, f.cat, "All categories")}</select><select class="f" data-f="imp:pri">${opt(IMP_PRI, f.pri, "All priorities")}</select><select class="f" data-f="imp:src">${opt(impSources(), f.src, "All sources")}</select>`, `MJE Improvement Register ${TODAY}`) + tabs + `
+  <article class="rpt" id="rpt">${rptHead("Improvement Register", stLbl, fdesc([f.cat, f.pri && "priority " + f.pri, f.src && "source " + esc(f.src), f.q && `search "${esc(f.q)}"`]))}
   <section><div class="rts">${rtile("Improvements", rows.length, `${rows.filter(i => i.ImprovementStatus === "Closed").length} closed`)}${rtile("Overdue", rows.filter(isOverdue).length, "", rows.some(isOverdue) ? "bad" : "")}
     ${rtile("High priority open", rows.filter(i => i.Priority === "H" && i.ImprovementStatus !== "Closed").length, "")}${rtile("Ongoing / recurring", rows.filter(i => (i.Recurrence || "One-off") !== "One-off").length, "")}</div></section>
   <section>${rows.length ? `<table class="rtab reg"><thead><tr><th style="width:72px">Serial</th><th style="width:70px">Category</th><th style="width:28px">Pri.</th><th>Nature of improvement / proposed action</th><th style="width:84px">Originated</th><th style="width:76px">Actioned by</th><th style="width:70px">Due</th><th style="width:70px">Status</th></tr></thead><tbody>
     ${rows.map(i => { const od = isOverdue(i); return `<tr data-open="imp:${esc(i.id)}"><td class="mono">${esc(i.Title)}</td><td>${esc(i.Category)}</td><td>${esc(i.Priority)}</td>
-      <td>${esc(i.NatureOfImprovement)}${i.ProposedAction ? `<div class="sm">${esc(i.ProposedAction)}</div>` : ""}</td><td>${esc(i.OriginatedBy)}<div class="sm">${fmtDate(i.DateIssued)}</div></td><td>${esc(i.ActionedBy)}</td>
+      <td>${esc(i.NatureOfImprovement)}${i.ProposedAction ? `<div class="sm">${esc(i.ProposedAction)}</div>` : ""}${i.Source ? `<div class="sm">Source: ${esc(i.Source)}</div>` : ""}</td><td>${esc(i.OriginatedBy)}<div class="sm">${fmtDate(i.DateIssued)}</div></td><td>${esc(i.ActionedBy)}</td>
       <td class="mono">${i.TargetDate && (i.Recurrence || "One-off") === "One-off" ? `<span class="${od ? "late" : ""}">${fmtDate(i.TargetDate)}</span>` : esc(i.Recurrence || "")}</td>
       <td>${esc(i.ImprovementStatus)}${i.ImprovementStatus === "Closed" && i.DateClosed ? `<div class="sm">${fmtDate(i.DateClosed)}</div>` : od ? `<div class="sm late">overdue</div>` : ""}</td></tr>`; }).join("")}</tbody></table>` : `<p class="rk">No improvements match these filters.</p>`}</section>
   <footer class="rf">Source: Improvement Register, in the order shown on the Improvements tab.</footer></article>${landscapeTip}`;
@@ -1311,21 +1375,40 @@ function viewRegTT(tabs){
   <footer class="rf">Source: Test &amp; Tag register, in the order shown on the Test &amp; tag tab. ${f.all ? "Every test record is listed, including older tests of the same item." : "One line per physical item, showing its most recent test."}</footer></article>`;
 }
 
-function viewRegIns(tabs){
-  const f = S.filt.ins, y = f.year, areas = insAreasFiltered();
-  let planned = 0, done = 0, missed = 0;
-  S.area.forEach(a => MONTHS.forEach((m, mi) => { const st = areaMonthState(a, y, mi); if (st.planned) planned++; if (st.planned && st.done.length) done++; if (st.overdue) missed++; }));
-  const log = S.ins.filter(i => (i.InspectionDate || "").startsWith(y)).sort((a, b) => (a.InspectionDate || "").localeCompare(b.InspectionDate || ""));
-  return rptBar(`<select class="f" data-f="ins:year">${insYears().map(v => `<option ${v === y ? "selected" : ""}>${v}</option>`).join("")}</select><label class="count"><input type="checkbox" id="regInsMissed" ${f.missed ? "checked" : ""}> Areas with missed inspections only</label>`, `MJE Inspection Program ${y}`) + tabs + missingNote(["area","ins"]) + `
-  <article class="rpt" id="rpt">${rptHead("Workplace Inspection Program", esc(y), f.missed ? "areas with missed inspections only" : `${areas.length} area${areas.length === 1 ? "" : "s"}`)}
-  <section><div class="rts">${rtile("Inspections recorded", log.length, `in ${esc(y)}`)}${rtile("Planned slots done", `${done}/${planned}`, planned ? Math.round(done / planned * 100) + "% of the plan" : "")}${rtile("Planned, missed", missed, "months already passed", missed ? "bad" : "")}${rtile("Areas not scheduled", S.area.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length, `of ${S.area.length}`)}</div></section>
-  <section><h2>Program ${esc(y)}</h2>${areas.length ? `<table class="rtab rcal"><thead><tr><th class="nm">Area</th>${MONTHS.map(m => `<th>${m.slice(0, 3)}</th>`).join("")}</tr></thead><tbody>
+function viewRegIns(tabs, t = "ins"){
+  const T = INS_TXT[t], f = S.filt[t], y = f.year, areas = insAreasFiltered(t), all = areasOf(t);
+  const { planned, done, overdue: missed } = insStats(t, y);
+  const log = insOf(t).filter(i => (i.InspectionDate || "").startsWith(y)).sort((a, b) => (a.InspectionDate || "").localeCompare(b.InspectionDate || ""));
+  return rptBar(`<select class="f" data-f="${t}:year">${insYears().map(v => `<option ${v === y ? "selected" : ""}>${v}</option>`).join("")}</select><label class="count"><input type="checkbox" id="regInsMissed" data-t="${t}" ${f.missed ? "checked" : ""}> ${cap1(T.unit)} with missed ${T.things} only</label>`, `MJE ${T.title} ${y}`) + tabs + missingNote(["area","ins"]) + `
+  <article class="rpt" id="rpt">${rptHead(T.title, esc(y), f.missed ? `${T.unit} with missed ${T.things} only` : `${areas.length} ${areas.length === 1 ? T.one : T.unit}`)}
+  <section><div class="rts">${rtile(`${cap1(T.things)} recorded`, log.length, `in ${esc(y)}`)}${rtile("Planned slots done", `${done}/${planned}`, planned ? Math.round(done / planned * 100) + "% of the plan" : "")}${rtile("Planned, missed", missed, "months already passed", missed ? "bad" : "")}${t === "aud"
+      ? rtile("Raised improvements", log.filter(i => (i.ActionsRaised || "").trim()).length, "audits with an IR no.")
+      : rtile("Areas not scheduled", all.filter(a => !a.PlannedMonth && a.Frequency !== "Monthly").length, `of ${all.length}`)}</div></section>
+  <section><h2>Program ${esc(y)}</h2>${areas.length ? `<table class="rtab rcal"><thead><tr><th class="nm">${t === "aud" ? "Audit topic" : "Area"}</th>${MONTHS.map(m => `<th>${m.slice(0, 3)}</th>`).join("")}</tr></thead><tbody>
     ${areas.map(a => `<tr data-open="area:${esc(a.id)}"><td class="nm">${esc(a.Title)}<div class="sm">${esc(a.Frequency || "")}${a.Responsible ? " · " + esc(a.Responsible) : ""}</div></td>${MONTHS.map((m, mi) => { const st = areaMonthState(a, y, mi);
       return st.done.length ? `<td class="c-done">${st.done.map(d => d.InspectionDate.slice(8, 10)).join(", ")}</td>` : st.overdue ? `<td class="c-miss">missed</td>` : st.planned ? `<td class="c-plan">plan</td>` : `<td></td>`; }).join("")}</tr>`).join("")}</tbody></table>
-    <p class="legend2"><span class="mc c-done">12</span> inspected (day of month) <span class="mc c-plan">plan</span> planned <span class="mc c-miss">missed</span> planned, month passed, not done</p>` : `<p class="rk">No inspection areas match.</p>`}</section>
-  <section><h2>Inspection log ${esc(y)} <small>${log.length}</small></h2>${log.length ? `<table class="rtab reg"><thead><tr><th style="width:62px">No.</th><th style="width:66px">Date</th><th>Area</th><th>Inspector</th><th>Outcome</th><th style="width:36%">Findings</th><th>Actions raised</th></tr></thead><tbody>
-    ${log.map(i => `<tr data-open="ins:${esc(i.id)}"><td class="mono">${esc(i.Title)}</td><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Inspector)}</td><td>${esc(i.Outcome)}</td><td class="sm">${esc(i.Findings || i.Notes)}</td><td class="mono">${esc(i.ActionsRaised)}</td></tr>`).join("")}</tbody></table>` : `<p class="rk">No inspections recorded in ${esc(y)}.</p>`}</section>
-  <footer class="rf">Source: Inspection areas and Inspections. A planned month counts as done when any inspection of that area is recorded in that month.</footer></article>${landscapeTip}`;
+    <p class="legend2"><span class="mc c-done">12</span> ${T.done.toLowerCase()} (day of month) <span class="mc c-plan">plan</span> planned <span class="mc c-miss">missed</span> planned, month passed, not done</p>` : `<p class="rk">No ${T.unit} match.</p>`}</section>
+  <section><h2>${T.log} ${esc(y)} <small>${log.length}</small></h2>${log.length ? `<table class="rtab reg"><thead><tr><th style="width:62px">No.</th><th style="width:66px">Date</th><th>${t === "aud" ? "Topic" : "Area"}</th><th>${T.who}</th><th>Outcome</th><th style="width:36%">Findings</th><th>Actions raised</th></tr></thead><tbody>
+    ${log.map(i => `<tr data-open="ins:${esc(i.id)}"><td class="mono">${esc(i.Title)}</td><td class="mono">${fmtDate(i.InspectionDate)}</td><td>${esc(i.Area)}</td><td>${esc(i.Inspector)}</td><td>${esc(i.Outcome)}</td><td class="sm">${esc(i.Findings || i.Notes)}</td><td class="mono">${esc(i.ActionsRaised)}</td></tr>`).join("")}</tbody></table>` : `<p class="rk">No ${T.things} recorded in ${esc(y)}.</p>`}</section>
+  <footer class="rf">Source: ${t === "aud" ? "Internal audit topics (inspection areas of type Internal Audit) and the audits recorded against them" : "Inspection areas and Inspections"}. A planned month counts as done when any ${T.thing} of that ${T.one} is recorded in that month.</footer></article>${landscapeTip}`;
+}
+
+/* ---------------- printable task & observation register ---------------- */
+function viewRegObs(tabs){
+  const f = S.filt.obs, rows = sortRows(obsFiltered(), "obs");
+  const stLbl = { "":"All statuses", open:"Not closed", overdue:"Overdue actions", review:"Review due / not recorded" }[f.status] ?? f.status;
+  const statusOpts = [["", "All statuses"], ["open", "Not closed"], ["overdue", "Overdue"], ["review", "Review due / not recorded"], ...OBS_STATUS.map(x => [x, x])];
+  const over = rows.filter(obsOverdue).length, rev = rows.filter(o => ["overdue","none"].includes(obsRevState(o))).length;
+  return rptBar(`<select class="f" data-f="obs:status">${statusOpts.map(([v, l]) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${l}</option>`).join("")}</select><select class="f" data-f="obs:src">${opt(obsSources(), f.src, "All sources")}</select>`, `MJE Task and Observation Register ${TODAY}`) + tabs + missingNote(["obs"]) + `
+  <article class="rpt" id="rpt">${rptHead("Task &amp; Observation Monitoring Register", stLbl, fdesc([f.src && "source " + esc(f.src), f.q && `search "${esc(f.q)}"`]))}
+  <section><div class="rts">${rtile("Items", rows.length, `${rows.filter(o => o.ObsStatus === "Closed").length} closed`)}${rtile("Overdue actions", over, "one-off, past due date", over ? "bad" : "")}${rtile("Reviews due", rev, "overdue or none recorded", rev ? "bad" : "")}${rtile("Linked to improvements", rows.filter(o => (o.LinkedImprovement || "").trim()).length, "")}</div></section>
+  <section>${rows.length ? `<table class="rtab reg"><thead><tr><th style="width:64px">TOM No</th><th>Observation / impact</th><th>Action required</th><th style="width:90px">Responsible</th><th style="width:96px">Due / review</th><th>Evidence</th><th style="width:70px">Status</th></tr></thead><tbody>
+    ${rows.map(o => { const od = obsOverdue(o), rs = obsRevState(o); return `<tr data-open="obs:${esc(o.id)}"><td class="mono">${esc(o.Title)}</td>
+      <td>${esc(o.Observation)}${o.ImpactRisk ? `<div class="sm">${esc(o.ImpactRisk)}</div>` : ""}${o.Source ? `<div class="sm">Source: ${esc(o.Source)}</div>` : ""}</td>
+      <td class="sm">${esc(o.ActionRequired)}</td><td>${esc(o.Responsible)}</td>
+      <td class="mono">${o.DueDate ? `<span class="${od ? "late" : ""}">${fmtDate(o.DueDate)}</span>` : esc(o.Recurrence || "")}${o.ReviewFrequency ? `<div class="sm">${esc(o.ReviewFrequency)}${rs === "none" ? ` · <span class="late">none recorded</span>` : rs === "overdue" ? ` · <span class="late">review due</span>` : o.LastReviewed ? " · last " + fmtDate(o.LastReviewed) : ""}</div>` : ""}</td>
+      <td class="sm">${esc(o.Evidence)}</td><td>${esc(o.ObsStatus)}${o.LinkedImprovement ? `<div class="sm">${esc(o.LinkedImprovement)}</div>` : ""}${o.ObsStatus === "Closed" && o.DateClosed ? `<div class="sm">${fmtDate(o.DateClosed)}</div>` : ""}</td></tr>`; }).join("")}</tbody></table>` : `<p class="rk">No items match these filters.</p>`}</section>
+  <footer class="rf">Source: Task &amp; Observation Monitoring register, in the order shown on the Improvements tab. Review due = last review + review frequency; items never reviewed show “none recorded”.</footer></article>${landscapeTip}`;
 }
 
 /* ---------------- report controls ---------------- */
@@ -1346,7 +1429,7 @@ function bindReports(){
   [["caShow","caShow"],["caOwner","caOwner"],["caBy","caBy"],["trPeriod","trPeriod"],["rsDays","rsDays",1],["rsLoc","rsLoc"],["trStaff","staff"],["legTopic","legTopic"]]
     .forEach(([id, key, isNum]) => { const el = document.getElementById(id); if (el) el.onchange = () => { f[key] = isNum ? +el.value : el.value; render(); }; });
   const rr = $("#regRiskReg"); if (rr) rr.onchange = () => { S.filt.risk.reg = rr.value; S.filt.risk.cell = ""; render(); };
-  const im = $("#regInsMissed"); if (im) im.onchange = () => { S.filt.ins.missed = im.checked; render(); };
+  const im = $("#regInsMissed"); if (im) im.onchange = () => { S.filt[im.dataset.t || "ins"].missed = im.checked; render(); };
   const rg = $("#regTrnGaps"); if (rg) rg.onchange = () => { S.filt.trn.gaps = rg.checked; render(); };
   const ed = $("#eqDisposed"); if (ed) ed.onchange = () => { f.eqDisposed = ed.checked; render(); };
   document.querySelectorAll("[data-rtype]").forEach(b => b.onclick = () => { f.type = f.type === b.dataset.rtype ? "" : b.dataset.rtype; render(); });
@@ -1359,10 +1442,10 @@ async function printReport(title){
   const t = document.title; document.title = title; window.print(); document.title = t;
 }
 
-const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM, eq:EQ_FORM, tt:TT_FORM, staff:STAFF_FORM, course:COURSE_FORM, trn:TRN_FORM, area:AREA_FORM, ins:INS_FORM, leg:LEG_FORM };
+const FORMS = { inc:INC_FORM, imp:IMP_FORM, risk:RISK_FORM, rev:REV_FORM, eq:EQ_FORM, tt:TT_FORM, staff:STAFF_FORM, course:COURSE_FORM, trn:TRN_FORM, area:AREA_FORM, ins:INS_FORM, leg:LEG_FORM, obs:OBS_FORM };
 const USER_TITLE = new Set(["rev","staff","course","area","leg","trn"]);
-const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item", eq:"Equipment item", tt:"Test", staff:"Staff member", course:"Course", trn:"Training record", area:"Inspection area", ins:"Inspection", leg:"Legislation" };
-const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule", eq:"Equipment_Register", tt:"Test_and_Tag", staff:"Staff", course:"Courses", trn:"Training_Records", area:"Inspection_Areas", ins:"Inspections", leg:"Legislation_Register" };
+const NAMES = { inc:"Incident", imp:"Improvement", risk:"Risk", rev:"Review item", eq:"Equipment item", tt:"Test", staff:"Staff member", course:"Course", trn:"Training record", area:"Inspection area", ins:"Inspection", leg:"Legislation", obs:"Observation" };
+const FILE_NAMES = { inc:"Incident_Register", imp:"Improvement_Register", risk:"Risk_Registers", rev:"Risk_Review_Schedule", eq:"Equipment_Register", tt:"Test_and_Tag", staff:"Staff", course:"Courses", trn:"Training_Records", area:"Inspection_Areas", ins:"Inspections_and_Audits", leg:"Legislation_Register", obs:"Task_and_Observation_Register" };
 const NUMERIC = new Set(Object.values(FORMS).flat().flatMap(s => s[1]).filter(f => f[2]==="number").map(f => f[0]));
 
 /* ---------------- derived ---------------- */
@@ -1423,7 +1506,10 @@ function viewDash(){
   const mand = S.trn.filter(r => r.Requirement === "Mandatory" && activeStaff().some(s => s.Title === r.StaffName));
   const trnPct = mand.length ? Math.round(mand.filter(r => ["done","expiring"].includes(trnState(r))).length / mand.length * 100) : 0;
   const insOn = !S.missing.includes("area");
-  const insMissed = insOn ? S.area.reduce((n, a) => n + MONTHS.filter((m, mi) => areaMonthState(a, YEAR, mi).overdue).length, 0) : 0;
+  const insMissed = insOn ? insStats("ins", YEAR).overdue : 0;
+  const audN = insOn ? areasOf("aud").length : 0, aud = insStats("aud", YEAR);
+  const obsOn = !S.missing.includes("obs"), obsOpenN = S.obs.filter(obsOpen).length, obsOver = S.obs.filter(obsOverdue).length,
+        obsRev = S.obs.filter(o => ["overdue","none"].includes(obsRevState(o))).length;
   const legOn = !S.missing.includes("leg"), legDueN = S.leg.filter(r => legState(r) !== "ok").length;
 
   return `
@@ -1433,11 +1519,13 @@ function viewDash(){
     <div role="button" tabindex="0" data-go="cost" title="Open the matching register" class="card kpi k-inc"><div class="l">Est. incident cost ${YEAR}</div><div class="v">${kina(cost)}</div><div class="s">direct + indirect + RTW</div></div>
     <div role="button" tabindex="0" data-go="impopen" title="Open the matching register" class="card kpi k-imp"><div class="l">Open improvements</div><div class="v">${impOpen.length}</div><div class="s">${closedY} closed in ${YEAR}</div></div>
     <div role="button" tabindex="0" data-go="impover" title="Open the matching register" class="card kpi k-imp ${overdue.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${overdue.length}</div><div class="s">${soon.length} due in next 30 days</div></div>
+    ${obsOn ? `<div role="button" tabindex="0" data-go="obs" title="Open the matching register" class="card kpi k-obs ${obsOver?"alert":""}"><div class="l">Open observations</div><div class="v">${obsOpenN}</div><div class="s">${obsOver} overdue · ${obsRev} review${obsRev===1?"":"s"} due</div></div>` : ""}
     ${riskOn ? `<div role="button" tabindex="0" data-go="risk" title="Open the matching register" class="card kpi k-risk"><div class="l">High & very high risks</div><div class="v">${hiRisks.length}</div><div class="s">${vh} very high · before controls</div></div>
     <div role="button" tabindex="0" data-go="rev" title="Open the matching register" class="card kpi k-rev ${revOver?"alert":""}"><div class="l">Risk reviews overdue</div><div class="v">${revOver}</div><div class="s">of ${S.rev.length} scheduled reviews</div></div>` : ""}
     ${ttOn ? `<div role="button" tabindex="0" data-go="tt" title="Open the matching register" class="card kpi k-tt ${ttOver?"alert":""}"><div class="l">Test & tag overdue</div><div class="v">${ttOver}</div><div class="s">of ${ttL.length} tagged items</div></div>` : ""}
     ${trnOn ? `<div role="button" tabindex="0" data-go="trn" title="Open the matching register" class="card kpi k-trn ${trnPct<80?"alert":""}"><div class="l">Mandatory training</div><div class="v">${trnPct}%</div><div class="s">of ${mand.length} requirements current</div></div>` : ""}
     ${insOn ? `<div role="button" tabindex="0" data-go="ins" title="Open the matching register" class="card kpi k-ins ${insMissed?"alert":""}"><div class="l">Inspections missed ${YEAR}</div><div class="v">${insMissed}</div><div class="s">planned months passed</div></div>` : ""}
+    ${audN ? `<div role="button" tabindex="0" data-go="aud" title="Open the matching register" class="card kpi k-ins ${aud.overdue?"alert":""}"><div class="l">Internal audits missed ${YEAR}</div><div class="v">${aud.overdue}</div><div class="s">${aud.done} of ${aud.planned} done this year</div></div>` : ""}
     ${legOn ? `<div role="button" tabindex="0" data-go="leg" title="Open the matching register" class="card kpi k-leg ${legDueN?"alert":""}"><div class="l">Legislation reviews due</div><div class="v">${legDueN}</div><div class="s">monthly review</div></div>` : ""}
   </div>
   <div class="grid two">
@@ -1470,8 +1558,9 @@ function incFiltered(){ const f = S.filt.inc, q = f.q.toLowerCase();
     (!q || [i.Title,i.FirstName,i.Surname,i.Description,i.AgencyOfInjury,i.BodyPart,i.Location].join(" ").toLowerCase().includes(q))); }
 function impFiltered(){ const f = S.filt.imp, q = f.q.toLowerCase();
   return S.imp.filter(i => (f.status === "" || (f.status === "open" ? i.ImprovementStatus !== "Closed" : f.status === "overdue" ? isOverdue(i) : i.ImprovementStatus === f.status)) &&
-    (!f.cat || i.Category === f.cat) && (!f.pri || i.Priority === f.pri) &&
-    (!q || [i.Title,i.NatureOfImprovement,i.ProposedAction,i.ActionedBy,i.Remarks].join(" ").toLowerCase().includes(q))); }
+    (!f.cat || i.Category === f.cat) && (!f.pri || i.Priority === f.pri) && (!f.src || (i.Source || "").trim() === f.src) &&
+    (!q || [i.Title,i.NatureOfImprovement,i.ProposedAction,i.ActionedBy,i.Remarks,i.Source,i.Impact,i.Benefit,i.Evidence].join(" ").toLowerCase().includes(q))); }
+const impSources = () => [...new Set(S.imp.map(i => (i.Source || "").trim()).filter(Boolean))].sort();
 function viewInc(){
   const f = S.filt.inc;
   const years = [...new Set(S.inc.map(i => (i.IncidentDate||"").slice(0,4)).filter(Boolean).concat(YEAR))].sort().reverse();
@@ -1495,18 +1584,26 @@ function viewInc(){
   </tbody></table>${rows.length ? "" : `<div class="empty">No incidents match</div>`}</div>`;
 }
 
+function impTabs(){
+  const sub = S.filt.imps.sub;
+  return `<div class="bar chips"><button class="chip ${sub==="imp"?"on":""}" data-isub="imp">Improvement register <span>${S.imp.length}</span></button><button class="chip ${sub==="obs"?"on":""}" data-isub="obs">Task &amp; observations <span>${S.obs.filter(obsOpen).length} open</span></button></div>`;
+}
 function viewImp(){
+  const tabs = impTabs();
+  if (S.filt.imps.sub === "obs") return viewObs(tabs);
   const f = S.filt.imp;
   const rows = sortRows(impFiltered(), "imp");
   const statusOpts = `<option value="">All statuses</option><option value="open" ${f.status==="open"?"selected":""}>Not closed</option><option value="overdue" ${f.status==="overdue"?"selected":""}>Overdue</option>` + IMP_STATUS.map(s => `<option ${s===f.status?"selected":""}>${s}</option>`).join("");
   return `
   <div class="bar"><h2>Improvement Register</h2><span class="grow"></span>
     <button class="btn" data-rpt="regimp">🖨 Print</button><button class="btn" data-act="csv:imp">Export CSV</button><button class="btn primary" data-act="new:imp">+ New improvement</button></div>
+  ${tabs}
   <div class="bar">
     <input type="search" id="q" placeholder="Search improvement, action, remarks…" value="${esc(f.q)}">
     <select class="f" data-f="imp:status">${statusOpts}</select>
     <select class="f" data-f="imp:cat">${opt(IMP_CAT, f.cat, "All categories")}</select>
     <select class="f" data-f="imp:pri">${opt(IMP_PRI, f.pri, "All priorities")}</select>
+    <select class="f" data-f="imp:src">${opt(impSources(), f.src, "All sources")}</select>
     <span class="count">${rows.length} of ${S.imp.length}</span>
   </div>
   <div class="tablewrap"><table><thead><tr>
@@ -1519,13 +1616,72 @@ function viewImp(){
   </tbody></table>${rows.length ? "" : `<div class="empty">No improvements match</div>`}</div>`;
 }
 
+/* ================= TASK & OBSERVATION MONITORING (Phase 5) ================= */
+const obsOpen = o => o.ObsStatus !== "Closed";
+const obsOneOff = o => (o.Recurrence || (o.DueDate ? "One-off" : "Ongoing")) === "One-off";
+const obsOverdue = o => obsOpen(o) && obsOneOff(o) && !!o.DueDate && o.DueDate < TODAY;
+const obsNextReview = o => { if (!o.LastReviewed) return "";
+  const d = o.LastReviewed, f = o.ReviewFrequency;
+  return { Daily:addDays(d,1), Weekly:addDays(d,7), Fortnightly:addDays(d,14), Monthly:addMonths(d,1), Quarterly:addMonths(d,3), "Six-monthly":addMonths(d,6), Annually:addMonths(d,12) }[f] || ""; };
+const obsRevState = o => { if (!obsOpen(o) || !o.ReviewFrequency) return "na"; if (!o.LastReviewed) return "none"; const n = obsNextReview(o);
+  return !n ? "na" : n < TODAY ? "overdue" : n <= addDays(TODAY, 7) ? "soon" : "ok"; };
+const obsRevPill = o => ({ na:"", none:`<span class="pill p-bad">Not recorded</span>`, overdue:`<span class="pill p-crit">Review due</span>`, soon:`<span class="pill p-warn">Due soon</span>`, ok:`<span class="pill p-ok">On track</span>` })[obsRevState(o)];
+const obsStatPill = s => { const c = { Open:"p-warn", "In Progress":"p-info", Active:"p-grey", Closed:"p-ok" }[s]; return s ? `<span class="pill ${c || "p-grey"}">${esc(s)}</span>` : ""; };
+const obsSources = () => [...new Set(S.obs.map(o => (o.Source || "").trim()).filter(Boolean))].sort();
+function obsFiltered(){ const f = S.filt.obs, q = f.q.toLowerCase();
+  return S.obs.filter(o => (f.status === "" || (f.status === "open" ? obsOpen(o) : f.status === "overdue" ? obsOverdue(o) : f.status === "review" ? ["overdue","none"].includes(obsRevState(o)) : o.ObsStatus === f.status)) &&
+    (!f.src || (o.Source || "").trim() === f.src) &&
+    (!q || [o.Title,o.Observation,o.ImpactRisk,o.ActionRequired,o.Responsible,o.Evidence,o.Remarks,o.LinkedImprovement,o.Source].join(" ").toLowerCase().includes(q))); }
+function viewObs(tabs){
+  if (S.missing.includes("obs")) return `<div class="bar"><h2>Task &amp; Observation Monitoring</h2></div>${tabs}<div class="banner err">The MJE_Observations list hasn't been set up on SharePoint yet. Run Setup-MJE-Hub.ps1 from setup kit v2.2, then refresh this page.</div>`;
+  const f = S.filt.obs, rows = sortRows(obsFiltered(), "obs");
+  const open = S.obs.filter(obsOpen), over = S.obs.filter(obsOverdue), rev = S.obs.filter(o => ["overdue","none"].includes(obsRevState(o)));
+  const statusOpts = `<option value="">All statuses</option><option value="open" ${f.status==="open"?"selected":""}>Not closed</option><option value="overdue" ${f.status==="overdue"?"selected":""}>Overdue actions</option><option value="review" ${f.status==="review"?"selected":""}>Review due / not recorded</option>` + OBS_STATUS.map(s => `<option ${s===f.status?"selected":""}>${s}</option>`).join("");
+  return `
+  <div class="bar"><h2>Task &amp; Observation Monitoring</h2><span class="grow"></span>
+    <button class="btn" data-rpt="regobs">🖨 Print</button><button class="btn" data-act="csv:obs">Export CSV</button><button class="btn primary" data-act="new:obs">+ New observation</button></div>
+  ${tabs}
+  <div class="grid kpis">
+    <div class="card kpi k-obs"><div class="l">Open items</div><div class="v">${open.length}</div><div class="s">${S.obs.filter(o => o.ObsStatus === "Active").length} under active monitoring</div></div>
+    <div class="card kpi k-obs ${over.length?"alert":""}"><div class="l">Overdue actions</div><div class="v">${over.length}</div><div class="s">one-off actions past due date</div></div>
+    <div class="card kpi k-obs ${rev.length?"alert":""}"><div class="l">Reviews due</div><div class="v">${rev.length}</div><div class="s">overdue or none recorded</div></div>
+    <div class="card kpi k-obs"><div class="l">Closed</div><div class="v">${S.obs.length - open.length}</div><div class="s">of ${S.obs.length} items</div></div>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search observation, action, evidence…" value="${esc(f.q)}">
+    <select class="f" data-f="obs:status">${statusOpts}</select>
+    <select class="f" data-f="obs:src">${opt(obsSources(), f.src, "All sources")}</select>
+    <span class="count">${rows.length} of ${S.obs.length}</span>
+  </div>
+  <div class="tablewrap"><table><thead><tr>
+    ${th("obs","Title","TOM No")}<th>Observation</th>${th("obs","Responsible","Responsible")}${th("obs","DueDate","Due")}${th("obs","ReviewFrequency","Review")}${th("obs","ObsStatus","Status")}${th("obs","LinkedImprovement","IR")}
+  </tr></thead><tbody>
+  ${rows.map(o => { const od = obsOverdue(o); return `<tr data-open="obs:${o.id}"><td class="mono"><b>${esc(o.Title)}</b></td><td class="clip"><div>${esc(o.Observation)}</div></td><td>${esc(o.Responsible)}</td>
+    <td class="mono" ${od?'style="color:var(--crit);font-weight:600"':""}>${o.DueDate ? fmtDate(o.DueDate) : esc(o.Recurrence || "")}${od?" · overdue":""}</td>
+    <td>${esc(o.ReviewFrequency || "")} ${obsRevPill(o)}</td><td>${obsStatPill(o.ObsStatus)}</td><td class="mono">${esc(o.LinkedImprovement)}</td></tr>`; }).join("")}
+  </tbody></table>${rows.length ? "" : `<div class="empty">No observations match</div>`}</div>
+  <p class="count">Tasks and observations from site walk-throughs, HR monitoring and audits. Open one to record a review, attach photos or raise an improvement.</p>`;
+}
+
+// New improvement pre-filled from an inspection, internal audit or observation; once saved, its IR no. is written back
+function raiseImprovement(key, item){
+  const aud = key === "ins" && insIsAud(item);
+  const label = key === "obs" ? `observation ${item.Title}` : `${aud ? "internal audit" : "inspection"} ${item.Title}`;
+  const pre = key === "obs"
+    ? { Source:"Observation", NatureOfImprovement: item.Observation || "", ProposedAction: item.ActionRequired || "", ActionedBy: item.Responsible || "", Impact: item.ImpactRisk || "",
+        ...(item.DueDate ? { TargetDate: item.DueDate } : {}) }
+    : { Source: aud ? "Audit finding" : "Inspection", Category: aud ? "Quality" : "Safety", NatureOfImprovement: item.Findings || "", OriginatedBy: item.Inspector || "" };
+  pre.Remarks = `Raised from ${label}${key === "ins" && item.Area ? " (" + item.Area + ")" : ""}`;
+  openForm("imp", undefined, pre, { key, id: item.id, label });
+}
+
 function bindView(){
   const q = $("#q");
-  if (q) q.oninput = () => { ({ assets: S.filt[S.filt.assets.sub], training: S.filt.trn, comp: S.filt.leg }[S.view] || S.filt[S.view]).q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
+  if (q) q.oninput = () => { ({ assets: S.filt[S.filt.assets.sub], training: S.filt.trn, comp: S.filt.leg, imp: S.filt[S.filt.imps.sub] }[S.view] || S.filt[S.view]).q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos,pos); };
   document.querySelectorAll("[data-f]").forEach(s => s.onchange = () => { const [k,f] = s.dataset.f.split(":"); S.filt[k][f] = s.value; S.tile = null; render(); });
   document.querySelectorAll("[data-sort]").forEach(h => h.onclick = () => { const [k,c] = h.dataset.sort.split(":"); const cur = S.sort[k]; S.sort[k] = [c, cur[0]===c ? -cur[1] : 1]; render(); });
   document.querySelectorAll("[data-open]").forEach(r => r.onclick = () => { const [k,id] = r.dataset.open.split(":"); openForm(k, S[k].find(i => String(i.id) === id)); });
-  document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => { const [a,k] = b.dataset.act.split(":"); a === "new" ? openForm(k) : exportCsv(k); });
+  document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => { const [a,k] = b.dataset.act.split(":"); a === "new" ? openForm(k, undefined, b.dataset.pre ? JSON.parse(b.dataset.pre) : {}) : exportCsv(k); });
   document.querySelectorAll("[data-reg]").forEach(b => b.onclick = () => { S.filt.risk.reg = b.dataset.reg; S.filt.risk.cell = ""; render(); });
   document.querySelectorAll("[data-res]").forEach(b => b.onclick = () => { S.filt.risk.residual = b.dataset.res === "1"; S.filt.risk.cell = ""; S.filt.risk.rating = ""; render(); });
   document.querySelectorAll("[data-cell]").forEach(b => b.onclick = () => { if (b.classList.contains("z")) return; const c = b.dataset.cell; S.filt.risk.cell = S.filt.risk.cell === c ? "" : c; render(); });
@@ -1533,16 +1689,17 @@ function bindView(){
   document.querySelectorAll("[data-ttall]").forEach(b => b.onclick = () => { S.filt.tt.all = b.dataset.ttall === "1"; render(); });
   document.querySelectorAll("[data-tsub]").forEach(b => b.onclick = () => { resetFilt(); S.filt.training.sub = b.dataset.tsub; render(); });
   document.querySelectorAll("[data-csub]").forEach(b => b.onclick = () => { resetFilt(); S.filt.comp.sub = b.dataset.csub; render(); });
+  document.querySelectorAll("[data-isub]").forEach(b => b.onclick = () => { resetFilt(); S.filt.imps.sub = b.dataset.isub; render(); });
   document.querySelectorAll("[data-mx]").forEach(b => b.onclick = () => { const [n, c] = b.dataset.mx.split("|"); const r = trnFor(n, c);
     r ? openForm("trn", r) : openForm("trn", undefined, { StaffName:n, Course:c, Requirement:"Extended" }); });
-  document.querySelectorAll("[data-newins]").forEach(b => b.onclick = () => { const [a, mi] = b.dataset.newins.split("|"); const y = S.filt.ins.year, mm = pad(+mi + 1);
-    openForm("ins", undefined, { Area:a, InspectionDate: TODAY.startsWith(`${y}-${mm}`) ? TODAY : `${y}-${mm}-01` }); });
+  document.querySelectorAll("[data-newins]").forEach(b => b.onclick = () => { const [a, mi, t] = b.dataset.newins.split("|"); const y = S.filt[t === "aud" ? "aud" : "ins"].year, mm = pad(+mi + 1);
+    openForm("ins", undefined, { Area:a, InspType: isAudArea(S.area.find(x => x.Title === a)) ? AUD : "Inspection", InspectionDate: TODAY.startsWith(`${y}-${mm}`) ? TODAY : `${y}-${mm}-01` }); });
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => goTile(b.dataset.go); b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goTile(b.dataset.go); } }; });
   document.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => { const k = b.dataset.clear;
-    if (k === "rev") S.filt.rev.state = ""; if (k === "trn") S.filt.trn.gaps = false; if (k === "ins") S.filt.ins.missed = false; render(); });
+    if (k === "rev") S.filt.rev.state = ""; if (k === "trn") S.filt.trn.gaps = false; if (k === "ins") S.filt.ins.missed = false; if (k === "aud") S.filt.aud.missed = false; render(); });
   document.querySelectorAll("[data-revover]").forEach(b => b.onclick = () => { S.tile = null; S.filt.rev.state = S.filt.rev.state ? "" : "due"; render(); $("#revSection")?.scrollIntoView({ block:"start" }); });
   document.querySelectorAll("[data-gaps]").forEach(b => b.onclick = () => { S.tile = null; S.filt.trn.gaps = !S.filt.trn.gaps; render(); });
-  document.querySelectorAll("[data-missed]").forEach(b => b.onclick = () => { S.tile = null; S.filt.ins.missed = !S.filt.ins.missed; render(); });
+  document.querySelectorAll("[data-missed]").forEach(b => b.onclick = () => { S.tile = null; const t = b.dataset.missed === "aud" ? "aud" : "ins"; S.filt[t].missed = !S.filt[t].missed; render(); });
   document.querySelectorAll("[data-clearall]").forEach(b => b.onclick = () => { resetFilt(); render(); window.scrollTo({ top:0 }); });
   document.querySelectorAll("[data-rpt]").forEach(b => b.onclick = () => openReportFor(b.dataset.rpt,
     { leglog:{ legTopic: S.filt.leg.topic }, assets:{ eqDisposed: S.filt.eq.status !== "In service" && S.filt.eq.status !== "Out of service" } }[b.dataset.rpt] || {}));
@@ -1553,26 +1710,28 @@ function bindView(){
 function resetFilt(){
   S.tile = null; S.filt.rpt.from = "";
   S.sort.inc = ["Title",-1]; S.sort.imp = ["Title",-1]; S.sort.risk = ["Title",1];
-  Object.assign(S.filt.inc, { q:"", status:"", year:YEAR, sev:"" }); Object.assign(S.filt.imp, { q:"", status:"open", cat:"", pri:"" });
+  Object.assign(S.filt.inc, { q:"", status:"", year:YEAR, sev:"" }); Object.assign(S.filt.imp, { q:"", status:"open", cat:"", pri:"", src:"" }); Object.assign(S.filt.obs, { q:"", status:"open", src:"" });
   Object.assign(S.filt.risk, { q:"", reg:"", rating:"", status:"", cell:"", residual:false }); S.filt.rev.state = "";
   Object.assign(S.filt.tt, { q:"", state:"", all:false }); Object.assign(S.filt.trn, { q:"", dept:"", gaps:false });
-  Object.assign(S.filt.ins, { year:YEAR, missed:false }); Object.assign(S.filt.leg, { q:"", topic:"", state:"" });
+  Object.assign(S.filt.ins, { year:YEAR, missed:false }); Object.assign(S.filt.aud, { year:YEAR, missed:false }); Object.assign(S.filt.leg, { q:"", topic:"", state:"" });
 }
 const GO_LABEL = { inc:["Incidents in "+YEAR,"inc"], lti:["Lost time injuries in "+YEAR,"inc"], cost:["Incidents in "+YEAR+", highest cost first","inc"],
   impopen:["Open improvements","imp"], impover:["Overdue improvement actions","imp"], risk:["Open high & very high risks, highest score first","risk"],
   rev:["Risk reviews overdue or not recorded","rev"], tt:["Items overdue for test or failed last test","tt"], trn:["Staff with missing or expired mandatory training","trn"],
-  ins:["Areas with missed inspections in "+YEAR,"ins"], leg:["Legislation due for review","leg"] };
+  ins:["Areas with missed inspections in "+YEAR,"ins"], aud:["Internal audits missed in "+YEAR,"ins"], obs:["Open task & observation items","obs"], leg:["Legislation due for review","leg"] };
 const GO = {
   inc:      () => { S.view = "inc"; S.sort.inc = ["Title",-1]; },
   lti:      () => { S.view = "inc"; S.filt.inc.sev = "Lost Time Injury"; },
   cost:     () => { S.view = "inc"; S.sort.inc = ["TotalEstCost",-1]; },
-  impopen:  () => { S.view = "imp"; S.filt.imp.status = "open"; },
-  impover:  () => { S.view = "imp"; S.filt.imp.status = "overdue"; S.sort.imp = ["TargetDate",1]; },
+  impopen:  () => { S.view = "imp"; S.filt.imps.sub = "imp"; S.filt.imp.status = "open"; },
+  impover:  () => { S.view = "imp"; S.filt.imps.sub = "imp"; S.filt.imp.status = "overdue"; S.sort.imp = ["TargetDate",1]; },
+  obs:      () => { S.view = "imp"; S.filt.imps.sub = "obs"; S.filt.obs.status = "open"; },
   risk:     () => { S.view = "risk"; S.filt.risk.rating = "hi"; S.sort.risk = ["RiskScore",-1]; },
   rev:      () => { S.view = "risk"; S.filt.rev.state = "due"; return "#revSection"; },
   tt:       () => { S.view = "assets"; S.filt.assets.sub = "tt"; S.filt.tt.state = "attn"; },
   trn:      () => { S.view = "training"; S.filt.training.sub = "matrix"; S.filt.trn.gaps = true; },
   ins:      () => { S.view = "comp"; S.filt.comp.sub = "ins"; S.filt.ins.missed = true; },
+  aud:      () => { S.view = "comp"; S.filt.comp.sub = "aud"; S.filt.aud.missed = true; },
   leg:      () => { S.view = "comp"; S.filt.comp.sub = "leg"; S.filt.leg.state = "due"; },
 };
 function goTile(k){ resetFilt(); const anchor = GO[k](); S.tile = k; render(); const el = anchor && $(anchor); el ? el.scrollIntoView({ behavior:"smooth", block:"start" }) : window.scrollTo({ top:0 }); }
@@ -1595,7 +1754,8 @@ function newTitle(key, f = {}){
   if (key === "imp") return nextNumber(S.imp, `IR-${YEAR}-`);
   if (key === "risk") return nextNumber(S.risk.filter(r => r.RegisterType === f.RegisterType), REF_PREFIX[f.RegisterType] || "R");
   if (key === "eq") return nextNumber(S.eq, "EQ-", 3);
-  if (key === "ins") return nextNumber(S.ins, `INS-${YEAR}-`, 3);
+  if (key === "ins") return f.InspType === AUD ? nextNumber(S.ins, `AUD-${YEAR}-`, 3) : nextNumber(S.ins, `INS-${YEAR}-`, 3);
+  if (key === "obs") return nextNumber(S.obs, "TOM-", 3);
   if (key === "trn") return `${f.StaffName} — ${f.Course}`;
   if (key === "tt") return nextNumber(S.tt, `TT-${YEAR}-`, 3);
   return f.Title || "";
@@ -1607,38 +1767,46 @@ function newDefaults(key){
   if (key === "staff") return { StaffStatus: "Active", Department: "Service" };
   if (key === "course") return {};
   if (key === "trn") return { Requirement: "Mandatory" };
-  if (key === "area") return { Frequency: "Annually" };
-  if (key === "ins") return { Title: newTitle("ins"), InspectionDate: TODAY, Outcome: "Satisfactory" };
+  if (key === "area") return { Frequency: "Annually", InspType: "Inspection" };
+  if (key === "ins") return { Title: newTitle("ins"), InspType: "Inspection", InspectionDate: TODAY, Outcome: "Satisfactory" };
+  if (key === "obs") return { Title: newTitle("obs"), DateRaised: TODAY, ObsStatus: "Open", Recurrence: "One-off", Source: "Site walk-through" };
   if (key === "leg") return { LegType: "Act", ReviewFrequency: "Monthly", ComplianceStatus: "Not assessed" };
   if (key === "tt") return { Title: newTitle("tt"), TestDate: TODAY, TestPeriod: "Yearly", NextTestDate: addMonths(TODAY, 12), Result: "Pass", Location: "Office" };
   const reg = S.filt.risk.reg || "OH&S";
   if (key === "risk") return { Title: newTitle("risk", { RegisterType: reg }), RegisterType: reg, RiskType: "Risk", RiskStatus: "Active" };
   return { RegisterType: reg, Signed: "No" };
 }
-function openForm(key, item, prefill = {}){
-  editing = { key, item };
+function openForm(key, item, prefill = {}, raise = null){
+  editing = { key, item, raise };
   photoQueue = [];
   const defs = FORMS[key];
   const v = item ? { ...item } : { ...newDefaults(key), ...prefill };
-  const setTitle = t => $("#dlgTitle").textContent = (item ? "" : "New ") + NAMES[key].toLowerCase().replace(/^./, c => c.toUpperCase()) + (t ? " " + t : "");
-  const KIND = { inc:"Safety Incident Register", imp:"Improvement Register", risk:"Risk Register", rev:"Risk Review Schedule", eq:"Plant & Equipment Register", tt:"Test & Tag Register", staff:"Training & Competency · Staff", course:"Training & Competency · Courses", trn:"Training & Competency", area:"Workplace Inspection Program", ins:"Workplace Inspection", leg:"Legislative Compliance Register" };
+  if (key === "area" && !v.InspType) v.InspType = "Inspection";
+  if (key === "ins"){ if (!v.InspType) v.InspType = insIsAud(v) ? AUD : "Inspection"; if (!item) v.Title = newTitle("ins", v); }
+  const audOf = ty => (key === "ins" || key === "area") && ty === AUD;
+  let nm = audOf(v.InspType) ? (key === "ins" ? "Internal audit" : "Audit topic") : NAMES[key];
+  const setTitle = t => $("#dlgTitle").textContent = (item ? "" : "New ") + nm.toLowerCase().replace(/^./, c => c.toUpperCase()) + (t ? " " + t : "");
+  const KIND = { inc:"Safety Incident Register", imp:"Improvement Register", risk:"Risk Register", rev:"Risk Review Schedule", eq:"Plant & Equipment Register", tt:"Test & Tag Register", staff:"Training & Competency · Staff", course:"Training & Competency · Courses", trn:"Training & Competency", area:"Workplace Inspection Program", ins:"Workplace Inspection", leg:"Legislative Compliance Register", obs:"Task & Observation Monitoring" };
+  const kindOf = ty => audOf(ty) ? "Internal Audit Schedule" : KIND[key];
   $("#dlg").className = "f-" + key;
-  $("#dlgKind").textContent = KIND[key] + (key === "risk" && v.RegisterType ? " · " + v.RegisterType : "");
+  $("#dlgKind").textContent = kindOf(v.InspType) + (key === "risk" && v.RegisterType ? " · " + v.RegisterType : "") + (raise ? " · from " + raise.label : "");
   setTitle(v.Title);
   const sections = defs.map(([leg, fs]) => `<fieldset><legend>${leg}</legend><div class="fg">${fs.map(f => fieldHtml(f, v[f[0]])).join("")}</div></fieldset>`);
-  if (key === "inc") sections.splice(1, 0, photosHtml());      // photos straight after the incident details
+  if (key === "inc" || key === "obs") sections.splice(1, 0, photosHtml());      // photos straight after the incident / observation details
   $("#dlgBody").innerHTML = sections.join("")
     + (key === "risk" ? `<p class="hint" id="mxHint"></p>` : "")
     + (key === "rev" ? `<button type="button" class="btn" id="revToday">✓ Record a review today</button>` : "")
     + (key === "tt" && item ? `<button type="button" class="btn" id="ttRetest">↻ Record a new test for this item</button>` : "")
     + (key === "leg" ? `<button type="button" class="btn" id="legToday">✓ Record a review today</button>` : "")
+    + (key === "obs" ? `<button type="button" class="btn" id="obsToday">✓ Record a review today</button> ` : "")
+    + ((key === "obs" || key === "ins") && item ? `<button type="button" class="btn" id="raiseImp" title="Opens a new improvement filled in from this record (unsaved changes here are not kept)">↗ Raise improvement</button>` : "")
     + (key === "inc" && item ? `<button type="button" class="btn" id="incPrint">🖨 Print incident report</button>` : "")
     + (key === "staff" && item ? `<button type="button" class="btn" id="staffPrint">🖨 Print training record</button>` : "")
 ;
-  if (key === "inc"){
+  if (key === "inc" || key === "obs"){
     $("#phInput").onchange = e => { [...e.target.files].forEach(f => { f._url = URL.createObjectURL(f); photoQueue.push(f); }); e.target.value = ""; renderQueue(); };
     loadPhotos(item?.Title);
-    if (item) $("#incPrint").onclick = () => openReportFor("inc", { inc:item.id });
+    if (key === "inc" && item) $("#incPrint").onclick = () => openReportFor("inc", { inc:item.id });
   }
   if (key === "risk"){
     const upd = (lName, cName, sName, rName, e) => {
@@ -1675,6 +1843,27 @@ function openForm(key, item, prefill = {}){
     const recalc = () => { const f = calcIncident(readForm()); $("[name=RTWHours]").value = f.RTWHours || ""; $("[name=TotalEstCost]").value = f.TotalEstCost || ""; };
     $("#dlgBody").oninput = e => { if (NUMERIC.has(e.target.name)) recalc(); };
     recalc();
+  } else if (key === "obs"){
+    $("#dlgBody").oninput = e => { if (e.target.name === "ObsStatus" && e.target.value === "Closed" && !$("[name=DateClosed]").value) $("[name=DateClosed]").value = TODAY; };
+    $("#obsToday").onclick = () => { $("[name=LastReviewed]").value = TODAY; toast("Review date set to today — click Save to record it"); };
+    if (item) $("#raiseImp").onclick = () => raiseImprovement("obs", item);
+  } else if (key === "ins" || key === "area"){
+    // the Area list shows only areas (inspections) or only topics (internal audits)
+    const fill = () => { if (key !== "ins") return;
+      const ty = $("[name=InspType]").value === AUD ? "aud" : "ins", sel = $("[name=Area]"); let cur = sel.value;
+      const list = areasOf(ty).map(a => a.Title).sort((a, b) => a.localeCompare(b));
+      if (cur && !list.includes(cur) && S.area.some(a => a.Title === cur)) cur = "";
+      if (cur && !list.includes(cur)) list.push(cur);
+      sel.innerHTML = `<option value=""></option>` + list.map(x => `<option ${x === cur ? "selected" : ""}>${esc(x)}</option>`).join(""); };
+    const retype = () => { const ty = $("[name=InspType]").value; nm = audOf(ty) ? (key === "ins" ? "Internal audit" : "Audit topic") : NAMES[key]; $("#dlgKind").textContent = kindOf(ty);
+      if (key === "ins" && !item){ const t = newTitle("ins", { InspType: ty }); $("[name=Title]").value = t; setTitle(t); } else setTitle(key === "ins" ? $("[name=Title]").value : (item ? item.Title : "")); };
+    $("#dlgBody").oninput = e => {
+      if (e.target.name === "InspType"){ fill(); retype(); }
+      if (key === "ins" && e.target.name === "Area"){ const a = S.area.find(x => x.Title === e.target.value);
+        if (a){ const ty = isAudArea(a) ? AUD : "Inspection"; if ($("[name=InspType]").value !== ty){ $("[name=InspType]").value = ty; fill(); retype(); } } }
+    };
+    fill();
+    if (key === "ins" && item) $("#raiseImp").onclick = () => raiseImprovement("ins", item);
   } else {
     $("#dlgBody").oninput = e => {
       if (e.target.name === "ImprovementStatus" && e.target.value === "Closed" && !$("[name=DateClosed]").value) $("[name=DateClosed]").value = TODAY;
@@ -1696,7 +1885,7 @@ function readForm(){
 }
 async function submitForm(e){
   e.preventDefault();
-  const { key, item } = editing;
+  const { key, item, raise } = editing;
   const missing = [...$("#dlgBody").querySelectorAll("[required]")].filter(el => !el.value.trim());
   if (missing.length){ missing[0].focus(); toast("Please fill in: " + missing.map(m => m.closest("label").innerText.replace(" *","").trim()).join(", ")); return; }
   let f = readForm();
@@ -1704,6 +1893,7 @@ async function submitForm(e){
   if (key === "tt" && !f.ItemKey) f.ItemKey = f.Title;
   if (key === "trn"){ f.Title = `${f.StaffName} — ${f.Course}`; const dup = trnFor(f.StaffName, f.Course); if (dup && dup !== item){ toast(`${f.StaffName} already has a ${f.Course} record — open that one instead.`); return; } }
   if (key === "imp" && f.ImprovementStatus === "Closed" && !f.DateClosed) f.DateClosed = TODAY;
+  if (key === "obs" && f.ObsStatus === "Closed" && !f.DateClosed) f.DateClosed = TODAY;
   // types: numbers as numbers, blanks → null on update / omitted on create
   const out = {};
   for (const [k, val] of Object.entries(f)){
@@ -1723,9 +1913,16 @@ async function submitForm(e){
     const idx = S[key].findIndex(i => i.id === saved.id);
     idx >= 0 ? S[key].splice(idx, 1, saved) : S[key].push(saved);
     let msg = `Saved ${saved.Title}`;
-    if (key === "inc" && photoQueue.length){
+    if ((key === "inc" || key === "obs") && photoQueue.length){
       try { const n = await uploadPhotos(saved.Title); if (n) msg += ` with ${n} photo${n===1?"":"s"}`; }
       catch(pe){ msg += ` — but the photos weren't uploaded: ${pe.message}`; }
+    }
+    // raised from an inspection / audit / observation: record the new IR no. on that record
+    if (key === "imp" && !item && raise){
+      const src = S[raise.key].find(x => String(x.id) === String(raise.id)), fld = raise.key === "obs" ? "LinkedImprovement" : "ActionsRaised";
+      if (src){ const cur = String(src[fld] || "").trim(), val = cur ? `${cur}, ${saved.Title}` : saved.Title;
+        try { if (!DEMO) await saveItem(raise.key, src.id, { [fld]: val }); src[fld] = val; msg += ` and linked it to ${src.Title}`; }
+        catch(le){ msg += ` — but couldn't record it on ${src.Title}: ${isForbidden(le) ? "no permission" : le.message}`; } }
     }
     $("#dlg").close(); render(); toast(msg);
   } catch(err){ console.error(err); toast(isForbidden(err) ? NO_PERMISSION : "Save failed: " + err.message); }
@@ -1776,7 +1973,7 @@ async function start(){
     S.risk = (SEED.risk || []).map((r,k) => toNum({ id:"r"+k, ...r })); S.rev = (SEED.rev || []).map((r,k) => ({ id:"v"+k, ...r }));
     const toNum2 = r => { ["Cost","DisposalValue"].forEach(n => { if (r[n] !== undefined && r[n] !== "") r[n] = +r[n]; }); return r; };
     S.eq = (SEED.eq || []).map((r,k) => toNum2({ id:"e"+k, ...r })); S.tt = (SEED.tt || []).map((r,k) => ({ id:"t"+k, ...r }));
-    ["staff","course","trn","area","ins","leg"].forEach(k => S[k] = (SEED[k] || []).map((r,i) => ({ id:k+i, ...r })));
+    ["staff","course","trn","area","ins","leg","obs"].forEach(k => S[k] = (SEED[k] || []).map((r,i) => ({ id:k+i, ...r })));
     S.course.forEach(c => { if (c.RefresherMonths) c.RefresherMonths = +c.RefresherMonths; });
     $("#who").innerHTML = `<span>Demo user</span>`; $("#nav").hidden = false; render(); openIncidentFromLink(); return;
   }
@@ -1789,7 +1986,7 @@ async function start(){
   try {
     await getSite();
     [S.inc, S.imp, S.risk, S.rev, S.eq, S.tt] = await Promise.all([loadList("inc"), loadList("imp"), loadListSafe("risk"), loadListSafe("rev"), loadListSafe("eq"), loadListSafe("tt")]);
-    [S.staff, S.course, S.trn, S.area, S.ins, S.leg] = await Promise.all(["staff","course","trn","area","ins","leg"].map(loadListSafe));
+    [S.staff, S.course, S.trn, S.area, S.ins, S.leg, S.obs] = await Promise.all(["staff","course","trn","area","ins","leg","obs"].map(loadListSafe));
     $("#nav").hidden = false; render(); openIncidentFromLink();
   } catch(e){
     $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists, the lists have been provisioned, and you have access.</div>`;
