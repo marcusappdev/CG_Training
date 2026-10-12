@@ -540,10 +540,12 @@ window.addEventListener("online", () => flushSoon(500));
 setInterval(() => { if (SYNC.waiting) flushSoon(0); }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && SYNC.waiting) flushSoon(0); });
 
+// Queue times are stored as an exact moment (UTC); show them in the phone's own time
+const localStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : `${fmtDate(ymd(d))} ${hhmm(d)}`; };
 async function openSyncPanel(){
   const ops = await qMine();
   openDialog({ cls:"f-job", kind:"My Jobs · Sync", title: ops.length ? `${ops.length} change${ops.length === 1 ? "" : "s"} waiting to send` : "Everything has been sent", save: ops.length ? "Send now" : "Close",
-    body: (ops.length ? `<ul class="list">${ops.map(o => `<li><span class="x"><b>${esc(o.label)}</b><br><span class="count">${esc(o.created.slice(0, 16).replace("T", " "))}${o.tries ? ` · ${o.tries} tr${o.tries === 1 ? "y" : "ies"}` : ""}</span>${o.error ? `<br><span class="flag">${esc(o.error)}</span>` : ""}</span>
+    body: (ops.length ? `<ul class="list">${ops.map(o => `<li><span class="x"><b>${esc(o.label)}</b><br><span class="count">${esc(localStamp(o.created))}${o.tries ? ` · ${o.tries} tr${o.tries === 1 ? "y" : "ies"}` : ""}</span>${o.error ? `<br><span class="flag">${esc(o.error)}</span>` : ""}</span>
       <button type="button" class="btn sm danger" data-qdrop="${o.qid}">Discard</button></li>`).join("")}</ul>` : `<p class="count">Nothing is waiting on this phone.</p>`)
       + `<p class="count">${navigator.onLine ? "Changes are sent automatically when there's a connection." : "This phone is offline. Changes will be sent automatically when the connection is back."} Keep working as normal — nothing is lost if you close the app.</p>`,
     onSubmit: async () => {
