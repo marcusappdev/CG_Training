@@ -99,7 +99,7 @@ label.apick{display:flex;gap:6px;align-items:center;color:var(--text);font-size:
 .lg.p-high{border-left-color:var(--bad)}.lg.p-urgent{border-left-color:var(--crit)}.lg.clash{border-color:var(--crit)}.lg.warn{background:var(--warn-bg)}
 @media (max-width:1000px){.sched{grid-template-columns:1fr}.upanel{position:static;max-height:none}}
 #printArea{display:none}
-@media print{ body > *:not(#printArea){display:none !important} #printArea{display:block} body{background:#fff} @page{size:A4;margin:12mm} }
+@media print{ body > *:not(#printArea){display:none !important} #printArea{display:block} body{background:#fff} @page{margin:12mm} }
 .gpscell{justify-content:flex-end}.gpscell .btn{padding:8px 12px;white-space:nowrap}
 .crumbs{font-size:13px;color:var(--muted);margin-bottom:6px}.crumbs a{color:inherit}
 tr[data-go],tr[data-edit]{cursor:pointer}
@@ -108,6 +108,38 @@ tr[data-go],tr[data-edit]{cursor:pointer}
 nav button{white-space:nowrap}
 a.btn{color:inherit;text-decoration:none;display:inline-block}
 @media (max-width:720px){ .who .nm{display:none} }
+/* ---- My Jobs (technician, phone first) ---- */
+.mysec{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:18px 0 8px;display:flex;gap:8px;align-items:baseline}
+.myday{font-size:13px;margin:12px 0 6px;color:var(--text)}
+.mycard{display:block;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c-job);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;color:var(--text);text-decoration:none;box-shadow:var(--shadow)}
+.mycard:active{background:var(--surface2)}
+.mycard.p-high,.myhead.p-high{border-left-color:var(--bad)}.mycard.p-urgent,.myhead.p-urgent{border-left-color:var(--crit)}
+.mc-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mc-top .grow{flex:1}.mc-top .big{font-size:20px}
+.mc-site{margin-top:4px;font-size:14px}.mc-desc{margin-top:4px;color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.myhead{border-left:4px solid var(--c-job)}
+.myact{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn.big{padding:12px 16px;font-size:16px;flex:1 1 auto;text-align:center;min-height:48px}
+.timerbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--warn-bg);color:var(--text);border-radius:var(--r);padding:10px 14px;margin-bottom:12px}
+.timerbar .grow{flex:1}
+main.tech .card{margin-bottom:12px}main.tech .empty{padding:10px 6px}.mysec .count{text-transform:none;letter-spacing:0;font-size:12px}main.tech .card .bar{margin-bottom:6px}main.tech .card h3{margin:0}
+.btn.mic.on{background:var(--crit);border-color:var(--crit);color:#fff}
+.cq{padding:8px 0;border-bottom:1px solid var(--line)}.cq:last-child{border-bottom:0}.cqt{margin-bottom:6px}.cqt .req::after{content:" *";color:var(--crit)}
+.cq textarea,.cq input:not([type=radio]){width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--text)}
+.yn{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.yn label{display:block}.yn input{position:absolute;opacity:0;pointer-events:none}
+.yn span{display:block;padding:9px 18px;cursor:pointer;background:var(--surface);border-right:1px solid var(--line);font-weight:600;min-width:58px;text-align:center}
+.yn label:last-child span{border-right:0}
+.yn input:checked + span{background:var(--c-job);color:#fff}.yn input[value=No]:checked + span{background:var(--crit)}
+.yn input:focus-visible + span{outline:2px solid var(--accent);outline-offset:-2px}
+.ynnote{margin-top:6px}
+.sigwrap{position:relative;border:2px dashed var(--line);border-radius:10px;background:#fff;touch-action:none;margin-top:8px}
+.sigwrap canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
+.sigwrap .sighint{position:absolute;left:12px;bottom:8px;color:#9aa3ae;font-size:13px;pointer-events:none}
+.sigwrap.inked .sighint{display:none}.sigwrap.off{opacity:.35}
+.ph .phw{position:absolute;left:4px;bottom:4px;background:var(--warn);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px}
+.ph .phf{width:110px;height:110px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;background:var(--grey-bg);color:var(--text)}
+.sync[role=button]:hover{text-decoration:underline}
+@media (max-width:720px){ main.tech{padding:12px} main.tech .bar h2{font-size:20px} }
 </style>
 </head>
 <body>
@@ -172,7 +204,8 @@ const ROUTES = {
   invoices:  { label:"Invoicing",         roles:OFFICE, lists:["inv","iline","pay","sync","numbers"], step:"Invoicing — invoices from completed jobs, deposits, progress, credit notes, payments, Send to MYOB" },
   settings:  { label:"Settings",          roles:OFFICE, lists:["settings","rates","numbers","chk"], load:["settings","rates"], step:"" },
   site:      { label:"Site",              roles:OFFICE, nav:false, lists:["customers","sites","assets"], load:CUST_LOAD, step:"" },
-  my:        { label:"My Jobs",           roles:TECH,   lists:["jobs","assign","time","mat","notes","comp","resp"], step:"My Jobs — today and upcoming, site map link, timer with GPS, materials, notes, photos, checklists, signature, mark complete — works offline" },
+  my:        { label:"My Jobs",           roles:TECH,   lists:["jobs","assign","time","mat","notes","comp","resp","chk"], soft:true,
+               load:["jobs","assign","time","mat","notes","comp","resp","chk","sites","customers","assets","settings","rates","trn","tt"], step:"My Jobs — today and upcoming, site map link, timer with GPS, materials, notes, photos, checklists, signature, mark complete — works offline" },
 };
 
 /* ---------------- state ---------------- */
@@ -197,11 +230,12 @@ const technicians = () => S.staff.filter(s => s.StaffStatus !== "Left" && (s.Hub
 
 /* ---------------- data: each list is read once, then kept until Refresh ---------------- */
 const D = {}, LOADING = {};
-async function need(keys){
+async function need(keys, soft){
   await Promise.all(keys.map(k => {
     if (D[k]) return null;
     if (DEMO || !S.have.has(CONFIG.LISTS[k])) { D[k] = []; return null; }       // not set up yet: treat as empty
-    return LOADING[k] ||= listItems(CONFIG.LISTS[k]).then(r => { D[k] = r; delete LOADING[k]; }, e => { delete LOADING[k]; throw e; });
+    return LOADING[k] ||= listItems(CONFIG.LISTS[k]).then(r => { D[k] = r; delete LOADING[k]; },
+      e => { delete LOADING[k]; if (soft && (isForbidden(e) || isMissingList(e))) { D[k] = []; return; } throw e; });   // soft: staff can't read every list
   }));
 }
 function refreshData(){ Object.keys(D).forEach(k => delete D[k]); statusSyncDone = false; render(); }
@@ -288,6 +322,7 @@ function renderHeader(){
     + (DEMO ? "" : `<button id="so">Sign out</button>`);
   if ($("#so")) $("#so").onclick = signOut;
   showSync();
+  if (r === "Technician") { const sy = $("#sync"); sy.style.cursor = "pointer"; sy.setAttribute("role", "button"); sy.tabIndex = 0; sy.onclick = openSyncPanel; }
 }
 // Online / offline indicator. The technician view's write queue (built with My Jobs) adds its count here.
 const SYNC = { waiting:0, error:"" };
@@ -317,8 +352,10 @@ function render(){
   if (keys && keys.some(k => !D[k])){
     const route = S.route;
     $("#main").innerHTML = banner + `<div class="empty">Loading…</div>`;
-    need(keys).then(() => { if (S.route === route) render(); })
-      .catch(e => { $("#main").innerHTML = banner + `<div class="banner err">${isForbidden(e) ? "You don't have access to some of the Service Hub lists. Ask an MJE site owner to add you to the MJE Office group." : "Couldn't load data from SharePoint: " + esc(e.message)}</div>`; });
+    need(keys, ROUTES[route].soft).then(async () => { if (route === "my") await replayQueue(); if (S.route === route) render(); })
+      .catch(async e => {
+        if (route === "my" && isNetErr(e) && loadSnapshot(false)) { await replayQueue(); return render(); }    // no signal: use the copy on this phone
+        $("#main").innerHTML = banner + `<div class="banner err">${isForbidden(e) ? "You don't have access to some of the Service Hub lists. Ask an MJE site owner to add you to the MJE Office group." : isNetErr(e) ? "No connection — couldn't reach SharePoint. Try again when you have signal." : "Couldn't load data from SharePoint: " + esc(e.message)}</div>`; });
     return;
   }
   const view = { dash:viewDash, customers:viewCustomers, site:viewSite, quotes:viewQuotes, jobs:viewJobs, schedule:viewSchedule, invoices:viewTodo, settings:viewSettings, my:viewMy }[S.route] || viewNoAccess;
@@ -326,12 +363,13 @@ function render(){
   if ($("#backOffice")) $("#backOffice").onclick = () => { S.viewAs = ""; go("dash"); };
   bindView();
   if (S.route === "dash" || S.route === "jobs") syncJobStatuses();
+  if (S.route === "my" && !OFFLINE_AT) { clearTimeout(render._snap); render._snap = setTimeout(saveSnapshot, 1500); }
 }
 function bindView(){
   document.querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go(b.dataset.go);
     b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(b.dataset.go); } }; });
   if ($("#refresh")) $("#refresh").onclick = refreshData;
-  bindCustomers(); bindRoles(); bindQuotes(); bindSettings(); bindJobs(); bindSchedule();
+  bindCustomers(); bindRoles(); bindQuotes(); bindSettings(); bindJobs(); bindSchedule(); bindMy();
   const va = $("#viewAs"); if (va) va.onclick = () => { const n = $("#viewAsName").value; if (!n) return toast("Pick a technician first"); S.viewAs = n; go("my"); };
 }
 
@@ -402,12 +440,470 @@ function viewDash(){
       ${ready.length ? `<ul class="list">${ready.slice(0, 8).map(j => jobLi(j, `<span class="mono">${kina(j._v.value)}${j._v.noRate ? ` <span class="flag" title="${j._v.noRate} h with no labour rate">rate?</span>` : ""}${j.CompletedDate ? `<br><span class="count">done ${fmtDate(j.CompletedDate)}</span>` : ""}</span>`)).join("")}</ul>${more(ready.length, 8, "invoices/ready", "Invoicing")}` : `<div class="empty">No completed jobs waiting for an invoice</div>`}</div>
   </div>`;
 }
-function viewMy(){
-  const n = techName();
-  return `<div class="bar"><h2>My Jobs</h2><span class="grow"></span><span class="count">${fmtDate(TODAY)}</span></div>${notSetUp(ROUTES.my.lists)}
-    <div class="card"><h3>Today — ${esc(n || "technician")}</h3><div class="empty">Your jobs for today will appear here.</div></div>
-    <p class="count">${esc(ROUTES.my.step)}.</p>`;
+/* =====================================================================
+   MY JOBS — technician view, phone first.
+   Works without signal: every change is put in a queue on the phone
+   (IndexedDB, photos and signatures included) and sent when there is a
+   connection. Each row carries a ClientRef made on the phone; before
+   sending, the queue checks SharePoint for that ClientRef so a retry can
+   never create a duplicate. The jobs themselves are kept on the phone
+   (localStorage) so My Jobs opens with no signal.
+   ===================================================================== */
+const MY_LOAD = ROUTES.my.load;
+const isNetErr = e => e instanceof TypeError || /failed to fetch|networkerror|load failed|network request failed/i.test(e?.message || "");
+const myUser = () => String(account?.username || "demo").toLowerCase();
+const myJobNos = () => new Set((D.assign || []).filter(a => a.Technician === techName() && a.AssignStatus !== "Cancelled").map(a => a.Title));
+const myParam = () => S.param.split("/")[0];
+
+/* ---------- the queue (IndexedDB, with an in-memory fallback) ---------- */
+let QDB = null, QMEM = null, FLUSHING = false, FLUSH_T = null;
+function qOpen(){
+  if (QMEM) return Promise.resolve(null);
+  return QDB ||= new Promise(res => {
+    try { const r = indexedDB.open("mje-service", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("queue", { keyPath:"qid", autoIncrement:true });
+      r.onsuccess = () => res(r.result); r.onerror = () => { QMEM = []; res(null); }; }
+    catch { QMEM = []; res(null); }
+  });
 }
+const qReq = (mode, fn) => qOpen().then(db => db ? new Promise((res, rej) => { const st = db.transaction("queue", mode).objectStore("queue"), r = fn(st); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }) : null);
+const qAll = async () => QMEM ? QMEM.slice() : ((await qReq("readonly", st => st.getAll())) || (QMEM ? QMEM.slice() : []));
+const qAdd = async op => { if (QMEM) { op.qid = Date.now() + Math.random(); QMEM.push(op); return; } await qReq("readwrite", st => st.add(op)); };
+const qPut = async op => { if (QMEM) return; await qReq("readwrite", st => st.put(op)); };
+const qDel = async qid => { if (QMEM) { QMEM = QMEM.filter(o => o.qid !== qid); return; } await qReq("readwrite", st => st.delete(qid)); };
+async function qMine(){ return (await qAll()).filter(o => o.user === myUser()); }
+async function qCount(){ const ops = await qMine(); SYNC.waiting = ops.length; SYNC.error = ops.find(o => o.error)?.error || ""; showSync(); return ops; }
+
+// Save a new row through the queue; it shows on screen straight away (marked "waiting to send")
+async function queueSave(key, fields, opts = {}){
+  const f = { ...fields, ClientRef: fields.ClientRef || newRef() };
+  Object.keys(f).forEach(k => (f[k] === "" || f[k] == null) && delete f[k]);
+  const local = { ...f, id:"local-" + f.ClientRef, _pending:true };
+  if (opts.file?.blob) local._thumb = URL.createObjectURL(opts.file.blob);
+  (D[key] ||= []).push(local);
+  await qAdd({ user: myUser(), key, fields: f, file: opts.file || null, label: opts.label || key, created: new Date().toISOString(), tries:0, error:"" });
+  await qCount(); flushSoon(300);
+  return local;
+}
+const flushSoon = (ms = 1500) => { clearTimeout(FLUSH_T); FLUSH_T = setTimeout(flushQueue, ms); };
+
+// A token without ever redirecting: offline or expired sign-in just stops the send
+async function quietToken(){
+  try { return (await msalApp.acquireTokenSilent({ scopes:CONFIG.SCOPES, account })).accessToken; }
+  catch(e){ const err = new Error(isNetErr(e) || /network|timed_out|no_network/i.test(e.errorCode || e.message) ? "offline" : "signin"); err.kind = err.message; throw err; }
+}
+async function findByRef(key, ref){
+  const j = await graph(`/sites/${siteId}/lists/${CONFIG.LISTS[key]}/items?$filter=fields/ClientRef eq '${ref}'&expand=fields&$top=1`,
+    { headers:{ Prefer:"HonorNonIndexedQueriesWarningMayFailRandomly" } });
+  const it = j.value?.[0]; return it ? { id:it.id, ...it.fields } : null;
+}
+async function sendOp(op){
+  const f = { ...op.fields };
+  if (DEMO) return { ...f, id:"demo" + Date.now() + Math.random().toString(36).slice(2) };
+  const found = await findByRef(op.key, f.ClientRef);
+  if (found) return found;                                             // already there from an earlier try
+  if (op.file?.blob){
+    if (JOB_DRIVE === undefined) JOB_DRIVE = await libraryDrive(CONFIG.LISTS.files);
+    if (!JOB_DRIVE) throw Object.assign(new Error("the MJE_JobFiles library isn't set up"), { status:404 });
+    const up = await uploadToDrive(JOB_DRIVE, op.file.folder, op.file.name, op.file.blob, op.file.type || "image/jpeg");
+    f[op.file.field] = up.webUrl;
+  }
+  return saveListItem(CONFIG.LISTS[op.key], null, f);
+}
+async function flushQueue(){
+  if (FLUSHING) return; FLUSHING = true;
+  let sent = 0;
+  try {
+    const ops = await qMine(); if (!ops.length) return;
+    if (!DEMO){
+      if (!navigator.onLine || !siteId) return;
+      try { await quietToken(); }
+      catch(e){ if (e.kind === "signin"){ SYNC.error = "Sign in again to send your changes"; showSync(); } return; }
+    }
+    for (const op of ops){
+      try {
+        const saved = await sendOp(op);
+        await qDel(op.qid); sent++;
+        const list = D[op.key] || [], i = list.findIndex(x => x.ClientRef === op.fields.ClientRef);
+        if (i >= 0) list[i] = { ...saved, _thumb: list[i]._thumb }; else list.push(saved);
+      } catch(e){
+        if (isNetErr(e)) break;                                       // lost the connection: try again later
+        op.tries = (op.tries || 0) + 1; op.error = isForbidden(e) ? "SharePoint refused this change (no permission)" : e.message; await qPut(op);
+      }
+    }
+  } finally {
+    FLUSHING = false; await qCount();
+    if (sent){ saveSnapshot(); if (S.route === "my") render(); toast(`${sent} change${sent === 1 ? "" : "s"} sent to SharePoint`); }
+  }
+}
+window.addEventListener("online", () => flushSoon(500));
+setInterval(() => { if (SYNC.waiting) flushSoon(0); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && SYNC.waiting) flushSoon(0); });
+
+async function openSyncPanel(){
+  const ops = await qMine();
+  openDialog({ cls:"f-job", kind:"My Jobs · Sync", title: ops.length ? `${ops.length} change${ops.length === 1 ? "" : "s"} waiting to send` : "Everything has been sent", save: ops.length ? "Send now" : "Close",
+    body: (ops.length ? `<ul class="list">${ops.map(o => `<li><span class="x"><b>${esc(o.label)}</b><br><span class="count">${esc(o.created.slice(0, 16).replace("T", " "))}${o.tries ? ` · ${o.tries} tr${o.tries === 1 ? "y" : "ies"}` : ""}</span>${o.error ? `<br><span class="flag">${esc(o.error)}</span>` : ""}</span>
+      <button type="button" class="btn sm danger" data-qdrop="${o.qid}">Discard</button></li>`).join("")}</ul>` : `<p class="count">Nothing is waiting on this phone.</p>`)
+      + `<p class="count">${navigator.onLine ? "Changes are sent automatically when there's a connection." : "This phone is offline. Changes will be sent automatically when the connection is back."} Keep working as normal — nothing is lost if you close the app.</p>`,
+    onSubmit: async () => {
+      $("#dlg").close(); if (!ops.length) return;
+      await flushQueue();
+      if (SYNC.waiting) toast(navigator.onLine ? "Some changes couldn't be sent — tap the sync status to see why" : "Still offline — will send when connected");
+    } });
+  document.querySelectorAll("[data-qdrop]").forEach(b => b.onclick = async () => {
+    if (!confirm("Discard this change? It hasn't reached SharePoint and will be lost.")) return;
+    const op = ops.find(o => String(o.qid) === b.dataset.qdrop); await qDel(op.qid);
+    D[op.key] = (D[op.key] || []).filter(x => x.ClientRef !== op.fields.ClientRef); await qCount(); $("#dlg").close(); render(); openSyncPanel(); });
+}
+
+/* ---------- jobs kept on the phone for offline use ---------- */
+const SNAP_KEY = () => "mjeSvcSnap:" + myUser();
+const clean = rows => (rows || []).filter(r => !r._pending).map(({ _thumb, ...r }) => r);
+function saveSnapshot(){
+  if (DEMO || S.viewAs || effRole() !== "Technician" || !MY_LOAD.every(k => D[k])) return;
+  try {
+    const mine = myJobNos(), jobs = D.jobs.filter(j => mine.has(j.Title)), sites = new Set(jobs.map(j => j.SiteCode)), custs = new Set(jobs.map(j => j.CustomerCode)), me = techName();
+    const snap = { at: new Date().toISOString(), siteId, have:[...S.have], me,
+      staff: S.staff.map(({ Title, Email, HubRole, StaffStatus, Department }) => ({ Title, Email, HubRole, StaffStatus, Department })),
+      D: { jobs, assign: D.assign.filter(a => mine.has(a.Title)), time: clean(D.time.filter(t => mine.has(t.JobNo))), mat: clean(D.mat.filter(m => mine.has(m.Title))),
+        notes: clean(D.notes.filter(n => mine.has(n.Title))), comp: clean(D.comp.filter(c => mine.has(c.Title))), resp: clean(D.resp.filter(r => mine.has(r.Title))),
+        chk: D.chk, sites: D.sites.filter(x => sites.has(x.SiteCode)), customers: D.customers.filter(c => custs.has(c.CustomerCode)).map(({ Title, CustomerCode, Phone }) => ({ Title, CustomerCode, Phone })),
+        assets: D.assets.filter(a => sites.has(a.SiteCode)), settings: D.settings, rates: D.rates, trn: D.trn.filter(t => t.StaffName === me), tt: D.tt.filter(t => t.AssignedTo === me) } };
+    localStorage.setItem(SNAP_KEY(), JSON.stringify(snap));
+  } catch(e){ console.warn("Couldn't keep a copy of My Jobs on this phone:", e.message); }
+}
+let OFFLINE_AT = "";
+function loadSnapshot(full){
+  try {
+    const snap = JSON.parse(localStorage.getItem(SNAP_KEY()) || "null"); if (!snap) return false;
+    if (full){ siteId = snap.siteId; S.have = new Set(snap.have); S.staff = snap.staff || []; }
+    Object.entries(snap.D).forEach(([k, v]) => D[k] = v);
+    OFFLINE_AT = snap.at; return true;
+  } catch { return false; }
+}
+// Put changes still in the queue back on screen (after the app was closed, or opened offline)
+async function replayQueue(){
+  for (const op of await qMine()){
+    const list = (D[op.key] ||= []);
+    if (!list.some(x => x.ClientRef === op.fields.ClientRef)) list.push({ ...op.fields, id:"local-" + op.fields.ClientRef, _pending:true, _thumb: op.file?.blob ? URL.createObjectURL(op.file.blob) : undefined });
+  }
+}
+
+/* ---------- timer + GPS ---------- */
+const TIMER_KEY = () => "mjeTimer:" + myUser();
+const getTimer = () => { try { return JSON.parse(localStorage.getItem(TIMER_KEY()) || "null"); } catch { return null; } };
+const setTimer = t => { try { t ? localStorage.setItem(TIMER_KEY(), JSON.stringify(t)) : localStorage.removeItem(TIMER_KEY()); } catch {} };
+const elapsed = t => { const m = Math.max(0, Math.round((Date.now() - t.ts) / 60000)); return `${Math.floor(m / 60)}:${pad(m % 60)}`; };
+function getPos(){
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(p => res({ lat: Math.round(p.coords.latitude * 1e6) / 1e6, lng: Math.round(p.coords.longitude * 1e6) / 1e6, acc: Math.round(p.coords.accuracy) }),
+      () => res(null), { enableHighAccuracy:true, timeout:12000, maximumAge:60000 });
+  });
+}
+function safetyWarnings(j){
+  const tags = overdueTags(techName()), gaps = competencyGaps(techName(), j.JobType);
+  return { tags, gaps, any: tags.length || gaps.length };
+}
+async function startTimer(j){
+  const t = getTimer();
+  if (t && t.job !== j.Title) return toast(`The timer is running on ${t.job} — stop it first`);
+  const w = safetyWarnings(j), ackKey = `mjeSafetyOk:${myUser()}:${TODAY}:${j.Title}`;
+  const go = async () => {
+    toast("Starting — getting your location…");
+    const pos = await getPos(), now = new Date();
+    setTimer({ job:j.Title, ts: now.getTime(), date: ymd(now), time: hhmm(now), pos, warn: w.any ? [...w.tags.map(x => "Test & tag overdue: " + (x.PlantID || x.Description || x.Title)), ...w.gaps.map(g => "Training: " + g)].join("; ") : "" });
+    toast(pos ? `Timer started on ${j.Title} · location recorded` : `Timer started on ${j.Title} · location not available`); render();
+  };
+  if (!w.any || sessionStorage.getItem(ackKey)) return go();
+  openDialog({ cls:"f-job", kind:"My Jobs · Before you start", title:"Check before starting", save:"Start anyway",
+    body: `${w.tags.length ? `<div class="banner err"><b>Test &amp; tag overdue on your equipment</b><ul>${w.tags.map(x => `<li>${esc(x.PlantID || "")} ${esc(x.Description || "")} — ${x.Result === "Fail" ? "failed its last test" : "was due " + fmtDate(x.NextTestDate)}</li>`).join("")}</ul>Don't use these items until they're retested.</div>` : ""}
+      ${w.gaps.length ? `<div class="banner"><b>Training needed for ${esc(j.JobType)}</b><ul>${w.gaps.map(g => `<li>${esc(g)}</li>`).join("")}</ul>Tell the office if this is wrong.</div>` : ""}
+      <p class="count">This warning is saved with your time entry.</p>`,
+    onSubmit: async () => { sessionStorage.setItem(ackKey, "1"); $("#dlg").close(); await go(); } });
+}
+async function stopTimer(j){
+  const t = getTimer(); if (!t) return;
+  toast("Stopping — getting your location…");
+  const pos = await getPos(), now = new Date();
+  openTimeEntry(j, { EntryDate:t.date, StartTime:t.time, EndTime: hhmm(now), Source:"Timer", StartLat:t.pos?.lat, StartLng:t.pos?.lng, StartAccM:t.pos?.acc,
+    StopLat:pos?.lat, StopLng:pos?.lng, StopAccM:pos?.acc, Notes:t.warn || "" }, true);
+}
+function openTimeEntry(j, v, fromTimer){
+  const rates = activeRates(), rate0 = setting("DefaultLabourRate", "") || rates[0]?.RateCode || "";
+  const h0 = hoursBetween(v.StartTime, v.EndTime);
+  openDialog({ cls:"f-time", kind:"My Jobs · Time", title: `${fromTimer ? "Stop timer" : "Add time"} — ${j.Title}`, save:"Save time",
+    body: formBody([["Time", [["EntryDate","Date","date",{req:1}], ["StartTime","Start","time",{req:1}], ["EndTime","Finish","time",{req:1}], ["ActualHours","Hours","number",{ro:1}],
+      ...(rates.length > 1 ? [["LabourRateCode","Type of work","select",{w:2,opts:() => rates.map(x => [x.RateCode, x.Title])}]] : []), ["Notes","Notes (optional)","textarea",{w:3}] ]]],
+      { LabourRateCode: rate0, ...v, ActualHours: h0 || "" })
+      + (fromTimer ? `<p class="count">${v.StartLat != null ? "📍 Start location recorded. " : ""}${v.StopLat != null ? "📍 Finish location recorded." : ""} Correct the times if you forgot to stop the timer.</p>` : `<p class="count">Use this when you forgot to start the timer.</p>`)
+      + (fromTimer ? `<button type="button" class="btn danger" id="discardTimer">Discard this timer</button>` : ""),
+    onSubmit: async () => {
+      const f = readForm(), h = hoursBetween(f.StartTime, f.EndTime);
+      if (!h) return toast("Check the start and finish times");
+      if (h > 14 && !confirm(`That's ${h} hours. Save it anyway?`)) return;
+      await queueSave("time", { ...v, ...f, Technician: techName(), JobNo:j.Title, Category:"Job", ActualHours:h, BillableHours: roundBillable(h), LabourRateCode: f.LabourRateCode || rate0,
+        Billable:"Yes", Source: fromTimer ? "Timer" : "Manual", Title:`${techName()} — ${f.EntryDate}` }, { label:`Time ${h} h on ${j.Title}` });
+      if (fromTimer) setTimer(null);
+      $("#dlg").close(); toast(`${h} h saved on ${j.Title}`); render();
+    } });
+  $("#dlgBody").oninput = e => { if (["StartTime","EndTime"].includes(e.target.name)) $("[name=ActualHours]").value = hoursBetween($("[name=StartTime]").value, $("[name=EndTime]").value) || ""; };
+  if ($("#discardTimer")) $("#discardTimer").onclick = () => { if (!confirm("Discard this timer without saving any time?")) return; setTimer(null); $("#dlg").close(); render(); };
+}
+
+/* ---------- materials, notes, photos ---------- */
+function openMyMaterial(j){
+  openDialog({ cls:"f-mat", kind:"My Jobs · Materials", title:`Material used — ${j.Title}`,
+    body: formBody([["Material", [["Description","Item","text",{req:1,w:3}], ["Qty","Qty","number",{req:1,min0:1}], ["Unit","Unit","text"],
+      ["MaterialSource","Where from","select",{opts:["Van stock","Purchased","Customer supplied"]}], ["UnitCost","Price paid each (ex GST) — if you bought it","number",{w:2,min0:1}] ]]],
+      { Qty:1, Unit:"each", MaterialSource:"Van stock" }),
+    onSubmit: async () => {
+      const f = readForm(), cost = f.UnitCost === "" ? "" : num(f.UnitCost), mk = markupPct();
+      await queueSave("mat", { ...f, Title:j.Title, Qty:num(f.Qty), UnitCost:cost, MarkupPct: cost === "" ? "" : mk, UnitSell: cost === "" ? 0 : r2(cost * (1 + mk / 100)),
+        Billable: f.MaterialSource === "Customer supplied" ? "No" : "Yes", AddedBy: techName(), EntryDate: TODAY }, { label:`${f.Qty} × ${f.Description} on ${j.Title}` });
+      $("#dlg").close(); toast(`Added ${f.Qty} × ${f.Description}`); render();
+    } });
+}
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+function micButton(target){ return SpeechRec ? `<button type="button" class="btn mic" data-mic="${target}" title="Speak instead of typing">🎤 Speak</button>` : ""; }
+function bindMic(){
+  document.querySelectorAll("[data-mic]").forEach(b => b.onclick = () => {
+    const ta = $(`#dlgBody [name="${b.dataset.mic}"]`); if (!ta) return;
+    if (b._rec){ b._rec.stop(); return; }
+    const rec = new SpeechRec(); rec.lang = "en-AU"; rec.interimResults = false; rec.continuous = true; b._rec = rec;
+    rec.onresult = e => { for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) ta.value = (ta.value ? ta.value.replace(/\s*$/, " ") : "") + e.results[i][0].transcript.trim(); };
+    rec.onend = () => { b._rec = null; b.classList.remove("on"); b.textContent = "🎤 Speak"; };
+    rec.onerror = e => toast(e.error === "not-allowed" ? "Microphone not allowed — check the browser's permission" : e.error === "network" ? "Speech needs a connection — type instead" : "Couldn't hear that");
+    try { rec.start(); b.classList.add("on"); b.textContent = "■ Stop"; } catch { b._rec = null; }
+  });
+}
+function openMyNote(j){
+  openDialog({ cls:"f-note", kind:"My Jobs · Note", title:`Note — ${j.Title}`,
+    body: formBody([["Note", [["NoteText","Note","textarea",{req:1,w:3}], ["ShowOnReport","Show on the customer's job report?","select",{opts:["No","Yes"]}] ]]], { ShowOnReport:"No" }) + micButton("NoteText"),
+    onSubmit: async () => { const now = new Date(), f = readForm();
+      await queueSave("notes", { Title:j.Title, Author: techName(), NoteDate: ymd(now), NoteTime: hhmm(now), NoteType:"Note", NoteText:f.NoteText, ShowOnReport:f.ShowOnReport }, { label:`Note on ${j.Title}` });
+      $("#dlg").close(); toast("Note added"); render(); } });
+  bindMic();
+}
+async function addMyPhotos(j, files){
+  let n = 0;
+  for (const [i, file] of [...files].entries()){
+    toast(`Preparing photo ${i + 1} of ${files.length}…`);
+    const blob = await shrink(file), now = new Date(), name = `${j.Title}_${Date.now()}_${i + 1}.jpg`;
+    await queueSave("notes", { Title:j.Title, Author: techName(), NoteDate: ymd(now), NoteTime: hhmm(now), NoteType:"Photo", FileName:name, ShowOnReport:"Yes" },
+      { label:`Photo on ${j.Title}`, file:{ blob, name, folder:j.Title, field:"FileUrl", type:"image/jpeg" } });
+    n++;
+  }
+  if (n) { toast(`${n} photo${n === 1 ? "" : "s"} added`); render(); }
+}
+
+/* ---------- checklists ----------
+   MJE_Checklists.Questions holds either a list of questions (all Yes / No / N/A) or
+   {"sections":[{"title":"…","questions":[{"q":"…","type":"yn|ynna|text|reading","req":true}]}]}.
+   Until templates are set up in Settings, built-in Pre-start and JSA lists are used.          */
+const BUILTIN_CHECKLISTS = {
+  "pre-start": { type:"Pre-start", sections:[{ title:"Before work starts", questions:[
+    "Signed in on site / permit to work obtained", "Work area inspected and safe to work in", "Tools and leads have in-date test & tag", "PPE available and in good condition",
+    "Isolation points identified; test before touch planned", "Site contact told what work is happening"].map(q => ({ q, type:"ynna", req:true })) }] },
+  "jsa": { type:"JSA", sections:[{ title:"The job", questions:[{ q:"Main steps of the job", type:"text", req:true }, { q:"Hazards for each step and how they're controlled", type:"text", req:true }] },
+    { title:"Checks", questions:["Steps and hazards discussed with everyone on the job", "Isolation and lock-out in place where needed", "PPE checked and worn", "Emergency exit and first aid kit location known"].map(q => ({ q, type:"ynna", req:true })) }] },
+};
+function checklistTemplate(name){
+  const t = (D.chk || []).filter(c => c.Title === name && c.TemplateStatus !== "Retired").sort((a, b) => num(b.TemplateVersion) - num(a.TemplateVersion))[0];
+  if (t){ try { const q = JSON.parse(t.Questions || "[]");
+    const sections = Array.isArray(q) ? [{ title:"", questions: q.map(x => typeof x === "string" ? { q:x, type:"ynna", req:true } : x) }] : (q.sections || []);
+    return { name, version: num(t.TemplateVersion) || 1, sections }; } catch { /* fall through to built-in */ } }
+  const key = /jsa|job safety/i.test(name) ? "jsa" : /pre.?start/i.test(name) ? "pre-start" : "";
+  if (key) return { name, version:0, sections: BUILTIN_CHECKLISTS[key].sections };
+  return { name, version:0, sections:[{ title:"", questions:[{ q:`${name} carried out`, type:"yn", req:true }, { q:"Notes", type:"text", req:false }] }] };
+}
+function openChecklist(j, name){
+  const t = checklistTemplate(name); let n = 0;
+  const qHtml = q => { const id = n++, nm = `q${id}`;
+    const opts = q.type === "yn" ? ["Yes","No"] : ["Yes","No","N/A"];
+    const input = (q.type === "text" || q.type === "reading")
+      ? (q.type === "text" ? `<textarea name="${nm}" rows="2"></textarea>` : `<input name="${nm}" inputmode="decimal" placeholder="reading">`)
+      : `<span class="yn">${opts.map(o => `<label><input type="radio" name="${nm}" value="${o}"><span>${o}</span></label>`).join("")}</span><input name="${nm}_note" class="ynnote" placeholder="What's the problem / action taken?" hidden>`;
+    return `<div class="cq" data-q="${id}"><div class="cqt">${esc(q.q)}${q.req ? ` <span class="req"></span>` : ""}</div>${input}</div>`; };
+  const flat = t.sections.flatMap(s => s.questions.map(q => typeof q === "string" ? { q, type:"ynna", req:true } : q));
+  openDialog({ cls:"f-chk", kind:`My Jobs · ${t.version ? "Checklist v" + t.version : "Checklist"}`, title:`${name} — ${j.Title}`, save:"Save checklist",
+    body: t.sections.map(s => `<fieldset>${s.title ? `<legend>${esc(s.title)}</legend>` : ""}${s.questions.map(q => qHtml(typeof q === "string" ? { q, type:"ynna", req:true } : q)).join("")}</fieldset>`).join(""),
+    onSubmit: async () => {
+      const answers = flat.map((q, i) => { const box = $(`#dlgBody [data-q="${i}"]`), r = box.querySelector("input[type=radio]:checked"), tx = box.querySelector(`[name=q${i}]:not([type=radio])`);
+        return { q:q.q, a: r ? r.value : (tx ? tx.value.trim() : ""), note: box.querySelector(".ynnote")?.value.trim() || undefined, req: !!q.req }; });
+      const gap = answers.findIndex(a => a.req && !a.a);
+      if (gap >= 0){ $(`#dlgBody [data-q="${gap}"]`).scrollIntoView({ block:"center" }); return toast(`Answer every question marked * (question ${gap + 1})`); }
+      const noAns = answers.filter(a => a.a === "No");
+      if (noAns.some(a => !a.note)) return toast("Say what the problem is for each No answer");
+      const now = new Date();
+      await queueSave("resp", { Title:j.Title, ChecklistName:name, TemplateVersion:t.version || "", Technician: techName(), ResponseDate: ymd(now),
+        Answers: JSON.stringify(answers.map(({ req, ...a }) => a)), Outcome: noAns.length ? "Actions required" : "Pass", IsComplete:"Yes" }, { label:`${name} on ${j.Title}` });
+      $("#dlg").close(); toast(`${name} saved${noAns.length ? " — actions required" : ""}`); render();
+    } });
+  $("#dlgBody").onchange = e => { if (e.target.type === "radio"){ const note = e.target.closest(".cq").querySelector(".ynnote"); if (note) note.hidden = e.target.value !== "No"; } };
+}
+
+/* ---------- sign-off with signature ---------- */
+function openMySignoff(j){
+  const missing = requiredLists(j).filter(n => !checklistDone(j, n));
+  if (missing.length) return toast(`Complete these checklists first: ${missing.join(", ")}`);
+  const site = (D.sites || []).find(x => x.SiteCode === j.SiteCode);
+  openDialog({ cls:"f-comp", kind:"My Jobs · Sign-off", title:`Complete ${j.Title}`, save:"Submit sign-off",
+    body: formBody([["Work done", [["WorkSummary","What was done","textarea",{req:1,w:3}], ["FollowUpRequired","Follow-up needed?","select",{opts:["No","Yes"]}], ["FollowUpNotes","Follow-up notes","text",{w:2}] ]]], { FollowUpRequired:"No" })
+      + micButton("WorkSummary")
+      + `<fieldset><legend>Customer</legend><div class="fg"><label class="fld w3"><span>Customer's name</span><input name="SignedByName" value="${esc(site?.ContactName || j.ContactName || "")}" autocomplete="off"></label></div>
+        <div class="sigwrap" id="sigWrap"><canvas id="sig" aria-label="Customer signature"></canvas><span class="sighint">Customer signs here</span></div>
+        <div class="bar" style="margin:6px 0 0"><button type="button" class="btn sm" id="sigClear">Clear signature</button><span class="grow"></span>
+        <label class="chk"><span><input type="checkbox" id="notPresent"> Customer not present</span></label></div>
+        <label class="fld w3" id="npWrap" hidden><span class="req">Why the customer couldn't sign</span><input name="NotPresentReason"></label></fieldset>`,
+    onSubmit: async () => {
+      const f = readForm(), np = $("#notPresent").checked, signed = SIG.drawn;
+      if (np ? !f.NotPresentReason : !(signed && f.SignedByName)) return toast(np ? "Give the reason the customer couldn't sign" : "Get the customer's signature and name, or tick Customer not present");
+      const now = new Date(), blob = !np && signed ? await new Promise(r => $("#sig").toBlob(r, "image/png")) : null, name = `${j.Title}_signature_${Date.now()}.png`;
+      await queueSave("comp", { Title:j.Title, Technician: techName(), CompletedDate: ymd(now), CompletedTime: hhmm(now), WorkSummary:f.WorkSummary, FollowUpRequired:f.FollowUpRequired, FollowUpNotes:f.FollowUpNotes,
+        SignedByName: np ? "" : f.SignedByName, CustomerNotPresent: np ? "Yes" : "No", NotPresentReason: np ? f.NotPresentReason : "", ReviewStatus:"Submitted" },
+        { label:`Sign-off for ${j.Title}`, file: blob ? { blob, name, folder:j.Title, field:"SignatureFile", type:"image/png" } : null });
+      if (getTimer()?.job === j.Title) toast("Remember to stop the timer");
+      $("#dlg").close(); toast(`${j.Title} signed off — the office will review it`); render();
+    } });
+  bindMic(); bindSignature();
+  $("#notPresent").onchange = e => { $("#npWrap").hidden = !e.target.checked; $("#sigWrap").classList.toggle("off", e.target.checked); };
+}
+const SIG = { drawn:false };
+function bindSignature(){
+  const c = $("#sig"), wrap = $("#sigWrap"); SIG.drawn = false;
+  const size = () => { const r = wrap.getBoundingClientRect(), d = window.devicePixelRatio || 1; c.width = r.width * d; c.height = 170 * d; c.style.height = "170px";
+    const x = c.getContext("2d"); x.scale(d, d); x.lineWidth = 2.2; x.lineCap = "round"; x.lineJoin = "round"; x.strokeStyle = "#111"; };
+  requestAnimationFrame(size);
+  let last = null;
+  const pt = e => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  c.onpointerdown = e => { if (wrap.classList.contains("off")) return; c.setPointerCapture(e.pointerId); last = pt(e); wrap.classList.add("inked"); };
+  c.onpointermove = e => { if (!last) return; const p = pt(e), x = c.getContext("2d"); x.beginPath(); x.moveTo(...last); x.lineTo(...p); x.stroke(); last = p; SIG.drawn = true; };
+  c.onpointerup = c.onpointercancel = () => { last = null; };
+  $("#sigClear").onclick = () => { c.getContext("2d").clearRect(0, 0, c.width, c.height); SIG.drawn = false; wrap.classList.remove("inked"); };
+}
+
+/* ---------- screens ---------- */
+const bookingLine = a => `${a.StartTime || ""}${a.EndTime ? "–" + a.EndTime : ""}`;
+function myJobCard(j, a, facts){
+  const st = jobState(j, facts), site = (D.sites || []).find(x => x.SiteCode === j.SiteCode), t = getTimer();
+  return `<a class="mycard ${priClass(j)}" href="#/my/${encodeURIComponent(j.Title)}">
+    <div class="mc-top"><b>${esc(j.Title)}</b>${a ? `<span class="mono">${esc(bookingLine(a))}</span>` : ""}<span class="grow"></span>${t?.job === j.Title ? `<span class="pill p-warn">⏱ ${elapsed(t)}</span>` : ""}${j.Priority && j.Priority !== "Normal" ? priPill(j.Priority) : ""}${jobPill(st)}</div>
+    <div class="mc-site">${esc(j.CustomerName || "")}${j.SiteName ? " · " + esc(j.SiteName) : ""}${site?.Town ? `<span class="count"> — ${esc(site.Town)}</span>` : ""}</div>
+    ${j.Description ? `<div class="mc-desc">${esc(j.Description)}</div>` : ""}</a>`;
+}
+function viewMy(){
+  if (myParam()) return viewMyJob(myParam());
+  const me = techName(), facts = jobFacts(), t = getTimer();
+  const mine = (D.assign || []).filter(a => a.Technician === me && a.AssignStatus !== "Cancelled");
+  const job = no => (D.jobs || []).find(j => j.Title === no);
+  const open = j => j && !CLOSED.includes(jobState(j, facts));
+  const today = mine.filter(a => a.AssignDate === TODAY).sort((a, b) => (a.StartTime || "").localeCompare(b.StartTime || "")).filter(a => job(a.Title));
+  const ahead = mine.filter(a => a.AssignDate > TODAY && a.AssignDate <= addDays(TODAY, 14) && open(job(a.Title))).sort((a, b) => (a.AssignDate + a.StartTime).localeCompare(b.AssignDate + b.StartTime));
+  const shown = new Set([...today, ...ahead].map(a => a.Title));
+  const carry = [...new Set(mine.filter(a => a.AssignDate < TODAY).map(a => a.Title))].filter(no => !shown.has(no) && open(job(no))).map(job).sort(byUrgency);
+  const doneRecent = (D.comp || []).filter(c => c.Technician === me && (c.CompletedDate || "") >= addDays(TODAY, -7)).sort((a, b) => (b.CompletedDate || "").localeCompare(a.CompletedDate || ""));
+  let day = "";
+  const aheadHtml = ahead.map(a => { const h = a.AssignDate !== day ? `<h4 class="myday">${esc(dayLabel(a.AssignDate))}</h4>` : ""; day = a.AssignDate; return h + myJobCard(job(a.Title), a, facts); }).join("");
+  return `<div class="bar"><h2>My Jobs</h2><span class="grow"></span><span class="count">${esc(dayLabel(TODAY))}</span><button class="btn sm" id="refresh" title="Get the latest jobs from the office">↻</button></div>
+    ${notSetUp(["jobs","assign","time"])}${offlineBanner()}
+    ${t ? `<div class="timerbar"><span>⏱ <b>${esc(t.job)}</b> — running <b class="tel" data-ts="${t.ts}">${elapsed(t)}</b></span><span class="grow"></span><a class="btn" href="#/my/${encodeURIComponent(t.job)}">Open</a><button class="btn primary" data-stop="${esc(t.job)}">■ Stop</button></div>` : ""}
+    ${SYNC.waiting ? `<div class="banner ${SYNC.error ? "err" : ""}" data-syncpanel="1" role="button" tabindex="0">${SYNC.waiting} change${SYNC.waiting === 1 ? "" : "s"} waiting to send${SYNC.error ? " — " + esc(SYNC.error) : navigator.onLine ? "" : " — will send when you're back online"}. Tap for details.</div>` : ""}
+    <h3 class="mysec">Today</h3>${today.length ? today.map(a => myJobCard(job(a.Title), a, facts)).join("") : `<div class="card"><div class="empty">Nothing booked for you today</div></div>`}
+    ${carry.length ? `<h3 class="mysec">Still open <span class="count">booked earlier, not finished</span></h3>${carry.map(j => myJobCard(j, null, facts)).join("")}` : ""}
+    <h3 class="mysec">Next two weeks</h3>${aheadHtml || `<div class="card"><div class="empty">Nothing booked yet</div></div>`}
+    ${doneRecent.length ? `<h3 class="mysec">Signed off this week</h3><div class="card"><ul class="list">${doneRecent.map(c => `<li><a class="id mono" href="#/my/${encodeURIComponent(c.Title)}">${esc(c.Title)}</a><span class="x">${fmtDate(c.CompletedDate)} · ${esc(c.SignedByName || (c.CustomerNotPresent === "Yes" ? "customer not present" : ""))}</span>${c._pending ? `<span class="pill p-warn">waiting to send</span>` : c.ReviewStatus === "Returned" ? `<span class="pill p-crit">Returned</span>` : `<span class="pill p-ok">${esc(c.ReviewStatus || "Submitted")}</span>`}</li>`).join("")}</ul></div>` : ""}`;
+}
+function offlineBanner(){
+  if (!OFFLINE_AT) return "";
+  const d = new Date(OFFLINE_AT);
+  return navigator.onLine
+    ? `<div class="banner ok">Back online — your changes are sent automatically. <a href="#" id="reloadNow">Tap here to get the latest jobs from the office.</a></div>`
+    : `<div class="banner">Offline — showing your jobs as they were at ${esc(hhmm(d))} on ${esc(fmtDate(ymd(d)))}. Anything you add is kept on this phone and sent when there's signal.</div>`;
+}
+const pend = r => r._pending ? ` <span class="pill p-warn" title="Saved on this phone, not yet sent">waiting</span>` : "";
+function viewMyJob(no){
+  const j = jobByNo(no), back = `<div class="bar"><a class="btn" href="#/my">← My Jobs</a></div>`;
+  if (!j) return back + `<div class="card"><div class="empty">Job ${esc(no)} isn't on this phone. It may have been cancelled or moved to someone else — tap ↻ on My Jobs.</div></div>`;
+  const me = techName(), facts = jobFacts(), st = jobState(j, facts), t = getTimer(), running = t?.job === j.Title;
+  const site = (D.sites || []).find(x => x.SiteCode === j.SiteCode), cust = (D.customers || []).find(c => c.CustomerCode === j.CustomerCode);
+  const books = (D.assign || []).filter(a => a.Title === j.Title && a.Technician === me && a.AssignStatus !== "Cancelled").sort((a, b) => (a.AssignDate + a.StartTime).localeCompare(b.AssignDate + b.StartTime));
+  const time = (D.time || []).filter(x => x.JobNo === j.Title && x.Technician === me).sort((a, b) => (b.EntryDate + b.StartTime).localeCompare(a.EntryDate + a.StartTime));
+  const mats = (D.mat || []).filter(m => m.Title === j.Title).sort((a, b) => (b.EntryDate || "").localeCompare(a.EntryDate || ""));
+  const notes = (D.notes || []).filter(n => n.Title === j.Title).sort((a, b) => `${b.NoteDate} ${b.NoteTime}`.localeCompare(`${a.NoteDate} ${a.NoteTime}`));
+  const comps = (D.comp || []).filter(c => c.Title === j.Title).sort((a, b) => `${b.CompletedDate}${b.CompletedTime}`.localeCompare(`${a.CompletedDate}${a.CompletedTime}`));
+  const live = comps.find(c => validCompletion(c)), returned = !live && comps.find(c => c.ReviewStatus === "Returned");
+  const req = requiredLists(j), resp = (D.resp || []).filter(r => r.Title === j.Title);
+  const assets = String(j.AssetCodes || "").split(/[;,]/).map(x => x.trim()).filter(Boolean).map(code => (D.assets || []).find(a => a.Title === code) || { Title:code });
+  const w = safetyWarnings(j), closed = CLOSED.includes(st) && st !== "Completed";
+  const tel = site?.ContactPhone || j.ContactPhone || cust?.Phone;
+  const hrs = time.reduce((s, x) => s + num(x.ActualHours), 0);
+  return back + offlineBanner() + `
+  <div class="card myhead ${priClass(j)}"><div class="mc-top"><b class="big">${esc(j.Title)}</b><span class="grow"></span>${j.Priority && j.Priority !== "Normal" ? priPill(j.Priority) : ""}${jobPill(st)}</div>
+    <div class="mc-site"><b>${esc(j.CustomerName || "")}</b>${j.SiteName ? " · " + esc(j.SiteName) : ""}</div>
+    ${site ? `<div class="count">${lines([site.Address, site.Town, site.Province].filter(Boolean).join(", "))}</div>` : ""}
+    <div class="myact">${closed ? "" : running ? `<button class="btn primary big" data-stop="${esc(j.Title)}">■ Stop <span class="tel" data-ts="${t.ts}">${elapsed(t)}</span></button>` : `<button class="btn primary big" data-start="${esc(j.Title)}">▶ Start work</button>`}
+      ${site && mapUrl(site) ? `<a class="btn big" href="${esc(mapUrl(site))}" target="_blank" rel="noopener">📍 Directions</a>` : ""}${tel ? `<a class="btn big" href="tel:${esc(String(tel).replace(/[^\d+]/g, ""))}">📞 Call</a>` : ""}</div></div>
+  ${site?.SiteHazards ? `<div class="banner err"><b>⚠ Site hazards</b><br>${lines(site.SiteHazards)}</div>` : ""}
+  ${w.tags.length ? `<div class="banner err"><b>Test &amp; tag overdue on your equipment:</b> ${w.tags.map(x => esc(x.PlantID || x.Description || x.Title)).join(", ")}. Don't use these until retested.</div>` : ""}
+  ${w.gaps.length ? `<div class="banner"><b>Training needed for ${esc(j.JobType)}:</b> ${w.gaps.map(esc).join("; ")}</div>` : ""}
+  ${returned ? `<div class="banner err"><b>Sign-off returned by the office.</b> Check with the office, then sign off again.</div>` : ""}
+
+  <div class="card"><h3>Job</h3><dl class="kv">
+    <dt>Work</dt><dd>${lines(j.Description) || "—"}</dd><dt>Type</dt><dd>${esc(j.JobType || "")}</dd>
+    ${j.DueDate ? `<dt>Due</dt><dd>${fmtDate(j.DueDate)}</dd>` : ""}${j.CustomerOrderNo ? `<dt>Order no.</dt><dd>${esc(j.CustomerOrderNo)}</dd>` : ""}
+    ${site?.ContactName || j.ContactName ? `<dt>Site contact</dt><dd>${esc(j.ContactName || site.ContactName)}${tel ? ` · <a href="tel:${esc(String(tel).replace(/[^\d+]/g, ""))}">${esc(tel)}</a>` : ""}</dd>` : ""}
+    ${site?.AccessNotes ? `<dt>Access</dt><dd>${lines(site.AccessNotes)}</dd>` : ""}
+    ${books.length ? `<dt>Booked</dt><dd>${books.map(a => `${esc(dayLabel(a.AssignDate))} ${esc(bookingLine(a))}`).join("<br>")}</dd>` : ""}
+    ${assets.length ? `<dt>Equipment</dt><dd>${assets.map(a => `<b>${esc(a.Title)}</b> ${esc([a.AssetType, a.Make, a.Model].filter(Boolean).join(" "))}${a.SerialNo ? ` <span class="count">SN ${esc(a.SerialNo)}</span>` : ""}${a.LocationOnSite ? ` <span class="count">— ${esc(a.LocationOnSite)}</span>` : ""}`).join("<br>")}</dd>` : ""}
+  </dl></div>
+
+  <div class="card"><div class="bar"><h3>My time</h3><span class="count">${Math.round(hrs * 100) / 100} h</span><span class="grow"></span>${closed ? "" : `<button class="btn sm" data-myact="time">+ Add time</button>`}</div>
+    ${time.length ? `<ul class="list">${time.map(x => `<li><span class="id mono">${fmtDate(x.EntryDate)}</span><span class="x mono">${esc(x.StartTime || "")}–${esc(x.EndTime || "")} · ${esc(x.ActualHours)} h${x.StartLat != null ? " 📍" : ""}</span>${pend(x)}</li>`).join("")}</ul>` : `<div class="empty">No time yet — press ▶ Start work when you begin</div>`}</div>
+
+  <div class="card"><div class="bar"><h3>Checklists</h3><span class="grow"></span>${closed ? "" : `<button class="btn sm" data-myact="chk">+ Other checklist</button>`}</div>
+    ${req.length || resp.length ? `<ul class="list">${req.map(n => { const done = checklistDone(j, n); return `<li><span class="x"><b>${esc(n)}</b> <span class="count">required</span></span>${done ? `<span class="pill p-ok">Done</span>` : closed ? `<span class="pill p-warn">Not done</span>` : `<button class="btn sm primary" data-chk="${esc(n)}">Fill in</button>`}</li>`; }).join("")}
+      ${resp.filter(r => !req.includes(r.ChecklistName)).map(r => `<li><span class="x">${esc(r.ChecklistName)}</span><span class="pill p-ok">Done</span></li>`).join("")}
+      ${resp.filter(r => r._pending).length ? `<li><span class="x count">${resp.filter(r => r._pending).length} checklist${resp.filter(r => r._pending).length === 1 ? "" : "s"} waiting to send</span></li>` : ""}</ul>` : `<div class="empty">No checklists required for this job</div>`}</div>
+
+  <div class="card"><div class="bar"><h3>Materials</h3><span class="grow"></span>${closed ? "" : `<button class="btn sm" data-myact="mat">+ Add</button>`}</div>
+    ${mats.length ? `<ul class="list">${mats.map(m => `<li><span class="id mono">${esc(m.Qty)} ${esc(m.Unit || "")}</span><span class="x">${esc(m.Description || "")} <span class="count">${esc(m.MaterialSource || "")}</span></span>${pend(m)}</li>`).join("")}</ul>` : `<div class="empty">No materials recorded</div>`}</div>
+
+  <div class="card"><div class="bar"><h3>Notes &amp; photos</h3><span class="grow"></span>${closed ? "" : `<label class="btn sm">📷 Photo<input type="file" id="myPhotoIn" accept="image/*" capture="environment" multiple hidden></label><button class="btn sm" data-myact="note">+ Note</button>`}</div>
+    <div class="photos" id="myPhotos">${notes.filter(n => n.NoteType === "Photo").map(n => n._thumb ? `<span class="ph"><img src="${n._thumb}" alt="Photo waiting to send"><span class="phw">waiting</span></span>` : n.FileUrl ? `<a class="ph" href="${esc(n.FileUrl)}" target="_blank" rel="noopener"><span class="phf">📷 ${esc(fmtDate(n.NoteDate))}<br>${esc(n.NoteTime || "")}</span></a>` : "").join("")}</div>
+    ${notes.filter(n => n.NoteType !== "Photo" && n.NoteType !== "Signature").length ? `<ul class="list notes">${notes.filter(n => n.NoteType !== "Photo" && n.NoteType !== "Signature").map(n => `<li><span class="id mono">${fmtDate(n.NoteDate)}<br><span class="count">${esc(n.NoteTime || "")}</span></span><span class="x"><b>${esc(n.Author || "")}</b>${pend(n)}<br>${lines(n.NoteText)}</span></li>`).join("")}</ul>` : notes.length ? "" : `<div class="empty">No notes yet</div>`}</div>
+
+  <div class="card"><h3>Sign-off</h3>
+    ${live ? `<p>Signed off ${fmtDate(live.CompletedDate)} ${esc(live.CompletedTime || "")} by ${esc(live.Technician || "")} — ${live.CustomerNotPresent === "Yes" ? `customer not present (${esc(live.NotPresentReason || "")})` : `customer: ${esc(live.SignedByName || "")}${live.SignatureFile || live._pending ? " ✍" : ""}`}${pend(live)}</p>
+      <p class="count">${live._pending ? "Saved on this phone — it will be sent when there's signal." : live.ReviewStatus === "Accepted" ? "Accepted by the office." : "Waiting for the office to review."}</p>`
+    : closed ? `<p class="count">This job is ${esc(st.toLowerCase())}.</p>`
+    : `${req.filter(n => !checklistDone(j, n)).length ? `<p class="count">Complete these first: ${req.filter(n => !checklistDone(j, n)).map(esc).join(", ")}</p>` : ""}
+       <button class="btn primary big" data-myact="sign" ${req.some(n => !checklistDone(j, n)) ? "disabled" : ""}>✍ Complete &amp; get signature</button>`}</div>
+
+  ${mjeAppAllowed("safety") ? `<p style="margin:16px 0"><a class="btn" href="${esc(incidentLink(j, site))}" target="_blank" rel="noopener">⚠ Report an incident on this job</a></p>` : ""}`;
+}
+
+function bindMy(){
+  if (S.route !== "my") return;
+  const j = myParam() ? jobByNo(myParam()) : null;
+  document.querySelectorAll("[data-start]").forEach(b => b.onclick = () => { const x = jobByNo(b.dataset.start); if (x) startTimer(x); });
+  document.querySelectorAll("[data-stop]").forEach(b => b.onclick = () => { const x = jobByNo(b.dataset.stop); if (x) stopTimer(x); else { setTimer(null); render(); } });
+  document.querySelectorAll("[data-syncpanel]").forEach(b => { b.onclick = openSyncPanel; b.onkeydown = e => { if (e.key === "Enter") openSyncPanel(); }; });
+  if ($("#reloadNow")) $("#reloadNow").onclick = e => { e.preventDefault(); location.reload(); };
+  if (!j) return;
+  document.querySelectorAll("[data-myact]").forEach(b => b.onclick = () => ({
+    time: () => openTimeEntry(j, { EntryDate:TODAY, StartTime:"", EndTime:"" }, false), mat: () => openMyMaterial(j), note: () => openMyNote(j), sign: () => openMySignoff(j),
+    chk: () => { const names = [...new Set((D.chk || []).filter(c => c.TemplateStatus !== "Retired").map(c => c.Title))].concat(Object.values(BUILTIN_CHECKLISTS).map(b => b.type)).filter((n, i, a) => a.indexOf(n) === i);
+      openDialog({ cls:"f-chk", kind:"My Jobs · Checklist", title:"Which checklist?", save:"Open", body: formBody([["Checklist", [["pick","Checklist","select",{req:1,w:3,opts:names}]]]], {}),
+        onSubmit: async () => { const n = val("pick"); $("#dlg").close(); openChecklist(j, n); } }); },
+  })[b.dataset.myact]());
+  document.querySelectorAll("[data-chk]").forEach(b => b.onclick = () => openChecklist(j, b.dataset.chk));
+  const pin = $("#myPhotoIn"); if (pin) pin.onchange = e => { const fs = [...e.target.files]; e.target.value = ""; addMyPhotos(j, fs); };
+}
+// keep the running timer's clock ticking without re-drawing the page
+setInterval(() => document.querySelectorAll(".tel[data-ts]").forEach(el => el.textContent = elapsed({ ts:+el.dataset.ts })), 20000);
+
 function viewNoAccess(){
   const why = { nomatch:`Your Microsoft 365 account (<b>${esc(account?.username || "")}</b>) isn't linked to anyone in the MJE staff list yet.`,
                 norole:`You're in the MJE staff list as <b>${esc(S.me?.Title || "")}</b>, but no Service Hub role has been set for you.`,
@@ -1614,7 +2110,7 @@ function jobChecklists(j){
     <div class="card"><h3>Required for this job</h3>${req.length ? `<ul class="list">${req.map(n => `<li><span class="x">${esc(n)}</span>${checklistDone(j, n) ? `<span class="pill p-ok">Done</span>` : `<span class="pill p-warn">Not done</span>`}</li>`).join("")}</ul>`
       : `<div class="empty">None required — set them in Edit details</div>`}
       <p class="count" style="margin-top:8px">A job can't be signed off until its required checklists are complete.</p></div>
-    <div class="card"><h3>How checklists are filled in</h3><p class="count">Technicians answer JSA, pre-start and test-and-inspect checklists on their phone in My Jobs. Checklist templates (including JSAs built from the task risk register) are set up in Settings — both arrive with the next screens.</p></div>
+    <div class="card"><h3>How checklists are filled in</h3><p class="count">Technicians fill in checklists on their phone in My Jobs (tap a row below to see the answers). Until checklist templates are set up in Settings, built-in Pre-start and JSA lists are used for checklists with those names.</p></div>
   </div>
   <div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Checklist</th><th>Technician</th><th>Date</th><th>Outcome</th><th>Complete</th></tr></thead><tbody>
   ${rows.map(r => `<tr data-resp="${esc(r.id)}" tabindex="0"><td><b>${esc(r.ChecklistName || "")}</b></td><td>${esc(r.Technician || "")}</td><td class="mono">${fmtDate(r.ResponseDate)}</td>
@@ -1902,13 +2398,18 @@ async function start(){
       S.have = await siteListNames();
       if (S.have.has(CONFIG.LISTS.staff)) S.staff = await listItems(CONFIG.LISTS.staff);
     } catch(e){
+      if (isNetErr(e) && loadSnapshot(true)){                       // no signal: open My Jobs from the copy on this phone
+        [S.role, S.roleSource] = resolveRole(); await replayQueue(); await qCount(); readHash(); render(); return;
+      }
       renderHeader();
-      $("#main").innerHTML = `<div class="banner err">Couldn't load data from SharePoint: ${esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists and you have access.</div>`;
+      $("#main").innerHTML = `<div class="banner err">${isNetErr(e) ? "No connection — couldn't reach SharePoint." : "Couldn't load data from SharePoint: " + esc(e.message)}<br>Check the site ${esc(CONFIG.SP_HOST + CONFIG.SITE_PATH)} exists and you have access.</div>`;
       return;
     }
   }
   [S.role, S.roleSource] = resolveRole();
   readHash(); render();
+  qCount().then(ops => { if (ops.length) flushSoon(2000); });     // anything left from last time
+  if ("serviceWorker" in navigator && !DEMO && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(e => console.warn("Offline support not available:", e.message));
 }
 start();
 </script>
